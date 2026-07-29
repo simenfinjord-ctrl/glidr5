@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useEffect, useRef } from "react";
+import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { timeGreeting, dailyQuote } from "@/lib/greeting";
 import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X, User, Disc3, Flag, BarChart2, Layers, ChevronDown } from "lucide-react";
@@ -229,7 +230,7 @@ function TopProductsWidget({ recentResults }: { recentResults: RecentResult[] })
             <div key={i} className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-foreground truncate">{p.brand} {p.name}</div>
+                <div className="text-xs font-medium text-foreground truncate">{productLabel(p)}</div>
                 <div className="mt-0.5 h-1.5 rounded-full bg-border overflow-hidden">
                   <div className="h-full rounded-full bg-yellow-500" style={{ width: `${(p.count / maxCount) * 100}%` }} />
                 </div>
@@ -1150,7 +1151,7 @@ export default function Dashboard() {
               <div className="flex flex-wrap gap-1.5">
                 {products.slice(0, 8).map((p) => (
                   <span key={p.id} className="rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground/80 ring-1 ring-border" data-testid={`badge-product-${p.id}`}>
-                    {p.brand} {p.name}
+                    {productLabel(p)}
                   </span>
                 ))}
                 {products.length > 8 && (

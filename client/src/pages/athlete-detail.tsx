@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useRoute, useLocation, useSearch } from "wouter";
@@ -2965,17 +2966,17 @@ export default function AthleteDetail() {
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-3">
                           {glideProducts.map(({ product: p, application }, i) => (
                             <span key={i} className="inline-flex items-center rounded-lg bg-violet-50 dark:bg-violet-900/20 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800">
-                              {p.brand} {p.name}{application ? <span className="ml-1 font-normal opacity-80">({application})</span> : null}
+                              {productLabel(p)}{application ? <span className="ml-1 font-normal opacity-80">({application})</span> : null}
                             </span>
                           ))}
                           {structureProducts.map(({ product: p, application }, i) => (
                             <span key={`s${i}`} className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700">
-                              {p.brand} {p.name}{application ? <span className="ml-1 font-normal opacity-80">({application})</span> : null}
+                              {productLabel(p)}{application ? <span className="ml-1 font-normal opacity-80">({application})</span> : null}
                             </span>
                           ))}
                           {kickProducts.map((p, i) => (
                             <span key={`k${i}`} className="inline-flex items-center rounded-lg bg-orange-50 dark:bg-orange-900/20 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800">
-                              {p.brand} {p.name}
+                              {productLabel(p)}
                             </span>
                           ))}
                           {kickText && (

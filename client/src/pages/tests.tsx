@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo, useState, useRef, useCallback, useEffect } from "react";
+import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar, GitCompare } from "lucide-react";
@@ -1678,7 +1679,7 @@ export default function Tests() {
                     <SelectItem value="All">{L("Alle produkter", "All products")}</SelectItem>
                     {products.map((p) => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {p.brand} {p.name}
+                        {productLabel(p)}
                       </SelectItem>
                     ))}
                   </SelectContent>

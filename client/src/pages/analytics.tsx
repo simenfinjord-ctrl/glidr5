@@ -1225,7 +1225,7 @@ function ProductSearchStats({
                       }}
                       data-testid={`option-analytics-product-${p.id}`}
                     >
-                      <span className="truncate">{p.brand} {p.name}</span>
+                      <span className="truncate">{productLabel(p)}</span>
                       <span className="ml-auto text-xs text-muted-foreground">{p.category}</span>
                       <Check className={cn("ml-2 h-4 w-4", selectedProductId === p.id ? "opacity-100" : "opacity-0")} />
                     </CommandItem>
@@ -1920,7 +1920,7 @@ function CombinationSearch({
                     setProductIds([...productIds, p.id]);
                     setAddOpen(false);
                   }}>
-                    <span className="truncate">{p.brand} {p.name}</span>
+                    <span className="truncate">{productLabel(p)}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{p.category}</span>
                   </CommandItem>
                 ))}
@@ -2105,7 +2105,7 @@ function CombinationSearch({
                                     if (!p) return null;
                                     return (
                                       <div key={pid} className="flex items-start gap-1.5">
-                                        <span className="font-medium shrink-0">{p.brand} {p.name}:</span>
+                                        <span className="font-medium shrink-0">{productLabel(p)}:</span>
                                         <span className="text-muted-foreground">{appStr ? parseApplication(appStr).label || appStr : "—"}</span>
                                       </div>
                                     );
@@ -2546,7 +2546,7 @@ export function ProductCompare({
           if (!p) return null;
           return (
             <Badge key={id} variant="secondary" className="gap-1 pr-1" data-testid={`badge-compare-product-${id}`}>
-              {p.brand} {p.name}
+              {productLabel(p)}
               <button
                 onClick={() => removeProduct(id)}
                 className="ml-1 rounded-full p-0.5 hover:bg-muted"
@@ -2577,7 +2577,7 @@ export function ProductCompare({
                       onSelect={() => addProduct(p.id)}
                       data-testid={`option-compare-product-${p.id}`}
                     >
-                      <span className="truncate">{p.brand} {p.name}</span>
+                      <span className="truncate">{productLabel(p)}</span>
                       <span className="ml-auto text-xs text-muted-foreground">{p.category}</span>
                     </CommandItem>
                   ))}
@@ -3990,7 +3990,7 @@ function RacedProductsTab({
                 >
                   <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                   <div className="flex-1 min-w-0">
-                    <span className="font-semibold text-sm">{product.brand} {product.name}</span>
+                    <span className="font-semibold text-sm">{productLabel(product)}</span>
                     <span className="ml-2 text-xs text-muted-foreground">{product.category}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
@@ -4085,7 +4085,7 @@ function RacedCombinationsList({
                 {c.products.map(({ product: p, application }, i) => (
                   <span key={p.id} className="inline-flex items-center text-xs">
                     {i > 0 && <span className="mx-1 text-muted-foreground font-bold">+</span>}
-                    <span className="font-semibold">{p.brand} {p.name}</span>
+                    <span className="font-semibold">{productLabel(p)}</span>
                     {application && <span className="ml-1 text-muted-foreground">({application})</span>}
                   </span>
                 ))}

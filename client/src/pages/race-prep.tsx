@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo, useRef } from "react";
+import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { useQuery } from "@tanstack/react-query";
 import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake, FileDown, ChevronsUpDown } from "lucide-react";
@@ -230,7 +231,7 @@ function SingleProductSelect({
               onMouseDown={(e) => { e.preventDefault(); onSelect(p.id); setOpen(false); setSearch(""); }}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted/60 transition-colors"
             >
-              <span className="font-medium">{p.brand} {p.name}</span>
+              <span className="font-medium">{productLabel(p)}</span>
               <span className="ml-1.5 text-xs text-muted-foreground">{p.category}</span>
             </button>
           ))}

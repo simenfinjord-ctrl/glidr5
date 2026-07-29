@@ -1254,7 +1254,7 @@ export default function TestDetail() {
                   {(test as any)?.runsheetBracket && (
                     <DropdownMenuItem onClick={() => setShowReviewRunsheet(true)}>
                       <ClipboardList className="mr-2 h-4 w-4" />
-                      {t("testDetail.runsheet")}
+                      {t("testDetail.reviewRunsheet")}
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
@@ -1267,7 +1267,7 @@ export default function TestDetail() {
                   {canEditTests && (
                     <DropdownMenuItem onClick={copyPublicLink} disabled={copyLinkLoading}>
                       <Link2 className="mr-2 h-4 w-4" />
-                      Copy link
+                      {L("Kopier delingslenke (lesevisning)", "Copy share link (read-only)")}
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => setLocation(`/tests/new?duplicate=${id}`)}>
@@ -1325,7 +1325,7 @@ export default function TestDetail() {
                   {(test as any)?.runsheetBracket && (
                     <DropdownMenuItem onClick={() => setShowReviewRunsheet(true)} data-testid="button-review-runsheet">
                       <ClipboardList className="mr-2 h-4 w-4" />
-                      {t("testDetail.runsheet")}
+                      {t("testDetail.reviewRunsheet")}
                     </DropdownMenuItem>
                   )}
                   {isSuperAdmin && (
@@ -1337,7 +1337,7 @@ export default function TestDetail() {
                   {canEditTests && (
                     <DropdownMenuItem onClick={copyPublicLink} disabled={copyLinkLoading} data-testid="button-copy-link">
                       <Link2 className="mr-2 h-4 w-4" />
-                      Copy link
+                      {L("Kopier delingslenke (lesevisning)", "Copy share link (read-only)")}
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => setLocation(`/tests/new?duplicate=${id}`)} data-testid="button-duplicate-test">

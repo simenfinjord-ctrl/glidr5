@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { ReactNode, useState, useEffect, useRef, useCallback } from "react";
+import { applyNationTheme, getNationTheme, ribbonGradient } from "@/lib/nation-themes";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -714,11 +715,20 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
     enabled: !!user && !isSuperAdmin,
     staleTime: 60_000,
   });
-  const teamLogo: string | null = (() => {
+  const activeTeamInfo: any = (() => {
     const tid = user?.activeTeamId || user?.teamId;
     const list = isSuperAdmin ? teams : myTeamList;
-    return (list.find((t: any) => t.id === tid)?.teamLogo as string | undefined) ?? null;
+    return list.find((t: any) => t.id === tid) ?? null;
   })();
+  const teamLogo: string | null = (activeTeamInfo?.teamLogo as string | undefined) ?? null;
+  // Nation design pack: SA switches it on per team (Teams → Edit plan).
+  const nationTheme = (activeTeamInfo?.nationThemeEnabled ?? activeTeamInfo?.nation_theme_enabled)
+    ? getNationTheme(activeTeamInfo?.nation)
+    : null;
+  useEffect(() => {
+    applyNationTheme(nationTheme?.code ?? null);
+    return () => applyNationTheme(null);
+  }, [nationTheme?.code]);
 
   const { data: feedbackButton } = useQuery<{ enabled: boolean; url: string | null }>({
     queryKey: ["/api/feedback-button"],
@@ -1077,6 +1087,9 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
             >
               Glidr
             </span>
+            {nationTheme && (
+              <span className="text-base leading-none" title={nationTheme.name} data-testid="nation-flag">{nationTheme.flag}</span>
+            )}
             <div className={cn("h-1.5 w-1.5 rounded-full shrink-0 ml-0.5", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
             {isSuperAdmin && teams.length > 1 && (
               <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
@@ -1321,6 +1334,9 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   if (navLayout === "top") {
     return (
       <div className="min-h-screen flex flex-col bg-background">
+        {nationTheme && (
+          <div className="h-1 w-full shrink-0" style={{ background: ribbonGradient(nationTheme) }} data-testid="nation-ribbon" />
+        )}
         <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-lg overflow-x-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
           <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-6">
             <div className="flex items-center gap-2 sm:gap-3 py-2.5 min-w-0">
@@ -1332,6 +1348,9 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
                   <img src={teamLogo} alt="Team logo" className="h-6 w-6 object-contain rounded sm:hidden" />
                 ) : (
                   <GlidrIcon size={24} className="sm:hidden" />
+                )}
+                {nationTheme && (
+                  <span className="text-sm leading-none" title={nationTheme.name}>{nationTheme.flag}</span>
                 )}
                 <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
                 {isSuperAdmin && teams.length > 1 && (
@@ -1411,7 +1430,11 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   // SIDEBAR layout (new design)
   // ══════════════════════════════════════════════════
   return (
-    <div className="min-h-screen flex bg-[#f4f4f6] dark:bg-zinc-950">
+    <div className="min-h-screen flex flex-col bg-[#f4f4f6] dark:bg-zinc-950">
+      {nationTheme && (
+        <div className="h-1 w-full shrink-0 z-50" style={{ background: ribbonGradient(nationTheme) }} data-testid="nation-ribbon" />
+      )}
+      <div className="flex flex-1 min-h-0">
 
       {/* ── Desktop Sidebar (lg+) ── */}
       <aside
@@ -1484,6 +1507,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
         setExpandedMsgId={setExpandedMsgId}
         onDelete={deleteInboxMessage}
       />
+      </div>
     </div>
   );
 }

@@ -250,6 +250,8 @@ export const teams = pgTable("teams", {
   currency: text("currency").notNull().default("NOK"),
   vatExempt: integer("vat_exempt").notNull().default(0),
   lastDriveBackupDay: text("last_drive_backup_day"),
+  nation: text("nation"),
+  nationThemeEnabled: integer("nation_theme_enabled").notNull().default(0),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

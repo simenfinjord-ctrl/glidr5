@@ -782,6 +782,8 @@ export async function registerRoutes(
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NOK';
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS vat_exempt INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_drive_backup_day TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS nation TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS nation_theme_enabled INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TEXT;
       CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'false') ON CONFLICT (key) DO NOTHING;
@@ -7320,6 +7322,15 @@ export async function registerRoutes(
       try { new Date().toLocaleString("sv-SE", { timeZone: tz }); }
       catch { return res.status(400).json({ message: "Unknown timezone" }); }
       await (pool as any).query(`UPDATE teams SET timezone = $1 WHERE id = $2`, [tz, teamId]);
+    }
+    // Nation design pack: which nation the team represents + whether the
+    // full visual identity (colors, flag ribbon) is switched on.
+    if (req.body.nation !== undefined) {
+      const nation = req.body.nation ? String(req.body.nation).toLowerCase().slice(0, 2) : null;
+      await (pool as any).query(`UPDATE teams SET nation = $1 WHERE id = $2`, [nation, teamId]);
+    }
+    if (req.body.nationThemeEnabled !== undefined) {
+      await (pool as any).query(`UPDATE teams SET nation_theme_enabled = $1 WHERE id = $2`, [req.body.nationThemeEnabled ? 1 : 0, teamId]);
     }
 
     // Fetch current team state for change log

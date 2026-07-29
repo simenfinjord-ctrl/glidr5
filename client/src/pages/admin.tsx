@@ -15,6 +15,7 @@ import {
   TEAM_FEATURES, FEATURE_LABELS, FEATURE_CATEGORIES, PLAN_FEATURE_PRESETS,
 } from "@shared/schema";
 import { DATA_AREAS as SHARED_DATA_AREAS } from "@shared/areas";
+import { NATION_THEMES } from "@/lib/nation-themes";
 const COMMON_TIMEZONES = [
   "Europe/Oslo", "Europe/Stockholm", "Europe/Helsinki", "Europe/Berlin", "Europe/Ljubljana",
   "Europe/Zurich", "Europe/Paris", "Europe/London", "America/New_York", "America/Chicago",
@@ -6159,6 +6160,45 @@ export default function Admin() {
                     <Checkbox checked={!!editPlanForm.vatExempt} onCheckedChange={(v) => setEditPlanForm((f: any) => ({ ...f, vatExempt: v === true }))} data-testid="checkbox-vat-exempt" />
                     <span>{L("Mva-fritatt (utenlandsk B2B / reverse charge) — prisene vises «eks. mva»", "VAT exempt (foreign B2B / reverse charge) — prices shown \u00abex. VAT\u00bb")}</span>
                   </label>
+                  <div className="space-y-2 rounded-xl border border-dashed border-border p-3">
+                    <div className="text-xs font-semibold">{L("Nasjonal designpakke", "Nation design pack")}</div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {L("Kler hele appen i nasjonens farger for dette laget: primærfarger, flaggbånd øverst og flagg ved logoen.",
+                         "Dresses the whole app in the nation's identity for this team: primary colors, a flag ribbon on top and the flag next to the logo.")}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Select value={editPlanForm.nation || "none"} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, nation: v === "none" ? "" : v }))}>
+                        <SelectTrigger className="h-9 flex-1 text-xs" data-testid="select-plan-nation">
+                          <SelectValue placeholder={L("Velg nasjon", "Pick nation")} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[40vh]">
+                          <SelectItem value="none">{L("— ingen —", "— none —")}</SelectItem>
+                          {NATION_THEMES.map((n) => (
+                            <SelectItem key={n.code} value={n.code}>{n.flag} {L(n.nameNo, n.name)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <label className="flex shrink-0 items-center gap-2 text-xs cursor-pointer">
+                        <Checkbox
+                          checked={!!editPlanForm.nationThemeEnabled}
+                          onCheckedChange={(v) => setEditPlanForm((f: any) => ({ ...f, nationThemeEnabled: v === true }))}
+                          data-testid="checkbox-nation-theme"
+                        />
+                        {L("Aktiver", "Enable")}
+                      </label>
+                    </div>
+                    {editPlanForm.nationThemeEnabled && editPlanForm.nation && (() => {
+                      const th = NATION_THEMES.find((n) => n.code === editPlanForm.nation);
+                      if (!th) return null;
+                      const grad = `linear-gradient(90deg, ${th.ribbon.map((c, i) => `${c} ${(i / th.ribbon.length) * 100}%, ${c} ${((i + 1) / th.ribbon.length) * 100}%`).join(", ")})`;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 flex-1 rounded-full" style={{ background: grad }} />
+                          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ background: `hsl(${th.hsl})` }}>{th.flag} {L(th.nameNo, th.name)}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <div className="flex gap-2 justify-end pt-1">
                     <Button variant="outline" onClick={() => setEditPlanTeam(null)}>{t("common.cancel")}</Button>
                     <Button
@@ -6175,6 +6215,8 @@ export default function Admin() {
                           currency: editPlanForm.currency ?? "NOK",
                           vatExempt: !!editPlanForm.vatExempt,
                           timezone: editPlanForm.timezone ?? "Europe/Oslo",
+                          nation: editPlanForm.nation || null,
+                          nationThemeEnabled: !!editPlanForm.nationThemeEnabled,
                           ...(editPlanForm.planName === "custom" ? {
                             features: editPlanForm.features ?? [],
                             maxUsers: editPlanForm.maxUsers !== "" ? parseInt(editPlanForm.maxUsers) : null,
@@ -6359,7 +6401,7 @@ export default function Admin() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-60">
-                            <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? ""), currency: (team as any).currency ?? "NOK", vatExempt: !!((team as any).vatExempt ?? (team as any).vat_exempt), timezone: (team as any).timezone ?? "Europe/Oslo" }); }, 0)}>
+                            <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? ""), currency: (team as any).currency ?? "NOK", vatExempt: !!((team as any).vatExempt ?? (team as any).vat_exempt), timezone: (team as any).timezone ?? "Europe/Oslo", nation: (team as any).nation ?? "", nationThemeEnabled: !!((team as any).nationThemeEnabled ?? (team as any).nation_theme_enabled) }); }, 0)}>
                               <DollarSign className="h-4 w-4 text-muted-foreground" />{L("Plan og fakturering", "Plan & billing")}
                             </DropdownMenuItem>
                             <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }, 0)}>

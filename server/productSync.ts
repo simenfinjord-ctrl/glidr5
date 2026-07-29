@@ -43,6 +43,24 @@ const HEADER_SYNONYMS: Record<string, "category" | "brand" | "name" | "stock" | 
 
 const norm = (s: any) => String(s ?? "").trim();
 const key = (s: any) => norm(s).toLowerCase();
+// Matching signature: brand+name tokenized with separators stripped
+// ("Ski-Go" == "Skigo") and TYPE WORDS removed wherever they sit in the name
+// ("Jet Powder Top Finish Black" == "Jet Top Finish Black" + Powder). The
+// removed type words double as category evidence, which beats the stored
+// category (legacy data often mislabels everything as Paraffin).
+const TYPE_WORDS = new Set(["powder", "paraffin", "block", "liquid", "pulver", "blokk"]);
+export function productSig(brand: any, name: any): { sig: string; removed: Set<string> } {
+  const removed = new Set<string>();
+  const core = String(`${brand ?? ""} ${name ?? ""}`).toLowerCase().split(/\s+/)
+    .map((t) => t.replace(/[^a-z0-9]/g, ""))
+    .filter((t) => {
+      if (!t) return false;
+      if (TYPE_WORDS.has(t)) { removed.add(t); return false; }
+      return true;
+    });
+  return { sig: core.join(" "), removed };
+}
+
 /** First integer found in a cell — handles "4", 4 and "Order, total 4". */
 const cellInt = (v: any): number | null => {
   const m = String(v ?? "").match(/-?\d+/);
@@ -118,41 +136,28 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   const existingRes = await (pool as any).query(
     `SELECT id, brand, name, category, stock_quantity, order_quantity, created_by_name FROM products WHERE team_id = $1`, [teamId]
   );
-  type Entry = { id: number; brand: string; name: string; category: string; stock: number; order: number; createdByName?: string; deleted?: boolean };
-  // Products are indexed two ways, each holding a LIST because sheets can
-  // legitimately carry the same brand+name in several rows that differ only
-  // by type (Skigo "Yellow" Powder AND "Yellow" Paraffin). Matching must be
-  // category-aware or the rows overwrite each other's products.
-  //   byPair: "brand|name"        byFull: "brand name" (split-agnostic)
-  const byPair = new Map<string, Entry[]>();
-  const byFull = new Map<string, Entry[]>();
-  const byName = new Map<string, Entry[]>();
+  type Entry = { id: number; brand: string; name: string; category: string; stock: number; order: number; createdByName?: string; deleted?: boolean; removed: Set<string> };
+  // ONE index: the type-word-free signature. Lists, because the same core
+  // name legitimately exists in several types (Toko Jet Top Finish Warm as
+  // Powder AND Liquid; Skigo Yellow as Powder AND Paraffin).
+  const bySig = new Map<string, Entry[]>();
   const addToIndex = (entry: Entry) => {
-    const pk = `${key(entry.brand)}|${key(entry.name)}`;
-    const fk = key(`${entry.brand} ${entry.name}`);
-    const nk = key(entry.name);
-    if (!byPair.has(pk)) byPair.set(pk, []);
-    if (!byPair.get(pk)!.includes(entry)) byPair.get(pk)!.push(entry);
-    if (!byFull.has(fk)) byFull.set(fk, []);
-    if (!byFull.get(fk)!.includes(entry)) byFull.get(fk)!.push(entry);
-    if (!byName.has(nk)) byName.set(nk, []);
-    if (!byName.get(nk)!.includes(entry)) byName.get(nk)!.push(entry);
+    const { sig, removed } = productSig(entry.brand, entry.name);
+    entry.removed = removed;
+    if (!bySig.has(sig)) bySig.set(sig, []);
+    if (!bySig.get(sig)!.includes(entry)) bySig.get(sig)!.push(entry);
   };
   for (const p of existingRes.rows) {
-    addToIndex({ id: p.id, brand: p.brand, name: p.name, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name });
+    addToIndex({ id: p.id, brand: p.brand, name: p.name, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name, removed: new Set() });
   }
-  // How many sheet rows share each brand+name — when >1, category is the
-  // only safe disambiguator and loose matching is disabled.
-  const sheetPairCounts = new Map<string, number>();
-  const sheetPairs = new Set<string>();
-  const sheetNameCounts = new Map<string, number>();
+  // Rows per signature: when a signature appears in several sheet rows the
+  // types differ, and only type evidence may disambiguate.
+  const sheetSigCounts = new Map<string, number>();
   for (const row of values.slice(1)) {
     const b = norm(row[colOf.brand!]); const n = norm(row[colOf.name!]);
     if (!b || !n) continue;
-    const pk = `${key(b)}|${key(n)}`;
-    sheetPairCounts.set(pk, (sheetPairCounts.get(pk) ?? 0) + 1);
-    sheetPairs.add(pk);
-    sheetNameCounts.set(key(n), (sheetNameCounts.get(key(n)) ?? 0) + 1);
+    const { sig } = productSig(b, n);
+    sheetSigCounts.set(sig, (sheetSigCounts.get(sig) ?? 0) + 1);
   }
 
   const now = new Date().toISOString();
@@ -166,31 +171,24 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     const name = norm(row[colOf.name!]);
     if (!brand || !name) { skipped++; continue; }
     const category = normalizeCategory(colOf.category !== undefined ? norm(row[colOf.category!]) : "");
-    const pairKey = `${key(brand)}|${key(name)}`;
-    const catK = key(category);
-    const alive = (list?: Entry[]) => (list ?? []).filter((e) => !e.deleted);
-    // Match priority (category-aware):
-    //   1. Legacy name-with-type: product full name == "brand name TYPE".
-    //   2. Same brand+name AND same stored category.
-    //   3. Only if this brand+name appears ONCE in the sheet: loose pair or
-    //      full-name match (any category) — safe because unambiguous.
-    const nameWithType = alive(byFull.get(key(`${brand} ${name} ${category}`)))[0];
-    const pairSameCat = alive(byPair.get(pairKey)).find((e) => key(e.category) === catK)
-      ?? alive(byFull.get(key(`${brand} ${name}`))).find((e) => key(e.category) === catK);
-    const unique = (sheetPairCounts.get(pairKey) ?? 0) <= 1;
-    const loose = unique
-      ? (alive(byPair.get(pairKey))[0] ?? alive(byFull.get(key(`${brand} ${name}`)))[0])
-      : undefined;
-    // BRAND CHANGE: the sheet renamed a product's brand. Recognizable because
-    // a product with the same name (and matching type) exists whose OWN
-    // brand+name no longer appears anywhere in the sheet. Only when the name
-    // is unique in the sheet — ambiguity means hands off.
-    const brandChange = (sheetNameCounts.get(key(name)) ?? 0) <= 1
-      ? alive(byName.get(key(name))).find((e) =>
-          !sheetPairs.has(`${key(e.brand)}|${key(e.name)}`) &&
-          (key(e.category) === catK || key(`${e.name}`) === key(`${name} ${category}`)))
-      : undefined;
-    const candidates = [nameWithType, pairSameCat, loose, brandChange].filter(Boolean) as Entry[];
+    const catK = key(category).replace(/[^a-z0-9]/g, "");
+    const { sig, removed: rowRemoved } = productSig(brand, name);
+    // Everything that names this row's type: the category column plus any
+    // type word written inside the sheet name itself.
+    const catToks = new Set<string>([catK, ...rowRemoved].filter(Boolean));
+    const cands = (bySig.get(sig) ?? []).filter((e) => !e.deleted);
+    // Type-compatible candidates: products whose NAME carries a matching type
+    // word (authoritative — legacy categories are often wrong), or whose
+    // stored category matches when the name carries no type word.
+    const strong = cands.filter((e) =>
+      e.removed.size > 0 ? [...e.removed].some((t) => catToks.has(t)) : key(e.category).replace(/[^a-z0-9]/g, "") === catK);
+    // Loose fallback only when this signature is unique in the sheet — then
+    // there is exactly one possible identity regardless of type labels.
+    const loose = (sheetSigCounts.get(sig) ?? 0) <= 1 ? cands : [];
+    // Exact brand+name equality outranks everything — keeps "Blue" and
+    // "Blue Block" (same signature) glued to their own rows.
+    const exact = cands.filter((e) => key(`${e.brand} ${e.name}`) === key(`${brand} ${name}`));
+    const candidates = [...exact, ...strong, ...loose].filter((e, i, arr) => arr.indexOf(e) === i);
     // Prefer a product with human history over a sync-created copy — the copy
     // is the duplicate, the legacy product owns the test references.
     let found = candidates.find((e) => e.createdByName !== "Google Sheet sync") ?? candidates[0];
@@ -198,9 +196,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     // product and a sync-created twin also answers to this row, delete the
     // unreferenced twin.
     if (found) {
-      const twins = [...alive(byPair.get(pairKey)), ...alive(byFull.get(key(`${brand} ${name}`))), ...candidates]
-        .filter((e, i, arr) => arr.indexOf(e) === i)
-        .filter((e) => e.id !== found!.id && e.createdByName === "Google Sheet sync");
+      const twins = candidates.filter((e) => e.id !== found!.id && e.createdByName === "Google Sheet sync");
       for (const twin of twins) {
         const refs = await (pool as any).query(
           `SELECT (SELECT COUNT(*) FROM test_entries WHERE product_id = $1)
@@ -267,7 +263,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
         groupScope: effectiveGroup,
         teamId,
       } as any);
-      addToIndex({ id: (created as any).id, brand, name, category, stock: stockQuantity, order: orderQuantity, createdByName: "Google Sheet sync" });
+      addToIndex({ id: (created as any).id, brand, name, category, stock: stockQuantity, order: orderQuantity, createdByName: "Google Sheet sync", removed: new Set() });
       added++;
     } catch {
       skipped++;
@@ -313,22 +309,21 @@ export async function pushProductToSheet(teamId: number, productId: number): Pro
   });
   if (colOf.brand === undefined || colOf.name === undefined) return;
 
-  const fullKey = key(`${product.brand} ${product.name}`);
-  const nameMatches = (row: any[]) => {
-    if (key(row[colOf.brand!]) === key(product.brand) && key(row[colOf.name!]) === key(product.name)) return true;
-    const rowFull = key(`${row[colOf.brand!]} ${row[colOf.name!]}`);
-    if (rowFull === fullKey) return true;
-    // Sheet name + its type word == Glidr's legacy name-with-type.
-    if (colOf.category !== undefined && key(`${rowFull} ${row[colOf.category!] ?? ""}`) === fullKey) return true;
-    return false;
+  const prod = productSig(product.brand, product.name);
+  const prodCat = String(product.category ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const prodTypeToks = new Set<string>([prodCat, ...prod.removed].filter(Boolean));
+  const sigMatches = (row: any[]) => productSig(row[colOf.brand!], row[colOf.name!]).sig === prod.sig;
+  const typeMatches = (row: any[]) => {
+    const r = productSig(row[colOf.brand!], row[colOf.name!]);
+    const rowCat = colOf.category !== undefined ? String(row[colOf.category!] ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+    const rowToks = new Set<string>([rowCat, ...r.removed].filter(Boolean));
+    if (rowToks.size === 0 || prodTypeToks.size === 0) return true;
+    return [...rowToks].some((t) => prodTypeToks.has(t));
   };
-  // Sheets can hold the same name in several rows differing only by type
-  // (Skigo Yellow Powder AND Paraffin) — prefer the row whose category
-  // matches this product before falling back to any name match.
-  const catMatches = (row: any[]) =>
-    colOf.category === undefined || key(row[colOf.category!] ?? "") === key(product.category ?? "");
-  let rowIdx = values.findIndex((row, i) => i > 0 && nameMatches(row) && catMatches(row));
-  if (rowIdx < 0) rowIdx = values.findIndex((row, i) => i > 0 && nameMatches(row));
+  // Same core signature, preferring the row whose type agrees — the same
+  // name can exist as Powder AND Liquid in the sheet.
+  let rowIdx = values.findIndex((row, i) => i > 0 && sigMatches(row) && typeMatches(row));
+  if (rowIdx < 0) rowIdx = values.findIndex((row, i) => i > 0 && sigMatches(row));
 
   const data: { range: string; values: any[][] }[] = [];
   if (rowIdx > 0) {

@@ -115,20 +115,20 @@ export function applyNationTheme(code: string | null | undefined): void {
     html${g} .bg-\\[\\#f4f4f6\\] { background-color: hsl(${hue} 34% 94%) !important; }
 
     /* Brand green family -> nation color */
-    html${g} .bg-green-600, html${g} .bg-emerald-600, html${g} .bg-green-700, html${g} .bg-emerald-700,
-    html${g} .bg-green-500, html${g} .bg-emerald-500 { background-color: ${P} !important; }
+    html${g} .bg-green-600:not(.nation-keep), html${g} .bg-emerald-600:not(.nation-keep), html${g} .bg-green-700:not(.nation-keep), html${g} .bg-emerald-700:not(.nation-keep),
+    html${g} .bg-green-500:not(.nation-keep), html${g} .bg-emerald-500:not(.nation-keep) { background-color: ${P} !important; }
     html${g} .hover\\:bg-green-700:hover, html${g} .hover\\:bg-emerald-700:hover,
     html${g} .hover\\:bg-green-600:hover, html${g} .hover\\:bg-emerald-600:hover { background-color: ${shade(30)} !important; }
-    html${g} .bg-green-400, html${g} .bg-emerald-400 { background-color: ${shade(52)} !important; }
-    html${g} .bg-green-100, html${g} .bg-emerald-100 { background-color: ${shade(90)} !important; }
-    html${g} .bg-green-50, html${g} .bg-emerald-50 { background-color: ${shade(95)} !important; }
-    html${g} .text-green-500, html${g} .text-emerald-500, html${g} .text-green-600, html${g} .text-emerald-600,
-    html${g} .text-green-700, html${g} .text-emerald-700, html${g} .text-green-800, html${g} .text-emerald-800 { color: ${P} !important; }
-    html${g} .text-green-300, html${g} .text-emerald-300, html${g} .text-green-400, html${g} .text-emerald-400 { color: ${shade(46)} !important; }
-    html${g} .border-green-200, html${g} .border-emerald-200 { border-color: ${shade(84)} !important; }
-    html${g} .border-green-300, html${g} .border-emerald-300 { border-color: ${shade(74)} !important; }
-    html${g} .border-green-500, html${g} .border-green-600, html${g} .border-emerald-500, html${g} .border-emerald-600 { border-color: ${P} !important; }
-    html${g} .ring-green-200, html${g} .ring-emerald-200 { --tw-ring-color: ${shade(84)} !important; }
+    html${g} .bg-green-400:not(.nation-keep), html${g} .bg-emerald-400:not(.nation-keep) { background-color: ${shade(52)} !important; }
+    html${g} .bg-green-100:not(.nation-keep), html${g} .bg-emerald-100:not(.nation-keep) { background-color: ${shade(90)} !important; }
+    html${g} .bg-green-50:not(.nation-keep), html${g} .bg-emerald-50:not(.nation-keep) { background-color: ${shade(95)} !important; }
+    html${g} .text-green-500:not(.nation-keep), html${g} .text-emerald-500:not(.nation-keep), html${g} .text-green-600:not(.nation-keep), html${g} .text-emerald-600:not(.nation-keep),
+    html${g} .text-green-700:not(.nation-keep), html${g} .text-emerald-700:not(.nation-keep), html${g} .text-green-800:not(.nation-keep), html${g} .text-emerald-800:not(.nation-keep) { color: ${P} !important; }
+    html${g} .text-green-300:not(.nation-keep), html${g} .text-emerald-300:not(.nation-keep), html${g} .text-green-400:not(.nation-keep), html${g} .text-emerald-400:not(.nation-keep) { color: ${shade(46)} !important; }
+    html${g} .border-green-200:not(.nation-keep), html${g} .border-emerald-200:not(.nation-keep) { border-color: ${shade(84)} !important; }
+    html${g} .border-green-300:not(.nation-keep), html${g} .border-emerald-300:not(.nation-keep) { border-color: ${shade(74)} !important; }
+    html${g} .border-green-500:not(.nation-keep), html${g} .border-green-600:not(.nation-keep), html${g} .border-emerald-500:not(.nation-keep), html${g} .border-emerald-600:not(.nation-keep) { border-color: ${P} !important; }
+    html${g} .ring-green-200:not(.nation-keep), html${g} .ring-emerald-200:not(.nation-keep) { --tw-ring-color: ${shade(84)} !important; }
 
     /* Dark-mode green family */
     html${g} .dark .dark\\:bg-green-900\\/20, html${g} .dark .dark\\:bg-emerald-900\\/20,

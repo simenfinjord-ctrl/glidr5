@@ -1443,7 +1443,7 @@ export default function Products() {
                       return (
                         <div key={brand} className={cn(
                           "rounded-xl border p-3",
-                          placed ? "border-emerald-300 bg-emerald-50/40 dark:border-emerald-800 dark:bg-emerald-950/20" : "border-border bg-muted/20"
+                          placed ? "nation-keep border-emerald-300 bg-emerald-50/40 dark:border-emerald-800 dark:bg-emerald-950/20" : "border-border bg-muted/20"
                         )} data-testid={`order-brand-${brand}`}>
                           <div className="mb-1.5 flex items-center justify-between gap-2">
                             <div className="text-sm font-bold uppercase tracking-wide">{brand}</div>
@@ -1509,7 +1509,7 @@ export default function Products() {
                           <span className="font-bold uppercase tracking-wide">{o.brand}</span>
                           <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold",
                             o.status === "delivered"
-                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
+                              ? "nation-keep bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
                               : "bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-400")}>
                             {o.status === "delivered" ? L("Levert", "Delivered") : L("Bestilt — venter", "Ordered — awaiting")}
                           </span>
@@ -1563,7 +1563,7 @@ export default function Products() {
                             ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                             : totalStock <= 5
                               ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
-                              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                              : "nation-keep bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
                         )}>
                           {totalStock}
                         </div>
@@ -1573,6 +1573,14 @@ export default function Products() {
                 </div>
               </Card>
             )}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11px] text-muted-foreground" data-testid="storage-legend">
+              <span className="font-medium">{L("Antall:", "Count:")}</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> {L("0 = tomt", "0 = empty")}</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" /> {L("1–2 = lavt", "1–2 = low")}</span>
+              <span className="flex items-center gap-1"><span className="nation-keep inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" /> {L("3+ = OK", "3+ = OK")}</span>
+              <span className="ml-2 font-medium">{L("Bestill:", "Order:")}</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full bg-sky-500" /> {L("antall i bestilling", "quantity on order")}</span>
+            </div>
             <div className={cn("grid gap-2", colsClass)}>
               {sortedFiltered.length === 0 ? (
                 <Card className="fs-card rounded-2xl col-span-full" data-testid="empty-products">
@@ -1944,7 +1952,7 @@ function StockRow({ product: p }: { product: Product }) {
                   ? "bg-red-50 text-red-600 ring-1 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-800"
                   : p.stockQuantity <= 2
                     ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-800"
-                    : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-800"
+                    : "nation-keep bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-800"
               )}
               data-testid={`text-stock-quantity-${p.id}`}
             >

@@ -1328,6 +1328,10 @@ export default function Products() {
               const copyText = Array.from(byBrand.entries())
                 .map(([brand, ps]) => `${brand}:\n` + ps.map((p) => `  ${p.name} × ${(p as any).orderQuantity}`).join("\n"))
                 .join("\n");
+              const brandStatus = async (brand: string, action: "ordered" | "unordered" | "delivered") => {
+                await apiRequest("POST", "/api/products/order/brand-status", { brand, action });
+                queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+              };
               return (
                 <Card className="fs-card rounded-2xl p-4 ring-1 ring-sky-200 dark:ring-sky-900" data-testid="card-order-list">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1340,38 +1344,59 @@ export default function Products() {
                         {totalUnits} {L("stk", "units")} · {orderList.length} {L("produkter", "products")}
                       </span>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="h-8 text-xs"
-                        onClick={() => { navigator.clipboard.writeText(copyText).then(() => toast({ title: L("Bestillingsliste kopiert", "Order list copied") })); }}
-                        data-testid="button-copy-order">
-                        {L("Kopier liste", "Copy list")}
-                      </Button>
-                      <Button variant="outline" size="sm" className="h-8 text-xs text-muted-foreground"
-                        onClick={async () => {
-                          if (!confirm(L("Nullstill hele bestillingen? Gjør dette etter at bestillingen er sendt.", "Clear the whole order? Do this after the order has been placed."))) return;
-                          for (const p of orderList) {
-                            await apiRequest("PATCH", `/api/products/${p.id}/order`, { quantity: 0 }).catch(() => {});
-                          }
-                          queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-                          toast({ title: L("Bestilling nullstilt", "Order cleared") });
-                        }}
-                        data-testid="button-clear-order">
-                        {L("Marker som bestilt", "Mark as ordered")}
-                      </Button>
-                    </div>
+                    <Button variant="outline" size="sm" className="h-8 text-xs"
+                      onClick={() => { navigator.clipboard.writeText(copyText).then(() => toast({ title: L("Bestillingsliste kopiert", "Order list copied") })); }}
+                      data-testid="button-copy-order">
+                      {L("Kopier liste", "Copy list")}
+                    </Button>
                   </div>
-                  <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
-                    {Array.from(byBrand.entries()).map(([brand, ps]) => (
-                      <div key={brand}>
-                        <div className="mt-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{brand}</div>
-                        {ps.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between py-0.5 text-sm" data-testid={`order-line-${p.id}`}>
-                            <span className="truncate">{p.name}</span>
-                            <span className="ml-3 shrink-0 font-bold tabular-nums text-sky-700 dark:text-sky-400">× {(p as any).orderQuantity}</span>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from(byBrand.entries()).map(([brand, ps]) => {
+                      const placed = ps.every((p) => ((p as any).orderPlaced ?? 0) === 1);
+                      const brandUnits = ps.reduce((sum, p) => sum + ((p as any).orderQuantity ?? 0), 0);
+                      return (
+                        <div key={brand} className={cn(
+                          "rounded-xl border p-3",
+                          placed ? "border-emerald-300 bg-emerald-50/40 dark:border-emerald-800 dark:bg-emerald-950/20" : "border-border bg-muted/20"
+                        )} data-testid={`order-brand-${brand}`}>
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <div className="text-sm font-bold uppercase tracking-wide">{brand}</div>
+                            <span className="text-xs font-semibold tabular-nums text-muted-foreground">{brandUnits} {L("stk", "units")}</span>
                           </div>
-                        ))}
-                      </div>
-                    ))}
+                          {ps.map((p) => (
+                            <div key={p.id} className="flex items-center justify-between py-0.5 text-sm" data-testid={`order-line-${p.id}`}>
+                              <span className="truncate">{p.name}</span>
+                              <span className="ml-3 shrink-0 font-bold tabular-nums text-sky-700 dark:text-sky-400">× {(p as any).orderQuantity}</span>
+                            </div>
+                          ))}
+                          <div className="mt-2 flex items-center gap-4 border-t border-border/60 pt-2">
+                            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                              <Checkbox
+                                checked={placed}
+                                onCheckedChange={(v) => brandStatus(brand, v === true ? "ordered" : "unordered")}
+                                data-testid={`checkbox-ordered-${brand}`}
+                              />
+                              {L("Bestilt", "Ordered")}
+                            </label>
+                            {placed && (
+                              <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer text-emerald-700 dark:text-emerald-400">
+                                <Checkbox
+                                  checked={false}
+                                  onCheckedChange={(v) => {
+                                    if (v !== true) return;
+                                    if (!confirm(L(`Levert? ${brandUnits} stk fra ${brand} legges til lagerbeholdningen og bestillingen nullstilles.`, `Delivered? ${brandUnits} units from ${brand} are added to stock and the order is cleared.`))) return;
+                                    brandStatus(brand, "delivered").then(() =>
+                                      toast({ title: L("Levering registrert", "Delivery registered"), description: L(`${brand}: ${brandUnits} stk lagt til lagerbeholdningen.`, `${brand}: ${brandUnits} units added to stock.`) }));
+                                  }}
+                                  data-testid={`checkbox-delivered-${brand}`}
+                                />
+                                {L("Levert", "Delivered")}
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </Card>
               );

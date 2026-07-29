@@ -591,6 +591,7 @@ export async function registerRoutes(
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_url TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_group TEXT;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS order_quantity INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS order_placed INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_product_sync_at TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS height_cm TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS weight_kg TEXT;
@@ -2727,6 +2728,50 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+
+  // Brand-level order lifecycle: mark a brand's order as PLACED, undo it, or
+  // mark it DELIVERED — delivery moves the ordered amounts into stock and
+  // clears the counters, then pushes every affected row to the sheet.
+  app.post("/api/products/order/brand-status", requirePermission("products", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const brand = String(req.body?.brand ?? "").trim();
+    const action = String(req.body?.action ?? "");
+    if (!brand || !["ordered", "unordered", "delivered"].includes(action)) {
+      return res.status(400).json({ message: "brand and action (ordered|unordered|delivered) required" });
+    }
+    const { pool: pOrd } = await import("./db");
+    const affected = await (pOrd as any).query(
+      `SELECT id, name, stock_quantity, order_quantity FROM products
+       WHERE team_id = $1 AND LOWER(brand) = LOWER($2) AND order_quantity > 0`, [teamId, brand]);
+    if (affected.rows.length === 0) return res.json({ ok: true, products: 0 });
+
+    if (action === "ordered" || action === "unordered") {
+      await (pOrd as any).query(
+        `UPDATE products SET order_placed = $1
+         WHERE team_id = $2 AND LOWER(brand) = LOWER($3) AND order_quantity > 0`,
+        [action === "ordered" ? 1 : 0, teamId, brand]);
+    } else {
+      // Delivered: ordered amounts land in stock, counters reset.
+      await (pOrd as any).query(
+        `UPDATE products SET stock_quantity = stock_quantity + order_quantity, order_quantity = 0, order_placed = 0
+         WHERE team_id = $1 AND LOWER(brand) = LOWER($2) AND order_quantity > 0`, [teamId, brand]);
+      const u = userInfo(req);
+      if (!isIncognito(req)) {
+        const summary = affected.rows.map((r: any) => `${r.name} +${r.order_quantity}`).join(", ");
+        await storage.createActivityLog({
+          userId: u.id, userName: u.name, action: "stock_added",
+          entityType: "product", entityId: null,
+          details: `Order delivered — ${brand}: ${summary}`,
+          createdAt: new Date().toISOString(), groupScope: u.groupScope.split(",")[0].trim(), teamId,
+        } as any).catch(() => {});
+      }
+      try {
+        const { schedulePushProductToSheet } = await import("./productSync");
+        for (const r of affected.rows) schedulePushProductToSheet(teamId, r.id);
+      } catch {}
+    }
+    res.json({ ok: true, products: affected.rows.length });
+  });
 
   // Order quantity — the "to order" counter that turns Glidr into an ordering
   // terminal. Mirrors the stock endpoint; changes push to the linked sheet.

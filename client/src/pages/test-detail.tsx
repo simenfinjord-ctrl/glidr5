@@ -931,10 +931,19 @@ export default function TestDetail() {
     }
     return Array.from(keys);
   }, [isGrindTest, sortedEntries]);
-  const allGrindCols = useMemo(
-    () => ["grindType", "grindStone", "grindPattern", ...grindExtraParamKeys],
-    [grindExtraParamKeys]
-  );
+  // Stone/Pattern are legacy dedicated columns — only offer them when at
+  // least one entry actually carries a value, like the grinding page does.
+  // Profiles define their own parameters; nothing is forced.
+  const allGrindCols = useMemo(() => {
+    const hasStone = sortedEntries.some((e) => e.grindStone);
+    const hasPattern = sortedEntries.some((e) => e.grindPattern);
+    return [
+      "grindType",
+      ...(hasStone ? ["grindStone"] : []),
+      ...(hasPattern ? ["grindPattern"] : []),
+      ...grindExtraParamKeys,
+    ];
+  }, [grindExtraParamKeys, sortedEntries]);
   const GRIND_COL_LABELS: Record<string, string> = {
     grindType: "Grind Name",
     grindStone: "Stone",

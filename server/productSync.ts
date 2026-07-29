@@ -22,7 +22,7 @@ export function extractSpreadsheetId(url: string | null | undefined): string | n
 }
 
 // Header synonyms → canonical field. All lowercased, trimmed.
-const HEADER_SYNONYMS: Record<string, "category" | "brand" | "name" | "stock"> = {
+const HEADER_SYNONYMS: Record<string, "category" | "brand" | "name" | "stock" | "order"> = {
   // category (a.k.a. the product tag/etikett)
   "category": "category", "kategori": "category", "type": "category", "produkttype": "category",
   "product category": "category", "kategorier": "category",
@@ -33,9 +33,11 @@ const HEADER_SYNONYMS: Record<string, "category" | "brand" | "name" | "stock"> =
   // name
   "name": "name", "navn": "name", "product": "name", "produkt": "name", "produktnavn": "name",
   "product name": "name", "model": "name", "modell": "name",
-  // stock
+  // stock (a.k.a. Amount)
   "stock": "stock", "lager": "stock", "antall": "stock", "quantity": "stock", "qty": "stock",
-  "lagerbeholdning": "stock", "stock quantity": "stock", "beholdning": "stock",
+  "lagerbeholdning": "stock", "stock quantity": "stock", "beholdning": "stock", "amount": "stock",
+  // order (the to-order column)
+  "order": "order", "bestilling": "order", "bestill": "order", "ordre": "order", "to order": "order",
 };
 
 const norm = (s: any) => String(s ?? "").trim();
@@ -98,7 +100,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
 
   // Map header columns → canonical field.
   const header = values[0].map((h) => key(h));
-  const colOf: Partial<Record<"category" | "brand" | "name" | "stock", number>> = {};
+  const colOf: Partial<Record<"category" | "brand" | "name" | "stock" | "order", number>> = {};
   header.forEach((h, i) => {
     const field = HEADER_SYNONYMS[h];
     if (field && colOf[field] === undefined) colOf[field] = i;
@@ -152,6 +154,11 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
       const n = parseInt(norm(row[colOf.stock!]), 10);
       if (!isNaN(n) && n >= 0) stockQuantity = n;
     }
+    let orderQuantity = 0;
+    if (colOf.order !== undefined) {
+      const n = parseInt(norm(row[colOf.order!]), 10);
+      if (!isNaN(n) && n >= 0) orderQuantity = n;
+    }
 
     try {
       const created = await storage.createProduct({
@@ -159,6 +166,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
         brand,
         name,
         stockQuantity,
+        orderQuantity,
         createdAt: now,
         createdById: 0,
         createdByName: "Google Sheet sync",
@@ -174,6 +182,84 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
 
   await storage.updateTeam(teamId, { lastProductSyncAt: now } as any);
   return { success: true, added, updated, skipped, rows: dataRows.length };
+}
+
+// ── Push: Glidr -> sheet ─────────────────────────────────────────────────────
+// Inventory (Amount) and Order changes made in Glidr write back to the linked
+// sheet, and products created in Glidr are appended following the sheet's own
+// column layout. Debounced per product so rapid +/- clicking becomes ONE write.
+
+function colLetter(i: number): string {
+  let n = i + 1, out = "";
+  while (n > 0) { const r = (n - 1) % 26; out = String.fromCharCode(65 + r) + out; n = Math.floor((n - 1) / 26); }
+  return out;
+}
+
+export async function pushProductToSheet(teamId: number, productId: number): Promise<void> {
+  const team = await storage.getTeam(teamId);
+  const spreadsheetId = extractSpreadsheetId((team as any)?.productSheetUrl);
+  if (!spreadsheetId) return;
+  const pr = await (pool as any).query(
+    `SELECT brand, name, category, stock_quantity, order_quantity FROM products WHERE id = $1 AND team_id = $2`,
+    [productId, teamId]);
+  const product = pr.rows[0];
+  if (!product) return;
+
+  const sheets = await getUncachableGoogleSheetClient();
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId, range: "A1:Z2000", valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const values: any[][] = (resp.data.values as any[][]) || [];
+  if (values.length === 0) return;
+  const header = values[0].map((h) => key(h));
+  const colOf: Partial<Record<"category" | "brand" | "name" | "stock" | "order", number>> = {};
+  header.forEach((h, i) => {
+    const field = HEADER_SYNONYMS[h];
+    if (field && colOf[field] === undefined) colOf[field] = i;
+  });
+  if (colOf.brand === undefined || colOf.name === undefined) return;
+
+  const rowIdx = values.findIndex((row, i) =>
+    i > 0 && key(row[colOf.brand!]) === key(product.brand) && key(row[colOf.name!]) === key(product.name));
+
+  const data: { range: string; values: any[][] }[] = [];
+  if (rowIdx > 0) {
+    const rowNo = rowIdx + 1;
+    if (colOf.stock !== undefined) data.push({ range: `${colLetter(colOf.stock)}${rowNo}`, values: [[product.stock_quantity ?? 0]] });
+    if (colOf.order !== undefined) data.push({ range: `${colLetter(colOf.order)}${rowNo}`, values: [[product.order_quantity ?? 0]] });
+    if (data.length === 0) return;
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: { valueInputOption: "RAW", data },
+    });
+  } else {
+    // Not in the sheet yet — append a row shaped by the sheet's own header.
+    const row: any[] = new Array(header.length).fill("");
+    if (colOf.category !== undefined) row[colOf.category] = product.category ?? "";
+    row[colOf.brand] = product.brand;
+    row[colOf.name] = product.name;
+    if (colOf.stock !== undefined) row[colOf.stock] = product.stock_quantity ?? 0;
+    if (colOf.order !== undefined) row[colOf.order] = product.order_quantity ?? 0;
+    await sheets.spreadsheets.values.append({
+      spreadsheetId, range: "A1", valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: { values: [row] },
+    });
+  }
+}
+
+const pushTimers = new Map<string, NodeJS.Timeout>();
+
+/** Debounced push: many rapid changes to one product become one write ~4 s later. */
+export function schedulePushProductToSheet(teamId: number, productId: number): void {
+  const k = `${teamId}:${productId}`;
+  const t = pushTimers.get(k);
+  if (t) clearTimeout(t);
+  pushTimers.set(k, setTimeout(() => {
+    pushTimers.delete(k);
+    pushProductToSheet(teamId, productId).catch((e) =>
+      console.warn(`[ProductSync] Push to sheet failed for product ${productId}:`, e?.message ?? e));
+  }, 4000));
 }
 
 // ── Auto-sync scheduler (every 5 minutes per team with a sheet configured) ───

@@ -590,6 +590,7 @@ export async function registerRoutes(
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id_skating INTEGER;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_url TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_group TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS order_quantity INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_product_sync_at TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS height_cm TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS weight_kg TEXT;
@@ -2625,6 +2626,10 @@ export async function registerRoutes(
       groupScope: resolveCreateGroupScope(req),
       teamId,
     } as any);
+    try {
+      const { schedulePushProductToSheet } = await import("./productSync");
+      schedulePushProductToSheet(teamId, (created as any).id);
+    } catch {}
     res.json({ ...created, serialNumber: serial });
   });
 
@@ -2652,6 +2657,12 @@ export async function registerRoutes(
         details: `Product: ${result.brand} ${result.name}`, createdAt: new Date().toISOString(), groupScope, teamId,
       });
     } catch (_) {}
+    // New products created in Glidr are appended to the linked product sheet
+    // following the sheet's own column layout.
+    try {
+      const { schedulePushProductToSheet } = await import("./productSync");
+      schedulePushProductToSheet(teamId, result.id);
+    } catch {}
     res.json(result);
   });
 
@@ -2691,6 +2702,10 @@ export async function registerRoutes(
       return res.status(400).json({ message: "delta or quantity must be an integer" });
     }
     const updated = await storage.updateProduct(id, { stockQuantity: newQty } as any);
+    try {
+      const { schedulePushProductToSheet } = await import("./productSync");
+      schedulePushProductToSheet(existing.teamId, id);
+    } catch {}
     const u = userInfo(req);
     if (!isIncognito(req)) {
       const change = newQty - oldQty;
@@ -2712,6 +2727,31 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+
+  // Order quantity — the "to order" counter that turns Glidr into an ordering
+  // terminal. Mirrors the stock endpoint; changes push to the linked sheet.
+  app.patch("/api/products/:id/order", requirePermission("products", "view"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { delta, quantity } = req.body;
+    const existing = await storage.getProduct(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const oldQty = (existing as any).orderQuantity ?? 0;
+    let newQty: number;
+    if (typeof quantity === "number" && Number.isInteger(quantity)) {
+      newQty = Math.max(0, quantity);
+    } else if (typeof delta === "number" && Number.isInteger(delta)) {
+      newQty = Math.max(0, oldQty + delta);
+    } else {
+      return res.status(400).json({ message: "delta or quantity must be an integer" });
+    }
+    const updated = await storage.updateProduct(id, { orderQuantity: newQty } as any);
+    try {
+      const { schedulePushProductToSheet } = await import("./productSync");
+      schedulePushProductToSheet(existing.teamId, id);
+    } catch {}
+    res.json(updated);
+  });
   app.delete("/api/products/:id", requirePermission("products", "edit"), async (req, res) => {
     const u = userInfo(req);
     if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });

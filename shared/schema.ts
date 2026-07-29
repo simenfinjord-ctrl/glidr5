@@ -351,6 +351,7 @@ export const products = pgTable("products", {
   groupScope: text("group_scope").notNull(),
   teamId: integer("team_id").notNull().default(1),
   stockQuantity: integer("stock_quantity").notNull().default(0),
+  orderQuantity: integer("order_quantity").notNull().default(0),
   archivedAt: text("archived_at"),
   // Mixes: per-team 3-digit serial (001–300 powders · 301–399 liquids ·
   // 400–600 solid · 601–699 other · 700–999 kick) + the recipe.

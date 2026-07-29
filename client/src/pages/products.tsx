@@ -46,6 +46,7 @@ type Product = {
   createdByName: string;
   groupScope: string;
   stockQuantity: number;
+  orderQuantity?: number;
   archivedAt: string | null;
 };
 
@@ -1293,6 +1294,68 @@ export default function Products() {
           />
         ) : viewMode === "storage" ? (
           <div className="space-y-4">
+            {(() => {
+              const orderList = products
+                .filter((p) => ((p as any).orderQuantity ?? 0) > 0)
+                .sort((a, b) => a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name));
+              if (orderList.length === 0) return null;
+              const totalUnits = orderList.reduce((sum, p) => sum + ((p as any).orderQuantity ?? 0), 0);
+              const byBrand = new Map<string, Product[]>();
+              for (const p of orderList) {
+                if (!byBrand.has(p.brand)) byBrand.set(p.brand, []);
+                byBrand.get(p.brand)!.push(p);
+              }
+              const copyText = Array.from(byBrand.entries())
+                .map(([brand, ps]) => `${brand}:\n` + ps.map((p) => `  ${p.name} × ${(p as any).orderQuantity}`).join("\n"))
+                .join("\n");
+              return (
+                <Card className="fs-card rounded-2xl p-4 ring-1 ring-sky-200 dark:ring-sky-900" data-testid="card-order-list">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950/40">
+                        <PackagePlus className="h-3.5 w-3.5 text-sky-600" />
+                      </div>
+                      {L("Bestillingsliste", "Order list")}
+                      <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-400 dark:ring-sky-800">
+                        {totalUnits} {L("stk", "units")} · {orderList.length} {L("produkter", "products")}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="h-8 text-xs"
+                        onClick={() => { navigator.clipboard.writeText(copyText).then(() => toast({ title: L("Bestillingsliste kopiert", "Order list copied") })); }}
+                        data-testid="button-copy-order">
+                        {L("Kopier liste", "Copy list")}
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8 text-xs text-muted-foreground"
+                        onClick={async () => {
+                          if (!confirm(L("Nullstill hele bestillingen? Gjør dette etter at bestillingen er sendt.", "Clear the whole order? Do this after the order has been placed."))) return;
+                          for (const p of orderList) {
+                            await apiRequest("PATCH", `/api/products/${p.id}/order`, { quantity: 0 }).catch(() => {});
+                          }
+                          queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+                          toast({ title: L("Bestilling nullstilt", "Order cleared") });
+                        }}
+                        data-testid="button-clear-order">
+                        {L("Marker som bestilt", "Mark as ordered")}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from(byBrand.entries()).map(([brand, ps]) => (
+                      <div key={brand}>
+                        <div className="mt-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{brand}</div>
+                        {ps.map((p) => (
+                          <div key={p.id} className="flex items-center justify-between py-0.5 text-sm" data-testid={`order-line-${p.id}`}>
+                            <span className="truncate">{p.name}</span>
+                            <span className="ml-3 shrink-0 font-bold tabular-nums text-sky-700 dark:text-sky-400">× {(p as any).orderQuantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              );
+            })()}
             {uniqueGroups.length > 1 && (
               <Card className="fs-card rounded-2xl p-4" data-testid="card-storage-summary">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
@@ -1794,6 +1857,17 @@ function StockRow({ product: p }: { product: Product }) {
     }
   };
 
+  // Order counter — how many to put on the next order (the ordering terminal).
+  const orderQty = (p as any).orderQuantity ?? 0;
+  const orderMutation = useMutation({
+    mutationFn: async (delta: number) => {
+      const res = await apiRequest("PATCH", `/api/products/${p.id}/order`, { delta });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/products"] }),
+    onError: (e) => toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : "", variant: "destructive" }),
+  });
+
   const isPending = deltaMutation.isPending || setMutation.isPending;
 
   return (
@@ -1864,6 +1938,39 @@ function StockRow({ product: p }: { product: Product }) {
           >
             <Plus className="h-4 w-4" />
           </Button>
+        </div>
+        <div className="flex flex-col items-center gap-0.5 shrink-0 border-l border-border pl-3">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Bestill", "Order")}</span>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              disabled={orderMutation.isPending || orderQty <= 0}
+              onClick={() => orderMutation.mutate(-1)}
+              data-testid={`button-order-minus-${p.id}`}
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </Button>
+            <span className={cn(
+              "inline-flex min-w-9 items-center justify-center rounded-lg px-2 py-1 text-base font-bold tabular-nums",
+              orderQty > 0
+                ? "bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-400 dark:ring-sky-800"
+                : "bg-muted/50 text-muted-foreground"
+            )} data-testid={`text-order-quantity-${p.id}`}>
+              {orderQty}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              disabled={orderMutation.isPending}
+              onClick={() => orderMutation.mutate(1)}
+              data-testid={`button-order-plus-${p.id}`}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

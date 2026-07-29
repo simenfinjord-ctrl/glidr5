@@ -146,6 +146,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
+                  <SelectItem value="Powder">Powder</SelectItem>
                   <SelectItem value="Paraffin">Paraffin</SelectItem>
                   <SelectItem value="Liquid">Liquid</SelectItem>
                   <SelectItem value="Block">Block</SelectItem>
@@ -254,6 +255,7 @@ function EditProductModal({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
+                  <SelectItem value="Powder">Powder</SelectItem>
                   <SelectItem value="Paraffin">Paraffin</SelectItem>
                   <SelectItem value="Liquid">Liquid</SelectItem>
                   <SelectItem value="Block">Block</SelectItem>
@@ -636,7 +638,6 @@ export default function Products() {
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("alpha");
   // Category multi-select: every category is ON by default; unchecking hides
   // it. Mixes act as their own pseudo-category regardless of base category.
-  const FILTER_CATS = ["Paraffin", "Liquid", "Block", "Structure Tool", "Mixes"] as const;
   const [excludedCats, setExcludedCats] = useState<Set<string>>(new Set());
   const catKeyOf = (p: Product) => ((p as any).isMix ? "Mixes" : p.category);
   const [groupFilter, setGroupFilter] = useState("All");
@@ -654,6 +655,13 @@ export default function Products() {
   const { toast } = useToast();
 
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+  // Categories are whatever the team's sheet/products actually use (Powder,
+  // Paraffin, Block, …) — never a hard-coded list. Mixes is a pseudo-category.
+  const FILTER_CATS = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products) if (p.category && !(p as any).isMix) set.add(p.category);
+    return [...Array.from(set).sort(), "Mixes"];
+  }, [products]);
   const { data: archivedProducts = [] } = useQuery<Product[]>({
     queryKey: ["/api/products/archived"],
     enabled: viewMode === "archived" && isAdmin,

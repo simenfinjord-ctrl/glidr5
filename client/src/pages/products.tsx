@@ -415,6 +415,21 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
   });
 
   const [report, setReport] = useState<any>(null);
+  const archiveMissing = useMutation({
+    mutationFn: async (ids: number[]) => {
+      let n = 0;
+      for (const id of ids) {
+        const res = await apiRequest("POST", `/api/products/${id}/archive`, { archived: true }).catch(() => null);
+        if (res?.ok) n++;
+      }
+      return n;
+    },
+    onSuccess: (n: number) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: L(`${n} produkter arkivert`, `${n} products archived`), description: L("Kjør «Synkroniser nå» igjen for oppdatert avstemming.", "Run Sync now again for a fresh reconciliation.") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke arkivere", "Could not archive"), description: e?.message, variant: "destructive" }),
+  });
   const pushMissing = useMutation({
     mutationFn: async (ids: number[]) => {
       const res = await apiRequest("POST", "/api/products/push-to-sheet", { ids });
@@ -505,14 +520,28 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
                     {report.notInSheet.length > 15 ? " …" : ""}
                   </div>
                   {report.notInSheet.some((x: any) => !x.archived) && (
-                    <Button size="sm" variant="outline" className="h-7 text-[11px]"
-                      disabled={pushMissing.isPending}
-                      onClick={() => pushMissing.mutate(report.notInSheet.filter((x: any) => !x.archived).map((x: any) => x.id))}
-                      data-testid="button-push-missing">
-                      {pushMissing.isPending
-                        ? L("Legger til i arket…", "Adding to sheet…")
-                        : L(`Legg de ${report.notInSheet.filter((x: any) => !x.archived).length} aktive inn i arket`, `Add the ${report.notInSheet.filter((x: any) => !x.archived).length} active ones to the sheet`)}
-                    </Button>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                        disabled={pushMissing.isPending || archiveMissing.isPending}
+                        onClick={() => pushMissing.mutate(report.notInSheet.filter((x: any) => !x.archived).map((x: any) => x.id))}
+                        data-testid="button-push-missing">
+                        {pushMissing.isPending
+                          ? L("Legger til i arket…", "Adding to sheet…")
+                          : L(`Legg de ${report.notInSheet.filter((x: any) => !x.archived).length} aktive inn i arket`, `Add the ${report.notInSheet.filter((x: any) => !x.archived).length} active ones to the sheet`)}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] text-amber-700 dark:text-amber-400"
+                        disabled={pushMissing.isPending || archiveMissing.isPending}
+                        onClick={() => {
+                          const list = report.notInSheet.filter((x: any) => !x.archived);
+                          if (confirm(L(`Arkivere ${list.length} produkter? De skjules fra lister og telling, men historikken beholdes og de kan gjenopprettes fra arkivet.`, `Archive ${list.length} products? They are hidden from lists and counts, but history is kept and they can be restored from the archive.`)))
+                            archiveMissing.mutate(list.map((x: any) => x.id));
+                        }}
+                        data-testid="button-archive-missing">
+                        {archiveMissing.isPending
+                          ? L("Arkiverer…", "Archiving…")
+                          : L(`Arkiver de ${report.notInSheet.filter((x: any) => !x.archived).length} i stedet`, `Archive the ${report.notInSheet.filter((x: any) => !x.archived).length} instead`)}
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}

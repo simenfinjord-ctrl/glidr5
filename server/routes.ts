@@ -592,6 +592,20 @@ export async function registerRoutes(
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_group TEXT;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS order_quantity INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS order_placed INTEGER NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS product_orders (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        brand TEXT NOT NULL,
+        items TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'ordered',
+        ordered_at TEXT,
+        ordered_by_id INTEGER,
+        ordered_by_name TEXT,
+        delivered_at TEXT,
+        delivered_by_id INTEGER,
+        delivered_by_name TEXT
+      );
+      CREATE INDEX IF NOT EXISTS product_orders_team_idx ON product_orders(team_id);
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_product_sync_at TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS height_cm TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS weight_kg TEXT;
@@ -2741,15 +2755,33 @@ export async function registerRoutes(
     }
     const { pool: pOrd } = await import("./db");
     const affected = await (pOrd as any).query(
-      `SELECT id, name, stock_quantity, order_quantity FROM products
+      `SELECT id, brand, name, category, stock_quantity, order_quantity FROM products
        WHERE team_id = $1 AND LOWER(brand) = LOWER($2) AND order_quantity > 0`, [teamId, brand]);
     if (affected.rows.length === 0) return res.json({ ok: true, products: 0 });
+    const u0 = userInfo(req);
+    const itemsJson = JSON.stringify(affected.rows.map((r: any) => ({
+      productId: r.id, label: `${r.brand} ${r.name} ${r.category ?? ""}`.trim(), qty: r.order_quantity,
+    })));
+    const nowIso = new Date().toISOString();
 
     if (action === "ordered" || action === "unordered") {
       await (pOrd as any).query(
         `UPDATE products SET order_placed = $1
          WHERE team_id = $2 AND LOWER(brand) = LOWER($3) AND order_quantity > 0`,
         [action === "ordered" ? 1 : 0, teamId, brand]);
+      if (action === "ordered") {
+        // One history row per placed order, snapshotting the contents.
+        await (pOrd as any).query(
+          `INSERT INTO product_orders (team_id, brand, items, status, ordered_at, ordered_by_id, ordered_by_name)
+           VALUES ($1, $2, $3, 'ordered', $4, $5, $6)`,
+          [teamId, brand, itemsJson, nowIso, u0.id, u0.name]);
+      } else {
+        // Undo removes the open history row — cancelled clicks are not history.
+        await (pOrd as any).query(
+          `DELETE FROM product_orders WHERE id = (
+             SELECT id FROM product_orders WHERE team_id = $1 AND LOWER(brand) = LOWER($2) AND status = 'ordered'
+             ORDER BY ordered_at DESC LIMIT 1)`, [teamId, brand]).catch(() => {});
+      }
     } else {
       // Delivered: ordered amounts land in stock, counters reset.
       await (pOrd as any).query(
@@ -2769,8 +2801,25 @@ export async function registerRoutes(
         const { schedulePushProductToSheet } = await import("./productSync");
         for (const r of affected.rows) schedulePushProductToSheet(teamId, r.id);
       } catch {}
+      // Close the open history row with the snapshot that was actually delivered.
+      await (pOrd as any).query(
+        `UPDATE product_orders SET status = 'delivered', items = $1, delivered_at = $2, delivered_by_id = $3, delivered_by_name = $4
+         WHERE id = (SELECT id FROM product_orders WHERE team_id = $5 AND LOWER(brand) = LOWER($6) AND status = 'ordered'
+                     ORDER BY ordered_at DESC LIMIT 1)`,
+        [itemsJson, nowIso, u0.id, u0.name, teamId, brand]).catch(() => {});
     }
     res.json({ ok: true, products: affected.rows.length });
+  });
+
+  // Order history — what was ordered when, by whom, and when it arrived.
+  app.get("/api/product-orders", requirePermission("products", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool: pOh } = await import("./db");
+    const rows = (await (pOh as any).query(
+      `SELECT id, brand, items, status, ordered_at AS "orderedAt", ordered_by_name AS "orderedByName",
+              delivered_at AS "deliveredAt", delivered_by_name AS "deliveredByName"
+       FROM product_orders WHERE team_id = $1 ORDER BY ordered_at DESC NULLS LAST LIMIT 200`, [teamId])).rows;
+    res.json(rows.map((r: any) => ({ ...r, items: (() => { try { return JSON.parse(r.items); } catch { return []; } })() })));
   });
 
   // Order quantity — the "to order" counter that turns Glidr into an ordering

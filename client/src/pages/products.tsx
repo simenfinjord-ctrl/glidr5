@@ -639,7 +639,12 @@ export default function Products() {
   // Category multi-select: every category is ON by default; unchecking hides
   // it. Mixes act as their own pseudo-category regardless of base category.
   const [excludedCats, setExcludedCats] = useState<Set<string>>(new Set());
+  const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
   const catKeyOf = (p: Product) => ((p as any).isMix ? "Mixes" : p.category);
+  const { data: orderHistory = [] } = useQuery<any[]>({
+    queryKey: ["/api/product-orders"],
+    enabled: viewMode === "storage",
+  });
   const [groupFilter, setGroupFilter] = useState("All");
   const [selectedBrand, setSelectedBrand] = useState("All");
   const [nameSearch, setNameSearch] = useState("");
@@ -1335,6 +1340,7 @@ export default function Products() {
               const brandStatus = async (brand: string, action: "ordered" | "unordered" | "delivered") => {
                 await apiRequest("POST", "/api/products/order/brand-status", { brand, action });
                 queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/product-orders"] });
               };
               return (
                 <Card className="fs-card rounded-2xl p-4 ring-1 ring-sky-200 dark:ring-sky-900" data-testid="card-order-list">
@@ -1408,6 +1414,45 @@ export default function Products() {
                 </Card>
               );
             })()}
+            {orderHistory.length > 0 && (
+              <Card className="fs-card rounded-2xl p-4" data-testid="card-order-history">
+                <button type="button" className="flex w-full items-center justify-between gap-2"
+                  onClick={() => setOrderHistoryOpen((v) => !v)} data-testid="button-toggle-order-history">
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <History className="h-4 w-4 text-muted-foreground" />
+                    {L("Bestillingshistorikk", "Order history")}
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{orderHistory.length}</span>
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", orderHistoryOpen && "rotate-180")} />
+                </button>
+                {orderHistoryOpen && (
+                  <div className="mt-3 space-y-2">
+                    {orderHistory.map((o: any) => (
+                      <div key={o.id} className="rounded-xl border border-border p-3" data-testid={`order-history-${o.id}`}>
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          <span className="font-bold uppercase tracking-wide">{o.brand}</span>
+                          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                            o.status === "delivered"
+                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
+                              : "bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-400")}>
+                            {o.status === "delivered" ? L("Levert", "Delivered") : L("Bestilt — venter", "Ordered — awaiting")}
+                          </span>
+                          <span className="ml-auto text-right text-[11px] text-muted-foreground">
+                            {o.orderedAt && <>{L("Sendt", "Sent")} {new Date(o.orderedAt).toLocaleDateString()} · {o.orderedByName}</>}
+                            {o.deliveredAt && <><br />{L("Mottatt", "Received")} {new Date(o.deliveredAt).toLocaleDateString()} · {o.deliveredByName}</>}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                          {(o.items ?? []).map((it: any, i: number) => (
+                            <span key={i}>{it.label} <span className="font-semibold text-foreground">× {it.qty}</span></span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
             {uniqueGroups.length > 1 && (
               <Card className="fs-card rounded-2xl p-4" data-testid="card-storage-summary">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">

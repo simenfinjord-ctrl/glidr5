@@ -6,7 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore, MoreHorizontal, LayoutGrid, LayoutList, Table2, Layers } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore, MoreHorizontal, LayoutGrid, Table2, Layers } from "lucide-react";
 import { ProductCompare } from "@/pages/analytics";
 import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
@@ -52,18 +52,6 @@ type Product = {
 
 type ApiGroup = { id: number; name: string };
 
-type StockChange = {
-  id: number;
-  userId: number;
-  userName: string;
-  action: string;
-  entityType: string;
-  entityId: number | null;
-  details: string | null;
-  createdAt: string;
-  groupScope: string | null;
-  teamId: number;
-};
 
 const schema = z.object({
   category: z.enum(["Paraffin", "Liquid", "Block", "Structure Tool"]),
@@ -707,8 +695,29 @@ export default function Products() {
   const isAdmin = !!user?.isAdmin || !!user?.isTeamAdmin;
   const activeTeamId = (user as any)?.activeTeamId || (user as any)?.teamId;
   const [open, setOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes" | "archived" | "compare">("products");
-  const [productLayout, setProductLayout] = useState<"grid" | "list" | "table">("grid");
+  const [viewMode, setViewMode] = useState<"products" | "storage" | "archived" | "compare">("products");
+  // Layout: cards or table, with a 1-3 column choice for card views —
+  // persisted, and applied to Products, Storage and Archive alike.
+  const [productLayout, setProductLayoutState] = useState<"grid" | "list" | "table">(() => {
+    try {
+      const v = localStorage.getItem("glidr-products-layout");
+      if (v === "table") return "table";
+    } catch {}
+    return "grid";
+  });
+  const setProductLayout = (v: "grid" | "table") => {
+    setProductLayoutState(v);
+    try { localStorage.setItem("glidr-products-layout", v); } catch {}
+  };
+  const [prodCols, setProdColsState] = useState<1 | 2 | 3>(() => {
+    try { const n = parseInt(localStorage.getItem("glidr-products-cols") || "2"); if (n === 1 || n === 2 || n === 3) return n as any; } catch {}
+    return 2;
+  });
+  const setProdCols = (n: 1 | 2 | 3) => {
+    setProdColsState(n);
+    try { localStorage.setItem("glidr-products-cols", String(n)); } catch {}
+  };
+  const colsClass = prodCols === 1 ? "grid-cols-1" : prodCols === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3";
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("alpha");
   // Category multi-select: every category is ON by default; unchecking hides
@@ -751,10 +760,7 @@ export default function Products() {
   });
   const racedSet = useMemo(() => new Set(usageStats?.racedIds ?? []), [usageStats]);
   const testedSet = useMemo(() => new Set(usageStats?.testedIds ?? []), [usageStats]);
-  const { data: stockChanges = [] } = useQuery<StockChange[]>({
-    queryKey: ["/api/stock-changes"],
-    enabled: viewMode === "stock-changes",
-  });
+
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
     queryKey: ["/api/groups"],
     enabled: isAdmin,
@@ -986,9 +992,9 @@ export default function Products() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? L("Arkiverte produkter", "Archived Products") : viewMode === "compare" ? L("Sammenlign produkter", "Compare Products") : t("products.title")}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? L("Arkiverte produkter", "Archived Products") : viewMode === "compare" ? L("Sammenlign produkter", "Compare Products") : t("products.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
-              {viewMode === "stock-changes" ? L(`${stockChanges.length} loggføringer`, `${stockChanges.length} log entries`) : viewMode === "archived" ? L(`${filteredArchived.length} arkivert`, `${filteredArchived.length} archived`) : viewMode === "compare" ? L("Sammenlign produktytelse", "Compare product performance") : t("products.subtitle", { count: filtered.length })}
+              {viewMode === "archived" ? L(`${filteredArchived.length} arkivert`, `${filteredArchived.length} archived`) : viewMode === "compare" ? L("Sammenlign produktytelse", "Compare product performance") : t("products.subtitle", { count: filtered.length })}
             </p>
           </div>
 
@@ -1015,15 +1021,6 @@ export default function Products() {
             )}
             {isAdmin && activeTeamId && <ProductSheetDialog teamId={activeTeamId} lang={language} />}
             <Button
-              variant={viewMode === "stock-changes" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode(viewMode === "stock-changes" ? "products" : "stock-changes")}
-              data-testid="button-toggle-stock-changes"
-            >
-              <History className="mr-2 h-4 w-4" />
-              {L("Lagerendringer", "Stock Changes")}
-            </Button>
-            <Button
               variant={viewMode === "compare" ? "default" : "outline"}
               size="sm"
               onClick={() => setViewMode(viewMode === "compare" ? "products" : "compare")}
@@ -1032,35 +1029,46 @@ export default function Products() {
               <FlaskConical className="mr-2 h-4 w-4" />
               {L("Sammenlign", "Compare")}
             </Button>
-            {(viewMode === "products" || viewMode === "archived") && (
-              <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5 gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn("h-7 w-7 p-0", productLayout === "grid" && "bg-background shadow-sm")}
-                  onClick={() => setProductLayout("grid")}
-                  title={L("Rutenett", "Grid view")}
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn("h-7 w-7 p-0", productLayout === "list" && "bg-background shadow-sm")}
-                  onClick={() => setProductLayout("list")}
-                  title={L("Liste", "List view")}
-                >
-                  <LayoutList className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn("h-7 w-7 p-0", productLayout === "table" && "bg-background shadow-sm")}
-                  onClick={() => setProductLayout("table")}
-                  title={L("Tabell", "Table view")}
-                >
-                  <Table2 className="h-3.5 w-3.5" />
-                </Button>
+            {(viewMode === "products" || viewMode === "archived" || viewMode === "storage") && (
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5 gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn("h-7 gap-1.5 px-2 text-xs", productLayout !== "table" && "bg-background shadow-sm")}
+                    onClick={() => setProductLayout("grid")}
+                    data-testid="button-layout-cards"
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />{L("Kort", "Cards")}
+                  </Button>
+                  {viewMode !== "storage" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn("h-7 gap-1.5 px-2 text-xs", productLayout === "table" && "bg-background shadow-sm")}
+                      onClick={() => setProductLayout("table")}
+                      data-testid="button-layout-table"
+                    >
+                      <Table2 className="h-3.5 w-3.5" />{L("Tabell", "Table")}
+                    </Button>
+                  )}
+                </div>
+                {(productLayout !== "table" || viewMode === "storage") && (
+                  <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5 gap-0.5" title={L("Kolonner", "Columns")}>
+                    {([1, 2, 3] as const).map((n) => (
+                      <Button
+                        key={n}
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-7 w-7 p-0 text-xs tabular-nums", prodCols === n && "bg-background shadow-sm")}
+                        onClick={() => setProdCols(n)}
+                        data-testid={`button-cols-${n}`}
+                      >
+                        {n}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {viewMode === "storage" && (
@@ -1097,7 +1105,7 @@ export default function Products() {
           </div>
         </div>
 
-        {viewMode !== "stock-changes" && (<Card className="fs-card rounded-2xl p-4">
+        {(<Card className="fs-card rounded-2xl p-4">
           {/* Filter toggle — mobile only */}
           <div className="sm:hidden flex items-center gap-2 mb-3">
             <Button
@@ -1352,7 +1360,7 @@ export default function Products() {
                 </div>
               </Card>
             ) : (
-              <div className={cn("grid gap-3", productLayout === "grid" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+              <div className={cn("grid gap-3", colsClass)}>
                 {filteredArchived.map((p) => (
                   <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 gap-3">
                     <AppLink href={`/products/${p.id}`} className="min-w-0 flex-1 group">
@@ -1389,13 +1397,6 @@ export default function Products() {
               </div>
             )}
           </div>
-        ) : viewMode === "stock-changes" ? (
-          <StockChangesView
-            stockChanges={stockChanges}
-            uniqueGroups={uniqueGroups}
-            groupFilter={stockChangeGroupFilter}
-            setGroupFilter={setStockChangeGroupFilter}
-          />
         ) : viewMode === "storage" ? (
           <div className="space-y-4">
             {(() => {
@@ -1572,9 +1573,9 @@ export default function Products() {
                 </div>
               </Card>
             )}
-            <div className="space-y-2">
+            <div className={cn("grid gap-2", colsClass)}>
               {sortedFiltered.length === 0 ? (
-                <Card className="fs-card rounded-2xl" data-testid="empty-products">
+                <Card className="fs-card rounded-2xl col-span-full" data-testid="empty-products">
                   <EmptyState
                     icon={PackagePlus}
                     title={t("products.noProducts")}
@@ -1747,7 +1748,7 @@ export default function Products() {
                 </div>
               </Card>
             ) : (
-              <div className={cn("grid gap-3", productLayout === "grid" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+              <div className={cn("grid gap-3", colsClass)}>
                 {filtered.map((p) => (
                   <ProductCard
                     key={p.id}
@@ -1772,7 +1773,6 @@ export default function Products() {
             )}
           </div>
         )}
-
 
         <Dialog open={!!editingProduct} onOpenChange={(v) => { if (!v) setEditingProduct(undefined); }}>
           <DialogContent className="sm:max-w-md">
@@ -1835,153 +1835,6 @@ export default function Products() {
 }
 
 type StockSort = "date-desc" | "date-asc" | "product-az" | "product-za" | "user-az" | "user-za";
-
-function StockChangesView({
-  stockChanges,
-  uniqueGroups,
-  groupFilter,
-  setGroupFilter,
-}: {
-  stockChanges: StockChange[];
-  uniqueGroups: string[];
-  groupFilter: string;
-  setGroupFilter: (v: string) => void;
-}) {
-  const { language } = useI18n();
-  const L = (no: string, en: string) => (language === "no" ? no : en);
-  const [sort, setSort] = useState<StockSort>("date-desc");
-
-  const filtered = useMemo(() => {
-    if (groupFilter === "All") return stockChanges;
-    return stockChanges.filter((sc) =>
-      sc.groupScope?.split(",").map((g) => g.trim()).includes(groupFilter)
-    );
-  }, [stockChanges, groupFilter]);
-
-  const sorted = useMemo(() => {
-    const arr = [...filtered];
-    switch (sort) {
-      case "date-desc":
-        return arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      case "date-asc":
-        return arr.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-      case "product-az": {
-        const getName = (sc: StockChange) => (sc.details?.split(":")[0] ?? "").trim();
-        return arr.sort((a, b) => getName(a).localeCompare(getName(b)));
-      }
-      case "product-za": {
-        const getName = (sc: StockChange) => (sc.details?.split(":")[0] ?? "").trim();
-        return arr.sort((a, b) => getName(b).localeCompare(getName(a)));
-      }
-      case "user-az":
-        return arr.sort((a, b) => a.userName.localeCompare(b.userName));
-      case "user-za":
-        return arr.sort((a, b) => b.userName.localeCompare(a.userName));
-    }
-  }, [filtered, sort]);
-
-  return (
-    <div className="space-y-3">
-      <Card className="fs-card rounded-2xl p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-center gap-2 text-sm font-semibold">
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40">
-              <History className="h-3.5 w-3.5 text-violet-600" />
-            </div>
-            {L("Filtre", "Filters")}
-          </div>
-          {uniqueGroups.length > 1 && (
-            <div className="min-w-[180px]">
-              <Select value={groupFilter} onValueChange={setGroupFilter}>
-                <SelectTrigger data-testid="select-stock-change-group">
-                  <SelectValue placeholder={L("Gruppe", "Group")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">{L("Alle grupper", "All groups")}</SelectItem>
-                  {uniqueGroups.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <div className="min-w-[170px]">
-            <Select value={sort} onValueChange={(v) => setSort(v as StockSort)}>
-              <SelectTrigger data-testid="select-sort-stock-changes">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date-desc">{L("Nyeste først", "Newest first")}</SelectItem>
-                <SelectItem value="date-asc">{L("Eldste først", "Oldest first")}</SelectItem>
-                <SelectItem value="product-az">{L("Produkt A–Å", "Product A–Z")}</SelectItem>
-                <SelectItem value="product-za">{L("Produkt Å–A", "Product Z–A")}</SelectItem>
-                <SelectItem value="user-az">{L("Bruker A–Å", "User A–Z")}</SelectItem>
-                <SelectItem value="user-za">{L("Bruker Å–A", "User Z–A")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <span className="ml-auto text-xs text-muted-foreground">{sorted.length} {L("føringer", "entries")}</span>
-        </div>
-      </Card>
-
-      {sorted.length === 0 ? (
-        <Card className="fs-card rounded-2xl p-6 text-center text-sm text-muted-foreground" data-testid="empty-stock-changes">
-          {L("Ingen lagerendringer registrert ennå.", "No stock changes recorded yet.")}
-        </Card>
-      ) : (
-        <div className="space-y-1.5">
-          {sorted.map((sc) => {
-            const productName = sc.details?.split(":")[0]?.trim() ?? L("Ukjent", "Unknown");
-            const changeInfo = sc.details?.split(":").slice(1).join(":").trim() ?? "";
-            const isAdd = sc.action === "stock_added";
-            const isRemove = sc.action === "stock_removed";
-            const d = new Date(sc.createdAt);
-            const dateStr = d.toLocaleDateString("nb-NO", { day: "2-digit", month: "short", year: "numeric" });
-            const timeStr = d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
-            const groups = sc.groupScope?.split(",").map((g) => g.trim()).filter(Boolean) ?? [];
-
-            return (
-              <Card key={sc.id} className="fs-card rounded-2xl px-4 py-3" data-testid={`stock-change-${sc.id}`}>
-                <div className="flex items-start gap-3">
-                  <div className={cn(
-                    "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                    isAdd
-                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
-                      : isRemove
-                        ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
-                        : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
-                  )}>
-                    {isAdd ? <ArrowUp className="h-3.5 w-3.5" /> : isRemove ? <ArrowDown className="h-3.5 w-3.5" /> : <History className="h-3.5 w-3.5" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold">{productName}</span>
-                      {groups.map((g) => (
-                        <span key={g} className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-green-200 dark:bg-green-950/30 dark:text-green-400 dark:ring-green-800">{g}</span>
-                      ))}
-                    </div>
-                    <div className="mt-0.5 text-sm text-muted-foreground">
-                      <span className={cn(
-                        "font-semibold",
-                        isAdd ? "text-emerald-600 dark:text-emerald-400" : isRemove ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
-                      )}>
-                        {changeInfo}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>{sc.userName}</span>
-                      <span>{dateStr} {timeStr}</span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function StockRow({ product: p }: { product: Product }) {
   const { language } = useI18n();

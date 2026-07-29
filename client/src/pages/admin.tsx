@@ -4221,7 +4221,7 @@ export default function Admin() {
 
       checkPage();
       doc.setFontSize(13);
-      doc.text("Testski Series", 14, y);
+      doc.text("Test Fleets", 14, y);
       y += 2;
       autoTable(doc, {
         startY: y,
@@ -4288,11 +4288,11 @@ export default function Admin() {
       if (data.testSkiRegrinds && data.testSkiRegrinds.length > 0) {
         checkPage();
         doc.setFontSize(13);
-        doc.text(`Testski Series Regrinds (${data.testSkiRegrinds.length})`, 14, y);
+        doc.text(`Test Fleet Regrinds (${data.testSkiRegrinds.length})`, 14, y);
         y += 2;
         autoTable(doc, {
           startY: y,
-          head: [["Series", "Date", "Grind Type", "Stone", "Pattern", "Notes"]],
+          head: [["Fleet", "Date", "Grind Type", "Stone", "Pattern", "Notes"]],
           body: data.testSkiRegrinds.map((r: any) => [r.seriesName || "", r.date || "", r.grindType || "", r.stone || "", r.pattern || "", r.notes || ""]),
           styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
         });
@@ -4700,7 +4700,7 @@ export default function Admin() {
         y += 2;
         autoTable(doc, {
           startY: y,
-          head: [["Date", "Series", "Type", "Stone", "Notes", "Created By", "Group"]],
+          head: [["Date", "Fleet", "Type", "Stone", "Notes", "Created By", "Group"]],
           body: data.grindingRecords.map((r: any) => {
             const series = r.seriesId ? seriesMap.get(r.seriesId) : null;
             return [r.date || "", series?.name || (r.seriesId ? `#${r.seriesId}` : "—"), r.grindType || "", r.stone || "", r.notes || "", r.createdByName || "", r.groupScope || ""];
@@ -7549,7 +7549,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
         const seriesRows = data.series.map((s: any) => ({
           ID: s.id, Name: s.name, Brand: s.brand || "", SkiType: s.skiType || "", TestType: s.testType, Group: s.groupScope,
         }));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(seriesRows), "Series");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(seriesRows), "Test Fleets");
       }
 
       if (data.athletes?.length) {
@@ -7608,7 +7608,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
               { label: "Users", val: dbStats.userCount },
               { label: "Tests", val: dbStats.testCount },
               { label: "Products", val: dbStats.productCount },
-              { label: "Series", val: dbStats.seriesCount },
+              { label: "Fleets", val: dbStats.seriesCount },
               { label: "Weather", val: dbStats.weatherCount },
               { label: "Grinding", val: dbStats.grindingCount },
               { label: "Athletes", val: dbStats.athleteCount },

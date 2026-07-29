@@ -504,7 +504,7 @@ export default function Demo() {
           <h2 className="text-2xl font-bold text-foreground text-center mb-10">{t.featureTitle}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {[
-              { icon: "🎿", title: L("Testskiserier", "Test ski series"), desc: L("Administrer serier av testski med reslip-historikk", "Manage series of test skis with regrind history") },
+              { icon: "🎿", title: L("Testskiserier", "Test fleets"), desc: L("Administrer serier av testski med reslip-historikk", "Manage test fleets with regrind history") },
               { icon: "🏔️", title: L("Flere steder", "Multiple locations"), desc: L("Loggfør og sammenlign på tvers av alle steder", "Log and compare across every venue") },
               { icon: "📊", title: L("Head-to-head-sammenligning", "Head-to-head compare"), desc: L("Sammenlign to produkter over tid", "Compare any two products over time") },
               { icon: "🔒", title: L("Blindtestermodus", "Blind tester mode"), desc: L("Fjern bias — testere ser ikke produktnavn", "Remove bias — testers don't see product names") },

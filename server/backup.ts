@@ -439,7 +439,7 @@ export async function runBackupForTeam(teamId: number, opts?: { force?: boolean 
       rows.push([]);
 
       // Test ski series
-      h('=== TEST SKI SERIES ===');
+      h('=== TEST FLEETS ===');
       cols('ID', 'Name', 'Type', 'Brand', 'Ski Type', 'Grind', 'Num Skis', 'Last Regrind', 'Archived');
       for (const s of groupSeries) {
         rows.push([s.id, s.name, s.type, s.brand || '', s.skiType || '', s.grind || '', s.numberOfSkis, s.lastRegrind || '', s.archivedAt ? 'Yes' : '']);
@@ -541,7 +541,7 @@ export async function runBackupForTeam(teamId: number, opts?: { force?: boolean 
     // All 15 weather/conditions fields are included on every row.
     const FLAT_COL_HEADER = [
       // Test metadata
-      'Test ID', 'Date', 'Location', 'Test Name', 'Group', 'Series', 'Type', 'Notes',
+      'Test ID', 'Date', 'Location', 'Test Name', 'Group', 'Fleet', 'Type', 'Notes',
       // Entry data — results/ranks sit right next to the product/grind/ski
       // columns so a row reads naturally left-to-right.
       'Ski #', 'Ski ID', 'Product', 'Application / Method', 'Grind Used',
@@ -933,7 +933,7 @@ export async function runBackupForTeam(teamId: number, opts?: { force?: boolean 
     grindBolds.push(grindRows.length);
     grindRows.push(['=== GRINDING RECORDS ===']);
     grindBolds.push(grindRows.length);
-    grindRows.push(['ID', 'Date', 'Group/Series', 'Grind Type', 'Stone', 'Notes', 'Created By', 'Created At']);
+    grindRows.push(['ID', 'Date', 'Group/Fleet', 'Grind Type', 'Stone', 'Notes', 'Created By', 'Created At']);
     for (const gr of allGrindingRecords) {
       grindRows.push([gr.id, gr.date, gr.groupScope || '', gr.grindType, gr.stone || '', gr.notes || '', gr.createdByName || '', gr.createdAt || '']);
     }
@@ -1028,7 +1028,7 @@ export async function runBackupForTeam(teamId: number, opts?: { force?: boolean 
       ['Weather logs', allWeather.length],
       ['Products (active)', allProducts.length],
       ['Products (archived)', allArchivedProducts.length],
-      ['Test ski series', allSeries.length],
+      ['Test fleets', allSeries.length],
       ['Athletes', allAthletes.length],
       ['Race skis', allRaceSkis.length],
       ['Race preps', allRacePreps.length],

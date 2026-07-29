@@ -464,7 +464,7 @@ export default function TestSkis() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series"] });
       queryClient.invalidateQueries({ queryKey: ["/api/series/archived"] });
-      toast({ title: L("Serie gjenopprettet", "Series restored") });
+      toast({ title: L("Serie gjenopprettet", "Fleet restored") });
     },
     onError: (e) => {
       toast({ title: t("common.error"), description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -477,7 +477,7 @@ export default function TestSkis() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series/archived"] });
-      toast({ title: L("Serie slettet permanent", "Series permanently deleted") });
+      toast({ title: L("Serie slettet permanent", "Fleet permanently deleted") });
       setConfirmDelete(undefined);
     },
     onError: (e) => {
@@ -596,7 +596,7 @@ export default function TestSkis() {
 
         {showArchive && archived.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-amber-600">{L("Arkiverte serier", "Archived series")}</h2>
+            <h2 className="text-lg font-semibold text-amber-600">{L("Arkiverte serier", "Archived fleets")}</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {archived.map((s) => (
                 <Card

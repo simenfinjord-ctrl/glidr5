@@ -154,7 +154,8 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     if (pairHit && suffixHit && pairHit.id !== suffixHit.id && pairHit.createdByName === "Google Sheet sync") {
       const refs = await (pool as any).query(
         `SELECT (SELECT COUNT(*) FROM test_entries WHERE product_id = $1)
-              + (SELECT COUNT(*) FROM race_prep_entries WHERE glide_product_ids LIKE '%' || $1 || '%') AS c`,
+              + (SELECT COUNT(*) FROM race_preps WHERE product_ids LIKE '%' || $1 || '%'
+                   OR structure_ids LIKE '%' || $1 || '%' OR kick_product_ids LIKE '%' || $1 || '%') AS c`,
         [pairHit.id]).catch(() => ({ rows: [{ c: 1 }] }));
       if (parseInt(refs.rows[0]?.c ?? "1") === 0) {
         await (pool as any).query(`DELETE FROM products WHERE id = $1`, [pairHit.id]).catch(() => {});

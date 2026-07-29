@@ -1330,7 +1330,7 @@ export default function Products() {
                 byBrand.get(p.brand)!.push(p);
               }
               const copyText = Array.from(byBrand.entries())
-                .map(([brand, ps]) => `${brand}:\n` + ps.map((p) => `  ${p.name} (${p.category}) × ${(p as any).orderQuantity}`).join("\n"))
+                .map(([brand, ps]) => `${brand}:\n` + ps.map((p) => `  ${p.brand} ${p.name} ${p.category} × ${(p as any).orderQuantity}`).join("\n"))
                 .join("\n");
               const brandStatus = async (brand: string, action: "ordered" | "unordered" | "delivered") => {
                 await apiRequest("POST", "/api/products/order/brand-status", { brand, action });
@@ -1370,7 +1370,7 @@ export default function Products() {
                           {ps.map((p) => (
                             <div key={p.id} className="flex items-start justify-between gap-2 py-1 text-sm" data-testid={`order-line-${p.id}`}>
                               <span className="min-w-0 break-words">
-                                {p.name}
+                                {p.brand} {p.name}
                                 <span className="ml-1 text-muted-foreground">{p.category}</span>
                               </span>
                               <span className="shrink-0 font-bold tabular-nums text-sky-700 dark:text-sky-400">× {(p as any).orderQuantity}</span>

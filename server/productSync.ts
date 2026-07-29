@@ -36,12 +36,20 @@ const HEADER_SYNONYMS: Record<string, "category" | "brand" | "name" | "stock" | 
   // stock (a.k.a. Amount)
   "stock": "stock", "lager": "stock", "antall": "stock", "quantity": "stock", "qty": "stock",
   "lagerbeholdning": "stock", "stock quantity": "stock", "beholdning": "stock", "amount": "stock",
+  "count": "stock", "antal": "stock", "på lager": "stock", "in stock": "stock",
   // order (the to-order column)
   "order": "order", "bestilling": "order", "bestill": "order", "ordre": "order", "to order": "order",
 };
 
 const norm = (s: any) => String(s ?? "").trim();
 const key = (s: any) => norm(s).toLowerCase();
+/** First integer found in a cell — handles "4", 4 and "Order, total 4". */
+const cellInt = (v: any): number | null => {
+  const m = String(v ?? "").match(/-?\d+/);
+  if (!m) return null;
+  const n = parseInt(m[0], 10);
+  return isNaN(n) || n < 0 ? null : n;
+};
 
 // Canonical product tags. The sheet's category/type value is interpreted into
 // exactly one of these so every imported product is correctly tagged.
@@ -116,10 +124,10 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   // Existing products in this team (incl. archived), keyed by brand+name so a
   // product's tag/category can be corrected on re-sync instead of duplicated.
   const existingRes = await (pool as any).query(
-    `SELECT id, brand, name, category FROM products WHERE team_id = $1`, [teamId]
+    `SELECT id, brand, name, category, stock_quantity, order_quantity FROM products WHERE team_id = $1`, [teamId]
   );
-  const existing = new Map<string, { id: number; category: string }>();
-  for (const p of existingRes.rows) existing.set(`${key(p.brand)}|${key(p.name)}`, { id: p.id, category: p.category });
+  const existing = new Map<string, { id: number; category: string; stock: number; order: number }>();
+  for (const p of existingRes.rows) existing.set(`${key(p.brand)}|${key(p.name)}`, { id: p.id, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0 });
 
   const now = new Date().toISOString();
   let added = 0;
@@ -136,29 +144,35 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     const found = existing.get(matchKey);
 
     if (found) {
-      // Already imported — only correct the category/tag if it changed.
-      if (key(found.category) !== key(category)) {
-        try {
+      // Already imported — correct the tag, and pull Count/Order values from
+      // the sheet so edits made THERE land in Glidr too. (Glidr-side changes
+      // push back within seconds, so the sheet is normally already current.)
+      let changed = false;
+      try {
+        if (key(found.category) !== key(category)) {
           await (pool as any).query(`UPDATE products SET category = $1 WHERE id = $2`, [category, found.id]);
           found.category = category;
-          updated++;
-        } catch { skipped++; }
-      } else {
-        skipped++;
-      }
+          changed = true;
+        }
+        const sheetStock = colOf.stock !== undefined ? cellInt(row[colOf.stock!]) : null;
+        if (sheetStock != null && sheetStock !== found.stock) {
+          await (pool as any).query(`UPDATE products SET stock_quantity = $1 WHERE id = $2`, [sheetStock, found.id]);
+          found.stock = sheetStock;
+          changed = true;
+        }
+        const sheetOrder = colOf.order !== undefined ? cellInt(row[colOf.order!]) : null;
+        if (sheetOrder != null && sheetOrder !== found.order) {
+          await (pool as any).query(`UPDATE products SET order_quantity = $1 WHERE id = $2`, [sheetOrder, found.id]);
+          found.order = sheetOrder;
+          changed = true;
+        }
+      } catch { /* leave as-is */ }
+      if (changed) updated++; else skipped++;
       continue;
     }
 
-    let stockQuantity = 0;
-    if (colOf.stock !== undefined) {
-      const n = parseInt(norm(row[colOf.stock!]), 10);
-      if (!isNaN(n) && n >= 0) stockQuantity = n;
-    }
-    let orderQuantity = 0;
-    if (colOf.order !== undefined) {
-      const n = parseInt(norm(row[colOf.order!]), 10);
-      if (!isNaN(n) && n >= 0) orderQuantity = n;
-    }
+    const stockQuantity = (colOf.stock !== undefined ? cellInt(row[colOf.stock!]) : null) ?? 0;
+    const orderQuantity = (colOf.order !== undefined ? cellInt(row[colOf.order!]) : null) ?? 0;
 
     try {
       const created = await storage.createProduct({

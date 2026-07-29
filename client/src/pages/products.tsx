@@ -1886,7 +1886,9 @@ function StockRow({ product: p }: { product: Product }) {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col items-center gap-0.5 shrink-0">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Antall", "Count")}</span>
+          <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -1938,6 +1940,7 @@ function StockRow({ product: p }: { product: Product }) {
           >
             <Plus className="h-4 w-4" />
           </Button>
+          </div>
         </div>
         <div className="flex flex-col items-center gap-0.5 shrink-0 border-l border-border pl-3">
           <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Bestill", "Order")}</span>

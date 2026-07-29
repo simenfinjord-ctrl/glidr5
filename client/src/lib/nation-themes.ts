@@ -21,11 +21,14 @@ export type NationTheme = {
   darkHsl: string;
   /** Flag-stripe gradient for the top ribbon, left to right. */
   ribbon: string[];
+  /** Hue for the tinted app background — defaults to the primary's hue.
+   *  Lets e.g. the US pack pair a RED primary with a BLUE-tinted canvas. */
+  bgHue?: number;
 };
 
 export const NATION_THEMES: NationTheme[] = [
-  { code: "us", name: "USA",           nameNo: "USA",       flag: "🇺🇸", hsl: "216 65% 30%", darkHsl: "216 60% 58%", ribbon: ["#B31942", "#FFFFFF", "#0A3161"] },
-  { code: "no", name: "Norway",        nameNo: "Norge",     flag: "🇳🇴", hsl: "348 78% 40%", darkHsl: "348 70% 58%", ribbon: ["#BA0C2F", "#FFFFFF", "#00205B"] },
+  { code: "us", name: "USA",           nameNo: "USA",       flag: "🇺🇸", hsl: "350 75% 42%", darkHsl: "350 70% 60%", bgHue: 216, ribbon: ["#B31942", "#FFFFFF", "#0A3161"] },
+  { code: "no", name: "Norway",        nameNo: "Norge",     flag: "🇳🇴", hsl: "348 78% 40%", darkHsl: "348 70% 58%", bgHue: 220, ribbon: ["#BA0C2F", "#FFFFFF", "#00205B"] },
   { code: "se", name: "Sweden",        nameNo: "Sverige",   flag: "🇸🇪", hsl: "213 90% 38%", darkHsl: "213 80% 58%", ribbon: ["#005CBF", "#FECC02"] },
   { code: "fi", name: "Finland",       nameNo: "Finland",   flag: "🇫🇮", hsl: "214 78% 33%", darkHsl: "214 70% 58%", ribbon: ["#FFFFFF", "#002F6C"] },
   { code: "si", name: "Slovenia",      nameNo: "Slovenia",  flag: "🇸🇮", hsl: "205 90% 34%", darkHsl: "205 80% 58%", ribbon: ["#FFFFFF", "#005DA4", "#ED1C24"] },
@@ -66,6 +69,7 @@ export function applyNationTheme(code: string | null | undefined): void {
   const existing = document.getElementById(STYLE_ID);
   if (!theme) {
     existing?.remove();
+    document.documentElement.classList.remove("glidr-nation");
     return;
   }
   let el = existing as HTMLStyleElement | null;
@@ -75,20 +79,62 @@ export function applyNationTheme(code: string | null | undefined): void {
   }
   // Re-append so this tag always sits after the accent override tag.
   document.head.appendChild(el);
+  document.documentElement.classList.add("glidr-nation");
+
+  // Glidr's brand green lives in ~600 hard-coded green/emerald utility
+  // classes, not only in the --primary token — so a REAL national identity
+  // re-tints that whole family to the nation's color, and tints the canvas
+  // in the flag's hue. Scoped under html.glidr-nation so removing the class
+  // restores everything instantly.
+  const hue = theme.bgHue ?? parseInt(theme.hsl.split(" ")[0]);
+  const P = `hsl(${theme.hsl})`;
+  const PD = `hsl(${theme.darkHsl})`;
+  const [ph, ps] = theme.hsl.split(" ");
+  const shade = (l: number) => `hsl(${ph} ${ps} ${l}%)`;
+  const g = ".glidr-nation";
   el.textContent = `
-    :root {
+    html${g} {
       --primary: ${theme.hsl} !important;
       --accent: ${theme.hsl} !important;
       --ring: ${theme.hsl} !important;
       --sidebar-primary: ${theme.hsl} !important;
       --sidebar-ring: ${theme.hsl} !important;
+      --background: ${hue} 34% 96% !important;
+      --muted: ${hue} 28% 93% !important;
     }
-    .dark {
+    html${g}.dark, html${g} .dark {
       --primary: ${theme.darkHsl} !important;
       --accent: ${theme.darkHsl} !important;
       --ring: ${theme.darkHsl} !important;
       --sidebar-primary: ${theme.darkHsl} !important;
       --sidebar-ring: ${theme.darkHsl} !important;
+      --background: ${hue} 28% 9% !important;
+      --muted: ${hue} 22% 14% !important;
     }
+    /* App canvas (the shell hard-codes this gray) */
+    html${g} .bg-\\[\\#f4f4f6\\] { background-color: hsl(${hue} 34% 94%) !important; }
+
+    /* Brand green family -> nation color */
+    html${g} .bg-green-600, html${g} .bg-emerald-600, html${g} .bg-green-700, html${g} .bg-emerald-700,
+    html${g} .bg-green-500, html${g} .bg-emerald-500 { background-color: ${P} !important; }
+    html${g} .hover\\:bg-green-700:hover, html${g} .hover\\:bg-emerald-700:hover,
+    html${g} .hover\\:bg-green-600:hover, html${g} .hover\\:bg-emerald-600:hover { background-color: ${shade(30)} !important; }
+    html${g} .bg-green-400, html${g} .bg-emerald-400 { background-color: ${shade(52)} !important; }
+    html${g} .bg-green-100, html${g} .bg-emerald-100 { background-color: ${shade(90)} !important; }
+    html${g} .bg-green-50, html${g} .bg-emerald-50 { background-color: ${shade(95)} !important; }
+    html${g} .text-green-500, html${g} .text-emerald-500, html${g} .text-green-600, html${g} .text-emerald-600,
+    html${g} .text-green-700, html${g} .text-emerald-700, html${g} .text-green-800, html${g} .text-emerald-800 { color: ${P} !important; }
+    html${g} .text-green-300, html${g} .text-emerald-300, html${g} .text-green-400, html${g} .text-emerald-400 { color: ${shade(46)} !important; }
+    html${g} .border-green-200, html${g} .border-emerald-200 { border-color: ${shade(84)} !important; }
+    html${g} .border-green-300, html${g} .border-emerald-300 { border-color: ${shade(74)} !important; }
+    html${g} .border-green-500, html${g} .border-green-600, html${g} .border-emerald-500, html${g} .border-emerald-600 { border-color: ${P} !important; }
+    html${g} .ring-green-200, html${g} .ring-emerald-200 { --tw-ring-color: ${shade(84)} !important; }
+
+    /* Dark-mode green family */
+    html${g} .dark .dark\\:bg-green-900\\/20, html${g} .dark .dark\\:bg-emerald-900\\/20,
+    html${g} .dark .dark\\:bg-green-950\\/30, html${g} .dark .dark\\:bg-emerald-950\\/30 { background-color: hsl(${ph} 40% 20% / 0.35) !important; }
+    html${g} .dark .dark\\:text-green-300, html${g} .dark .dark\\:text-emerald-300,
+    html${g} .dark .dark\\:text-green-400, html${g} .dark .dark\\:text-emerald-400 { color: ${PD} !important; }
+    html${g} .dark .dark\\:ring-green-800, html${g} .dark .dark\\:ring-emerald-800 { --tw-ring-color: hsl(${ph} 40% 30%) !important; }
   `;
 }

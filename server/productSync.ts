@@ -118,14 +118,14 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   const existingRes = await (pool as any).query(
     `SELECT id, brand, name, category, stock_quantity, order_quantity, created_by_name FROM products WHERE team_id = $1`, [teamId]
   );
-  type Entry = { id: number; category: string; stock: number; order: number; createdByName?: string };
+  type Entry = { id: number; brand: string; name: string; category: string; stock: number; order: number; createdByName?: string };
   const existing = new Map<string, Entry>();
   // Second index on the FULL "brand name" string: teams split brand/name
   // differently in Glidr vs the sheet ("Star"+"Cold" vs ""+"Star Cold"),
   // and counts must land regardless of where the split sits.
   const existingFull = new Map<string, Entry>();
   for (const p of existingRes.rows) {
-    const entry: Entry = { id: p.id, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name };
+    const entry: Entry = { id: p.id, brand: p.brand, name: p.name, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name };
     existing.set(`${key(p.brand)}|${key(p.name)}`, entry);
     existingFull.set(key(`${p.brand} ${p.name}`), entry);
   }
@@ -171,7 +171,14 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
       // push back within seconds, so the sheet is normally already current.)
       let changed = false;
       try {
-        if (key(found.category) !== key(category)) {
+        // Sheet is master for naming too: a legacy "FF1 Blue powder" matched
+        // via name+type is renamed to the sheet's "FF1 Blue" + type Powder.
+        if (norm(found.brand) !== brand || norm(found.name) !== name) {
+          await (pool as any).query(`UPDATE products SET brand = $1, name = $2 WHERE id = $3`, [brand, name, found.id]);
+          found.brand = brand; found.name = name;
+          changed = true;
+        }
+        if (norm(found.category) !== category) {
           await (pool as any).query(`UPDATE products SET category = $1 WHERE id = $2`, [category, found.id]);
           found.category = category;
           changed = true;

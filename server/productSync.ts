@@ -126,13 +126,17 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   //   byPair: "brand|name"        byFull: "brand name" (split-agnostic)
   const byPair = new Map<string, Entry[]>();
   const byFull = new Map<string, Entry[]>();
+  const byName = new Map<string, Entry[]>();
   const addToIndex = (entry: Entry) => {
     const pk = `${key(entry.brand)}|${key(entry.name)}`;
     const fk = key(`${entry.brand} ${entry.name}`);
+    const nk = key(entry.name);
     if (!byPair.has(pk)) byPair.set(pk, []);
     if (!byPair.get(pk)!.includes(entry)) byPair.get(pk)!.push(entry);
     if (!byFull.has(fk)) byFull.set(fk, []);
     if (!byFull.get(fk)!.includes(entry)) byFull.get(fk)!.push(entry);
+    if (!byName.has(nk)) byName.set(nk, []);
+    if (!byName.get(nk)!.includes(entry)) byName.get(nk)!.push(entry);
   };
   for (const p of existingRes.rows) {
     addToIndex({ id: p.id, brand: p.brand, name: p.name, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name });
@@ -140,11 +144,15 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   // How many sheet rows share each brand+name — when >1, category is the
   // only safe disambiguator and loose matching is disabled.
   const sheetPairCounts = new Map<string, number>();
+  const sheetPairs = new Set<string>();
+  const sheetNameCounts = new Map<string, number>();
   for (const row of values.slice(1)) {
     const b = norm(row[colOf.brand!]); const n = norm(row[colOf.name!]);
     if (!b || !n) continue;
     const pk = `${key(b)}|${key(n)}`;
     sheetPairCounts.set(pk, (sheetPairCounts.get(pk) ?? 0) + 1);
+    sheetPairs.add(pk);
+    sheetNameCounts.set(key(n), (sheetNameCounts.get(key(n)) ?? 0) + 1);
   }
 
   const now = new Date().toISOString();
@@ -173,12 +181,25 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     const loose = unique
       ? (alive(byPair.get(pairKey))[0] ?? alive(byFull.get(key(`${brand} ${name}`)))[0])
       : undefined;
-    let found = nameWithType ?? pairSameCat ?? loose;
+    // BRAND CHANGE: the sheet renamed a product's brand. Recognizable because
+    // a product with the same name (and matching type) exists whose OWN
+    // brand+name no longer appears anywhere in the sheet. Only when the name
+    // is unique in the sheet — ambiguity means hands off.
+    const brandChange = (sheetNameCounts.get(key(name)) ?? 0) <= 1
+      ? alive(byName.get(key(name))).find((e) =>
+          !sheetPairs.has(`${key(e.brand)}|${key(e.name)}`) &&
+          (key(e.category) === catK || key(`${e.name}`) === key(`${name} ${category}`)))
+      : undefined;
+    const candidates = [nameWithType, pairSameCat, loose, brandChange].filter(Boolean) as Entry[];
+    // Prefer a product with human history over a sync-created copy — the copy
+    // is the duplicate, the legacy product owns the test references.
+    let found = candidates.find((e) => e.createdByName !== "Google Sheet sync") ?? candidates[0];
     // Heal duplicates the old sync created: if the strongest match is a LEGACY
     // product and a sync-created twin also answers to this row, delete the
     // unreferenced twin.
     if (found) {
-      const twins = [...alive(byPair.get(pairKey)), ...alive(byFull.get(key(`${brand} ${name}`)))]
+      const twins = [...alive(byPair.get(pairKey)), ...alive(byFull.get(key(`${brand} ${name}`))), ...candidates]
+        .filter((e, i, arr) => arr.indexOf(e) === i)
         .filter((e) => e.id !== found!.id && e.createdByName === "Google Sheet sync");
       for (const twin of twins) {
         const refs = await (pool as any).query(

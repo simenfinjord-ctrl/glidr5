@@ -1326,7 +1326,7 @@ export default function Products() {
                 byBrand.get(p.brand)!.push(p);
               }
               const copyText = Array.from(byBrand.entries())
-                .map(([brand, ps]) => `${brand}:\n` + ps.map((p) => `  ${p.name} × ${(p as any).orderQuantity}`).join("\n"))
+                .map(([brand, ps]) => `${brand}:\n` + ps.map((p) => `  ${p.name} (${p.category}) × ${(p as any).orderQuantity}`).join("\n"))
                 .join("\n");
               const brandStatus = async (brand: string, action: "ordered" | "unordered" | "delivered") => {
                 await apiRequest("POST", "/api/products/order/brand-status", { brand, action });
@@ -1364,9 +1364,14 @@ export default function Products() {
                             <span className="text-xs font-semibold tabular-nums text-muted-foreground">{brandUnits} {L("stk", "units")}</span>
                           </div>
                           {ps.map((p) => (
-                            <div key={p.id} className="flex items-center justify-between py-0.5 text-sm" data-testid={`order-line-${p.id}`}>
-                              <span className="truncate">{p.name}</span>
-                              <span className="ml-3 shrink-0 font-bold tabular-nums text-sky-700 dark:text-sky-400">× {(p as any).orderQuantity}</span>
+                            <div key={p.id} className="flex items-start justify-between gap-2 py-1 text-sm" data-testid={`order-line-${p.id}`}>
+                              <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                <span className="break-words">{p.name}</span>
+                                <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold", categoryBadgeClass(p.category))}>
+                                  {p.category}
+                                </span>
+                              </span>
+                              <span className="shrink-0 font-bold tabular-nums text-sky-700 dark:text-sky-400">× {(p as any).orderQuantity}</span>
                             </div>
                           ))}
                           <div className="mt-2 flex items-center gap-4 border-t border-border/60 pt-2">

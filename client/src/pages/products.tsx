@@ -414,6 +414,7 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
     onError: (e: any) => toast({ title: L("Kunne ikke lagre", "Could not save"), description: e?.message, variant: "destructive" }),
   });
 
+  const [report, setReport] = useState<any>(null);
   const syncMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/teams/${teamId}/product-sync`, {});
@@ -424,6 +425,7 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setResult(L(`${data.added} lagt til, ${data.updated ?? 0} oppdatert, ${data.skipped} hoppet over (av ${data.rows} rader).`,
                   `${data.added} added, ${data.updated ?? 0} updated, ${data.skipped} skipped (of ${data.rows} rows).`));
+      setReport(data.report ?? null);
       toast({ title: L("Synkronisering fullført", "Sync complete") });
     },
     onError: (e: any) => toast({ title: L("Synkronisering feilet", "Sync failed"), description: e?.message, variant: "destructive" }),
@@ -472,6 +474,30 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
             </Button>
           </div>
           {result && <p className="text-xs text-emerald-600">{result}</p>}
+          {report && (
+            <div className="space-y-1.5 rounded-lg border border-border bg-muted/30 p-2.5 text-[11px]" data-testid="sync-report">
+              <div className="font-semibold">{L("Avstemming ark ↔ Glidr", "Reconciliation sheet ↔ Glidr")}</div>
+              <div className="text-muted-foreground">
+                {L(`${report.matchedProducts} produkter dekket av arket`, `${report.matchedProducts} products covered by the sheet`)}
+                {report.blankRows > 0 && L(` · ${report.blankRows} tomme rader`, ` · ${report.blankRows} blank rows`)}
+              </div>
+              {(report.collisions ?? []).length > 0 && (
+                <div>
+                  <div className="font-medium text-amber-700 dark:text-amber-400">{L(`${report.collisions.length} rader delte produkt med en annen rad:`, `${report.collisions.length} rows shared a product with another row:`)}</div>
+                  <div className="text-muted-foreground">{report.collisions.slice(0, 12).map((c: any) => `rad ${c.row}: ${c.label}`).join(" · ")}{report.collisions.length > 12 ? " …" : ""}</div>
+                </div>
+              )}
+              {(report.notInSheet ?? []).length > 0 && (
+                <div>
+                  <div className="font-medium">{L(`${report.notInSheet.length} Glidr-produkter finnes ikke i arket:`, `${report.notInSheet.length} Glidr products not in the sheet:`)}</div>
+                  <div className="text-muted-foreground">
+                    {report.notInSheet.slice(0, 15).map((x: any) => `${x.label}${x.isMix ? L(" (mix)", " (mix)") : ""}${x.archived ? L(" (arkivert)", " (archived)") : ""}`).join(" · ")}
+                    {report.notInSheet.length > 15 ? " …" : ""}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {team?.productSheetGroup && (
             <p className="text-[11px] text-muted-foreground">{L("Importeres til gruppe:", "Imported into group:")} <span className="font-medium text-foreground">{team.productSheetGroup}</span></p>
           )}

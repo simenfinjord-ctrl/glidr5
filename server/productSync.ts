@@ -84,6 +84,15 @@ type SyncResult = {
   skipped: number;
   rows: number;
   error?: string;
+  /** Reconciliation: explains any difference between sheet rows and products. */
+  report?: {
+    matchedProducts: number;
+    blankRows: number;
+    /** Sheet rows that resolved to a product ANOTHER row already claimed. */
+    collisions: { row: number; label: string; withProductId: number }[];
+    /** Glidr products no sheet row claimed (mixes/archived flagged). */
+    notInSheet: { id: number; label: string; archived: boolean; isMix: boolean }[];
+  };
 };
 
 export async function syncProductsFromSheet(teamId: number, groupScope?: string): Promise<SyncResult> {
@@ -134,9 +143,9 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   // Existing products in this team (incl. archived), keyed by brand+name so a
   // product's tag/category can be corrected on re-sync instead of duplicated.
   const existingRes = await (pool as any).query(
-    `SELECT id, brand, name, category, stock_quantity, order_quantity, created_by_name FROM products WHERE team_id = $1`, [teamId]
+    `SELECT id, brand, name, category, stock_quantity, order_quantity, created_by_name, archived_at, is_mix FROM products WHERE team_id = $1`, [teamId]
   );
-  type Entry = { id: number; brand: string; name: string; category: string; stock: number; order: number; createdByName?: string; deleted?: boolean; removed: Set<string> };
+  type Entry = { id: number; brand: string; name: string; category: string; stock: number; order: number; createdByName?: string; deleted?: boolean; removed: Set<string>; archived?: boolean; isMix?: boolean };
   // ONE index: the type-word-free signature. Lists, because the same core
   // name legitimately exists in several types (Toko Jet Top Finish Warm as
   // Powder AND Liquid; Skigo Yellow as Powder AND Paraffin).
@@ -148,7 +157,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     if (!bySig.get(sig)!.includes(entry)) bySig.get(sig)!.push(entry);
   };
   for (const p of existingRes.rows) {
-    addToIndex({ id: p.id, brand: p.brand, name: p.name, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name, removed: new Set() });
+    addToIndex({ id: p.id, brand: p.brand, name: p.name, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name, removed: new Set(), archived: !!p.archived_at, isMix: !!p.is_mix });
   }
   // Rows per signature: when a signature appears in several sheet rows the
   // types differ, and only type evidence may disambiguate.
@@ -164,12 +173,17 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   let added = 0;
   let updated = 0;
   let skipped = 0;
+  let blankRows = 0;
+  const matchedIds = new Map<number, number>(); // productId -> first claiming row#
+  const collisions: { row: number; label: string; withProductId: number }[] = [];
   const dataRows = values.slice(1);
+  let rowNo = 1;
 
   for (const row of dataRows) {
+    rowNo++;
     const brand = norm(row[colOf.brand!]);
     const name = norm(row[colOf.name!]);
-    if (!brand || !name) { skipped++; continue; }
+    if (!brand || !name) { skipped++; blankRows++; continue; }
     const category = normalizeCategory(colOf.category !== undefined ? norm(row[colOf.category!]) : "");
     const catK = key(category).replace(/[^a-z0-9]/g, "");
     const { sig, removed: rowRemoved } = productSig(brand, name);
@@ -243,6 +257,11 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
           changed = true;
         }
       } catch { /* leave as-is */ }
+      if (matchedIds.has(found.id)) {
+        collisions.push({ row: rowNo, label: `${brand} ${name} ${category}`.trim(), withProductId: found.id });
+      } else {
+        matchedIds.set(found.id, rowNo);
+      }
       if (changed) updated++; else skipped++;
       continue;
     }
@@ -264,6 +283,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
         teamId,
       } as any);
       addToIndex({ id: (created as any).id, brand, name, category, stock: stockQuantity, order: orderQuantity, createdByName: "Google Sheet sync", removed: new Set() });
+      matchedIds.set((created as any).id, rowNo);
       added++;
     } catch {
       skipped++;
@@ -271,7 +291,18 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   }
 
   await storage.updateTeam(teamId, { lastProductSyncAt: now } as any);
-  return { success: true, added, updated, skipped, rows: dataRows.length };
+  const notInSheet: { id: number; label: string; archived: boolean; isMix: boolean }[] = [];
+  for (const list of bySig.values()) {
+    for (const e of list) {
+      if (e.deleted || matchedIds.has(e.id)) continue;
+      if (notInSheet.some((x) => x.id === e.id)) continue;
+      notInSheet.push({ id: e.id, label: `${e.brand} ${e.name} ${e.category ?? ""}`.trim(), archived: !!e.archived, isMix: !!e.isMix });
+    }
+  }
+  return {
+    success: true, added, updated, skipped, rows: dataRows.length,
+    report: { matchedProducts: matchedIds.size, blankRows, collisions, notInSheet },
+  };
 }
 
 // ── Push: Glidr -> sheet ─────────────────────────────────────────────────────

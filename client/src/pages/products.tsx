@@ -635,7 +635,7 @@ export default function Products() {
   const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes" | "archived" | "compare">("products");
   const [productLayout, setProductLayout] = useState<"grid" | "list" | "table">("grid");
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
-  const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
+  const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("alpha");
   // Category multi-select: every category is ON by default; unchecking hides
   // it. Mixes act as their own pseudo-category regardless of base category.
   const FILTER_CATS = ["Paraffin", "Liquid", "Block", "Structure Tool", "Mixes"] as const;

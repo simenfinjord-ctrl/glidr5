@@ -126,8 +126,17 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   const existingRes = await (pool as any).query(
     `SELECT id, brand, name, category, stock_quantity, order_quantity FROM products WHERE team_id = $1`, [teamId]
   );
-  const existing = new Map<string, { id: number; category: string; stock: number; order: number }>();
-  for (const p of existingRes.rows) existing.set(`${key(p.brand)}|${key(p.name)}`, { id: p.id, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0 });
+  type Entry = { id: number; category: string; stock: number; order: number };
+  const existing = new Map<string, Entry>();
+  // Second index on the FULL "brand name" string: teams split brand/name
+  // differently in Glidr vs the sheet ("Star"+"Cold" vs ""+"Star Cold"),
+  // and counts must land regardless of where the split sits.
+  const existingFull = new Map<string, Entry>();
+  for (const p of existingRes.rows) {
+    const entry: Entry = { id: p.id, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0 };
+    existing.set(`${key(p.brand)}|${key(p.name)}`, entry);
+    existingFull.set(key(`${p.brand} ${p.name}`), entry);
+  }
 
   const now = new Date().toISOString();
   let added = 0;
@@ -141,7 +150,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     if (!brand || !name) { skipped++; continue; }
     const category = normalizeCategory(colOf.category !== undefined ? norm(row[colOf.category!]) : "");
     const matchKey = `${key(brand)}|${key(name)}`;
-    const found = existing.get(matchKey);
+    const found = existing.get(matchKey) ?? existingFull.get(key(`${brand} ${name}`));
 
     if (found) {
       // Already imported — correct the tag, and pull Count/Order values from
@@ -187,7 +196,9 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
         groupScope: effectiveGroup,
         teamId,
       } as any);
-      existing.set(matchKey, { id: (created as any).id, category });
+      const newEntry = { id: (created as any).id, category, stock: stockQuantity, order: orderQuantity };
+      existing.set(matchKey, newEntry);
+      existingFull.set(key(`${brand} ${name}`), newEntry);
       added++;
     } catch {
       skipped++;
@@ -233,8 +244,12 @@ export async function pushProductToSheet(teamId: number, productId: number): Pro
   });
   if (colOf.brand === undefined || colOf.name === undefined) return;
 
+  const fullKey = key(`${product.brand} ${product.name}`);
   const rowIdx = values.findIndex((row, i) =>
-    i > 0 && key(row[colOf.brand!]) === key(product.brand) && key(row[colOf.name!]) === key(product.name));
+    i > 0 && (
+      (key(row[colOf.brand!]) === key(product.brand) && key(row[colOf.name!]) === key(product.name)) ||
+      key(`${row[colOf.brand!]} ${row[colOf.name!]}`) === fullKey
+    ));
 
   const data: { range: string; values: any[][] }[] = [];
   if (rowIdx > 0) {

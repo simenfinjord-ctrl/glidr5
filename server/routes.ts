@@ -118,6 +118,86 @@ function enforceStealthReadOnly(req: Request, res: Response, next: NextFunction)
   next();
 }
 
+// ── Per-team access resolution ───────────────────────────────────────────────
+// A user shared into another team gets their permissions, group scope and
+// team-admin flag from user_team_permissions. These land in the session, but
+// they must NEVER go stale: an admin who grants rights (or TA status) while the
+// user is logged in would otherwise see no effect until the user switched teams
+// again or logged out. refreshPerTeamAccess() re-resolves them whenever the
+// active team changes or the cached copy is older than REFRESH_MS.
+const PER_TEAM_REFRESH_MS = 20_000;
+
+/** A blank per-team group scope means "every group in this team", not "the
+ *  group whose name is the empty string" — which matched nothing and left
+ *  shared users staring at empty pages. */
+async function expandBlankScope(teamId: number): Promise<string> {
+  try {
+    const { pool: pS } = await import("./db");
+    const r = await (pS as any).query(`SELECT name FROM groups WHERE team_id = $1`, [teamId]);
+    const names = r.rows.map((x: any) => String(x.name ?? "").trim()).filter(Boolean);
+    // Include the literal "All" bucket that records can carry even when no
+    // group by that name exists.
+    if (!names.some((n: string) => n.toLowerCase() === "all")) names.push("All");
+    return names.join(",");
+  } catch {
+    return "All";
+  }
+}
+
+async function refreshPerTeamAccess(req: Request): Promise<void> {
+  const u = req.user as any;
+  if (!u || u.isAdmin === 1) return; // SA needs no per-team resolution
+  const activeTid = u.activeTeamId ?? u.teamId;
+  const sess = req.session as any;
+  const fresh = sess.perTeamResolvedAt && Date.now() - sess.perTeamResolvedAt < PER_TEAM_REFRESH_MS;
+  if (sess.perTeamResolvedFor === activeTid && fresh) return;
+
+  // Home team: global permissions and scope apply.
+  if (activeTid === u.teamId) {
+    sess.effectivePermissions = null;
+    sess.effectiveGroupScope = null;
+    sess.activeTeamIsAdmin = false;
+    sess.perTeamResolvedFor = activeTid;
+    sess.perTeamResolvedAt = Date.now();
+    return;
+  }
+
+  // Parent-team TAs administer their child teams — full access, no group limit.
+  try {
+    const { pool: pR } = await import("./db");
+    const tRes = await (pR as any).query(`SELECT parent_team_id FROM teams WHERE id = $1`, [activeTid]);
+    if (u.isTeamAdmin === 1 && tRes.rows[0]?.parent_team_id === u.teamId) {
+      sess.effectivePermissions = null;
+      sess.effectiveGroupScope = "";
+      sess.activeTeamIsAdmin = true;
+      sess.perTeamResolvedFor = activeTid;
+      sess.perTeamResolvedAt = Date.now();
+      return;
+    }
+    const tpRes = await (pR as any).query(
+      "SELECT permissions, group_scope, is_team_admin FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
+      [u.id, activeTid]
+    );
+    if (tpRes.rows.length > 0) {
+      const row = tpRes.rows[0];
+      sess.effectivePermissions = row.permissions ?? null;
+      sess.activeTeamIsAdmin = row.is_team_admin === 1;
+      const scope = String(row.group_scope ?? "").trim();
+      sess.effectiveGroupScope = scope || (row.is_team_admin === 1 ? "" : await expandBlankScope(activeTid));
+    } else {
+      // Member of the team without an explicit per-team row: keep their own
+      // permissions, and let them see every group in the team.
+      sess.effectivePermissions = null;
+      sess.activeTeamIsAdmin = false;
+      sess.effectiveGroupScope = await expandBlankScope(activeTid);
+    }
+    sess.perTeamResolvedFor = activeTid;
+    sess.perTeamResolvedAt = Date.now();
+  } catch (e) {
+    console.error("[per-team-access] refresh failed:", e);
+  }
+}
+
 function getEffectivePermissionsStr(req: Request): string {
   // Per-team permissions override global permissions when viewing a non-primary team
   const sessionPerms = (req.session as any)?.effectivePermissions;
@@ -1149,6 +1229,15 @@ export async function registerRoutes(
       if (removed > 0) console.log(`[OrphanSweep] Removed ${removed} rows left behind by pre-cascade team deletions`);
     } catch (e) { console.error("[OrphanSweep] failed:", e); }
   })();
+
+  // Keep per-team permissions/scope/TA-flag fresh for shared users, so an
+  // access change takes effect within seconds instead of requiring a re-login.
+  app.use("/api", async (req: Request, _res: Response, next: NextFunction) => {
+    if (req.isAuthenticated?.() && req.user) {
+      try { await refreshPerTeamAccess(req); } catch { /* never block the request */ }
+    }
+    next();
+  });
 
   // --- Maintenance mode gate (runs before all other /api routes) ---
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
@@ -2317,33 +2406,11 @@ export async function registerRoutes(
       return req.session.save(() => res.json({ ok: true }));
     }
 
-    // Resolve per-team permissions and group scope for users switching to a non-primary team
-    if (u.isAdmin !== 1 && teamId !== u.teamId) {
-      try {
-        const { pool: p } = await import("./db");
-        const tpRes = await (p as any).query(
-          "SELECT permissions, group_scope, is_team_admin FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
-          [u.id, teamId]
-        );
-        if (tpRes.rows.length > 0) {
-          (req.session as any).effectivePermissions = tpRes.rows[0].permissions ?? null;
-          (req.session as any).effectiveGroupScope = tpRes.rows[0].group_scope ?? u.groupScope;
-          (req.session as any).activeTeamIsAdmin = tpRes.rows[0].is_team_admin === 1;
-        } else {
-          (req.session as any).effectivePermissions = null;
-          (req.session as any).effectiveGroupScope = u.groupScope;
-          (req.session as any).activeTeamIsAdmin = false;
-        }
-      } catch (_) {
-        (req.session as any).effectivePermissions = null;
-        (req.session as any).effectiveGroupScope = null;
-        (req.session as any).activeTeamIsAdmin = false;
-      }
-    } else {
-      (req.session as any).effectivePermissions = null;
-      (req.session as any).effectiveGroupScope = null;
-      (req.session as any).activeTeamIsAdmin = false;
-    }
+    // Resolve per-team permissions, group scope and TA status for the team we
+    // just entered (same resolver the refresh middleware uses).
+    (req.user as any).activeTeamId = teamId;
+    (req.session as any).perTeamResolvedFor = null;
+    await refreshPerTeamAccess(req);
 
     req.session.save(() => {
       res.json({ ok: true });

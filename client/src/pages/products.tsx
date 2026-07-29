@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -636,7 +636,11 @@ export default function Products() {
   const [productLayout, setProductLayout] = useState<"grid" | "list" | "table">("grid");
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
-  const [category, setCategory] = useState<ProductCategory | "All">("All");
+  // Category multi-select: every category is ON by default; unchecking hides
+  // it. Mixes act as their own pseudo-category regardless of base category.
+  const FILTER_CATS = ["Paraffin", "Liquid", "Block", "Structure Tool", "Mixes"] as const;
+  const [excludedCats, setExcludedCats] = useState<Set<string>>(new Set());
+  const catKeyOf = (p: Product) => ((p as any).isMix ? "Mixes" : p.category);
   const [groupFilter, setGroupFilter] = useState("All");
   const [selectedBrand, setSelectedBrand] = useState("All");
   const [nameSearch, setNameSearch] = useState("");
@@ -727,7 +731,7 @@ export default function Products() {
   const filtered = useMemo(() => {
     const n = nameSearch.trim().toLowerCase();
     return products.filter((p) => {
-      const okCategory = category === "All" ? true : category === "Mixes" ? !!(p as any).isMix : p.category === category;
+      const okCategory = !excludedCats.has(catKeyOf(p));
       const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
       const okName = n
         ? (p.name.toLowerCase().includes(n)
@@ -738,10 +742,10 @@ export default function Products() {
       const okTested = testedFilter === "All" ? true : testedFilter === "Tested" ? testedSet.has(p.id) : !testedSet.has(p.id);
       return okCategory && okBrand && okName && okGroup && okRaced && okTested;
     });
-  }, [products, category, selectedBrand, nameSearch, groupFilter, racedFilter, testedFilter, racedSet, testedSet]);
+  }, [products, excludedCats, selectedBrand, nameSearch, groupFilter, racedFilter, testedFilter, racedSet, testedSet]);
 
   const activeFilterCount = [
-    category !== "All",
+    excludedCats.size > 0,
     groupFilter !== "All",
     selectedBrand !== "All",
     !!nameSearch.trim(),
@@ -750,7 +754,7 @@ export default function Products() {
   ].filter(Boolean).length;
 
   function clearFilters() {
-    setCategory("All");
+    setExcludedCats(new Set());
     setGroupFilter("All");
     setSelectedBrand("All");
     setNameSearch("");
@@ -774,7 +778,7 @@ export default function Products() {
   const filteredArchived = useMemo(() => {
     const n = nameSearch.trim().toLowerCase();
     return archivedProducts.filter((p) => {
-      const okCategory = category === "All" ? true : category === "Mixes" ? !!(p as any).isMix : p.category === category;
+      const okCategory = !excludedCats.has(catKeyOf(p));
       const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
       const okName = n
         ? (p.name.toLowerCase().includes(n)
@@ -785,7 +789,7 @@ export default function Products() {
       const okTested = testedFilter === "All" ? true : testedFilter === "Tested" ? testedSet.has(p.id) : !testedSet.has(p.id);
       return okCategory && okBrand && okName && okGroup && okRaced && okTested;
     });
-  }, [archivedProducts, category, selectedBrand, nameSearch, groupFilter, racedFilter, testedFilter, racedSet, testedSet]);
+  }, [archivedProducts, excludedCats, selectedBrand, nameSearch, groupFilter, racedFilter, testedFilter, racedSet, testedSet]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -1045,19 +1049,35 @@ export default function Products() {
             </div>
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="min-w-[220px]">
-                <Select value={category} onValueChange={(v) => setCategory(v as any)}>
-                  <SelectTrigger data-testid="select-filter-category">
-                    <SelectValue placeholder={L("Kategori", "Category")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">{t("products.filterCategory")}</SelectItem>
-                    <SelectItem value="Paraffin">Paraffin</SelectItem>
-                    <SelectItem value="Liquid">Liquid</SelectItem>
-                    <SelectItem value="Block">Block</SelectItem>
-                    <SelectItem value="Structure Tool">Structure Tool</SelectItem>
-                    <SelectItem value="Mixes">Mixes</SelectItem>
-                  </SelectContent>
-                </Select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal" data-testid="select-filter-category">
+                      <span className="truncate">
+                        {excludedCats.size === 0
+                          ? t("products.filterCategory")
+                          : L(`${FILTER_CATS.length - excludedCats.size} av ${FILTER_CATS.length} kategorier`, `${FILTER_CATS.length - excludedCats.size} of ${FILTER_CATS.length} categories`)}
+                      </span>
+                      <ChevronDown className="h-4 w-4 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {FILTER_CATS.map((cat) => (
+                      <DropdownMenuCheckboxItem
+                        key={cat}
+                        checked={!excludedCats.has(cat)}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(on) => setExcludedCats((prev) => {
+                          const next = new Set(prev);
+                          on ? next.delete(cat) : next.add(cat);
+                          return next;
+                        })}
+                        data-testid={`filter-category-${cat}`}
+                      >
+                        {cat}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               {uniqueGroups.length > 1 && (
                 <div className="min-w-[180px]">

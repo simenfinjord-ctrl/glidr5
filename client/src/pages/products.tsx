@@ -583,11 +583,9 @@ function GlideMixDialog({ products }: { products: Product[] }) {
                     <SelectItem value="none">{L("— fritekst —", "— free text —")}</SelectItem>
                     {glideProducts.map((p) => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        <span className="flex items-center gap-1.5">
+                        <span>
                           {p.brand} {p.name}
-                          {p.category && (
-                            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{p.category}</span>
-                          )}
+                          {p.category && <span className="ml-1 text-muted-foreground">{p.category}</span>}
                         </span>
                       </SelectItem>
                     ))}
@@ -1227,9 +1225,7 @@ export default function Products() {
                       {filteredArchived.map((p) => (
                         <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-2.5">
-                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>
-                              {p.category}
-                            </span>
+                            <span className="text-xs text-muted-foreground">{p.category}</span>
                             {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}
                           </td>
                           <td className="px-4 py-2.5">
@@ -1273,7 +1269,7 @@ export default function Products() {
                   <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 gap-3">
                     <AppLink href={`/products/${p.id}`} className="min-w-0 flex-1 group">
                       <div className="flex items-center gap-2">
-                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
+                        <span className="text-xs text-muted-foreground">{p.category}</span>
                             {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}
                         <span className="text-sm font-medium text-foreground group-hover:text-amber-600 transition-colors">{p.brand} {p.name}</span>
                       </div>
@@ -1365,11 +1361,9 @@ export default function Products() {
                           </div>
                           {ps.map((p) => (
                             <div key={p.id} className="flex items-start justify-between gap-2 py-1 text-sm" data-testid={`order-line-${p.id}`}>
-                              <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                <span className="break-words">{p.name}</span>
-                                <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold", categoryBadgeClass(p.category))}>
-                                  {p.category}
-                                </span>
+                              <span className="min-w-0 break-words">
+                                {p.name}
+                                <span className="ml-1 text-muted-foreground">{p.category}</span>
                               </span>
                               <span className="shrink-0 font-bold tabular-nums text-sky-700 dark:text-sky-400">× {(p as any).orderQuantity}</span>
                             </div>
@@ -1565,9 +1559,7 @@ export default function Products() {
                         return (
                           <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                             <td className="px-4 py-2.5">
-                              {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}<span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap", categoryBadgeClass(p.category))}>
-                                {p.category}
-                              </span>
+                              {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}<span className="text-xs text-muted-foreground whitespace-nowrap">{p.category}</span>
                             </td>
                             <td className="px-4 py-2.5">
                               <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
@@ -1924,12 +1916,10 @@ function StockRow({ product: p }: { product: Product }) {
     <Card className="fs-card rounded-2xl px-4 py-3" data-testid={`stock-row-${p.id}`}>
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", categoryBadgeClass(p.category))}>
-              {p.category}
-            </span>
+          <div className="truncate text-sm font-semibold">
+            {p.brand} {p.name}
+            <span className="ml-1.5 font-normal text-muted-foreground">{p.category}</span>
           </div>
-          <div className="mt-1 truncate text-sm font-semibold">{p.brand} {p.name}</div>
           <div className="mt-0.5 flex flex-wrap gap-1">
             {p.groupScope.split(",").map((g) => g.trim()).filter(Boolean).map((g) => (
               <span key={g} className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-green-200 dark:bg-green-950/30 dark:text-green-400 dark:ring-green-800">{g}</span>
@@ -2281,17 +2271,15 @@ function ProductCard({
             </button>
           )}
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", categoryBadgeClass(p.category))}>
-                {p.category}
+            {(p as any).serialNumber && (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">
+                #{(p as any).serialNumber}
               </span>
-              {(p as any).serialNumber && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">
-                  #{(p as any).serialNumber}
-                </span>
-              )}
-            </div>
-            <AppLink href={`/products/${p.id}`} className="mt-2 block truncate text-base font-semibold hover:text-amber-600 transition-colors">{p.brand} {p.name}</AppLink>
+            )}
+            <AppLink href={`/products/${p.id}`} className="mt-1 block truncate text-base font-semibold hover:text-amber-600 transition-colors">
+              {p.brand} {p.name}
+              <span className="ml-1.5 text-sm font-normal text-muted-foreground">{p.category}</span>
+            </AppLink>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {groups.map((g) => (
                 <span key={g} className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">

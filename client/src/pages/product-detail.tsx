@@ -368,17 +368,6 @@ function ProductDetailInner() {
 
           {/* ── Product header ────────────────────────────────────────────── */}
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            {product && (
-              <span
-                className={cn(
-                  "rounded-full px-3 py-1 text-xs font-semibold",
-                  categoryBadgeClass(product.category),
-                )}
-                data-testid="badge-product-category"
-              >
-                {product.category}
-              </span>
-            )}
             {isArchived && (
               <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700">
                 {L("Arkivert", "Archived")}
@@ -404,7 +393,12 @@ function ProductDetailInner() {
               className="text-2xl sm:text-3xl font-bold"
               data-testid="text-product-title"
             >
-              {product ? `${product.brand} ${product.name}` : L("Laster…", "Loading…")}
+              {product ? (
+                <>
+                  {product.brand} {product.name}
+                  <span className="ml-2 text-xl font-normal text-muted-foreground">{product.category}</span>
+                </>
+              ) : L("Laster…", "Loading…")}
             </h1>
           </div>
 

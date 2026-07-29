@@ -66,13 +66,15 @@ export function ProductCombobox({
           data-testid={testId}
         >
           <span className={cn("truncate", !selected && "text-muted-foreground")}>
-            {selected ? `${selected.brand} ${selected.name}` : L("Velg produkt", "Select product")}
+            {selected ? (
+              <>
+                {selected.brand} {selected.name}
+                {!isStructureTool(selected.category) && (
+                  <span className="ml-1 text-muted-foreground">{selected.category}</span>
+                )}
+              </>
+            ) : L("Velg produkt", "Select product")}
           </span>
-          {selected && !isStructureTool(selected.category) && (
-            <span className="ml-1.5 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {selected.category}
-            </span>
-          )}
           <ChevronsUpDown className="h-4 w-4 opacity-60" />
         </Button>
       </PopoverTrigger>
@@ -94,10 +96,12 @@ export function ProductCombobox({
                     }}
                     data-testid={`option-product-${p.id}`}
                   >
-                    <span className="truncate">{p.brand} {p.name}</span>
-                    {/* Product form (Paraffin / Liquid / Block) — visible while picking */}
-                    <span className="ml-2 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {p.category}
+                    <span className="truncate">
+                      {p.brand} {p.name}
+                      {/* Product form (Paraffin / Liquid / Block) — part of the name while picking */}
+                      {!isStructureTool(p.category) && (
+                        <span className="ml-1 text-muted-foreground">{p.category}</span>
+                      )}
                     </span>
                     <Check className={cn("ml-auto h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
                   </CommandItem>

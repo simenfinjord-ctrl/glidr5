@@ -2545,10 +2545,88 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // Everything waiting for someone, in one query. These facts already exist,
+  // but scattered across five pages — so nobody sees them until they go looking.
+  app.get("/api/dashboard/attention", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    if (!teamId) return res.json({ items: [] });
+    const { pool: pgA } = await import("./db");
+    const items: { key: string; count: number; href: string; severity: "warn" | "info" }[] = [];
+    const one = async (sql: string, params: any[]) => {
+      try { return (await (pgA as any).query(sql, params)).rows[0]?.n ?? 0; } catch { return 0; }
+    };
+    // Only surface what this user could actually open — a prompt to fix
+    // something they cannot reach is just noise.
+    const u = req.user!;
+    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
+    const may = (area: string) => (perms as any)[area] && (perms as any)[area] !== "none";
+
+    // Weather is what makes a test reusable later; a test without it decays
+    // into an anecdote. Only recent ones — old gaps can no longer be filled.
+    const since = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+    const missingWeather = await one(
+      `SELECT COUNT(*)::int AS n FROM tests
+       WHERE team_id = $1 AND weather_id IS NULL AND no_weather = 0 AND date >= $2`, [teamId, since]);
+    if (missingWeather && may("tests")) items.push({ key: "missingWeather", count: missingWeather, href: "/tests", severity: "warn" });
+
+    const needRegrind = await one(
+      `SELECT COUNT(*)::int AS n FROM test_ski_series
+       WHERE team_id = $1 AND archived_at IS NULL AND action_status = 'Need regrind'`, [teamId]);
+    if (needRegrind && may("testskis")) items.push({ key: "needRegrind", count: needRegrind, href: "/testskis", severity: "warn" });
+
+    const outOfStock = await one(
+      `SELECT COUNT(*)::int AS n FROM products
+       WHERE team_id = $1 AND archived_at IS NULL AND stock_quantity <= 0 AND order_quantity <= 0`, [teamId]);
+    if (outOfStock && may("products")) items.push({ key: "outOfStock", count: outOfStock, href: "/products", severity: "warn" });
+
+    const onOrder = await one(
+      `SELECT COUNT(*)::int AS n FROM products
+       WHERE team_id = $1 AND archived_at IS NULL AND order_quantity > 0`, [teamId]);
+    if (onOrder && may("products")) items.push({ key: "onOrder", count: onOrder, href: "/products", severity: "info" });
+
+    // Tests that were set up but never got results — easy to forget after a
+    // travel day, and worthless until someone enters the numbers.
+    const noResults = await one(
+      `SELECT COUNT(*)::int AS n FROM tests t
+       WHERE t.team_id = $1 AND t.date >= $2
+         AND EXISTS (SELECT 1 FROM test_entries e WHERE e.test_id = t.id)
+         AND NOT EXISTS (SELECT 1 FROM test_entries e WHERE e.test_id = t.id
+                         AND (e.result_0km_cm_behind IS NOT NULL OR e.rank_0km IS NOT NULL))`,
+      [teamId, since]);
+    if (noResults && may("tests")) items.push({ key: "noResults", count: noResults, href: "/tests", severity: "warn" });
+
+    if (canManageTeam(req)) {
+      const joins = await one(
+        `SELECT COUNT(*)::int AS n FROM team_join_requests WHERE team_id = $1 AND status = 'pending'`, [teamId]);
+      if (joins) items.push({ key: "joinRequests", count: joins, href: "/my-team", severity: "info" });
+    }
+
+    res.json({ items });
+  });
+
   app.get("/api/series", requirePermission("testskis", "view"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const list = await storage.listSeries(u.groupScope, u.isScopeAdmin, teamId);
+    // How much each fleet has actually been used. Without it the list cannot
+    // answer the two questions you ask of it: which fleet is worn out, and
+    // which one has been standing unused since autumn.
+    const ids = list.map((x: any) => x.id).filter(Boolean);
+    if (ids.length) {
+      try {
+        const { pool: pgS } = await import("./db");
+        const r = await (pgS as any).query(
+          `SELECT series_id AS id, COUNT(*)::int AS n, MAX(date) AS last
+           FROM tests WHERE series_id = ANY($1::int[]) AND team_id = $2 GROUP BY series_id`,
+          [ids, teamId]);
+        const m = new Map(r.rows.map((x: any) => [x.id, x]));
+        for (const row of list as any[]) {
+          const a = m.get(row.id) as any;
+          row.testCount = a?.n ?? 0;
+          row.lastTestDate = a?.last ?? null;
+        }
+      } catch (e) { console.error("[series] usage counts failed:", e); }
+    }
     res.json(list);
   });
 
@@ -9155,6 +9233,41 @@ export async function registerRoutes(
               is_training_ski AS "isTrainingSki", is_sitski AS "isSitski", custom_params AS "customParams",
               archived_at AS "archivedAt", created_at AS "createdAt", created_by_name AS "createdByName"
        FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 ORDER BY id DESC`, [teamId]);
+
+    // A ski register that only lists specifications answers the wrong question.
+    // Before a race what you need to know is what each pair has actually done:
+    // how it has tested, when it last raced and how long since the grind.
+    const ids = r.rows.map((x: any) => x.id);
+    if (ids.length) {
+      const [tests, races, grinds] = await Promise.all([
+        (pool as any).query(
+          `SELECT te.race_ski_id AS id, COUNT(*)::int AS n, MAX(t.date) AS last,
+                  MIN(te.rank_0km) FILTER (WHERE te.rank_0km IS NOT NULL) AS best
+           FROM test_entries te JOIN tests t ON t.id = te.test_id
+           WHERE te.race_ski_id = ANY($1::int[]) GROUP BY te.race_ski_id`, [ids]),
+        (pool as any).query(
+          `SELECT DISTINCT ON (ski_id) ski_id AS id, date, location, result,
+                  COUNT(*) OVER (PARTITION BY ski_id)::int AS n
+           FROM ski_race_usages WHERE ski_id = ANY($1::int[]) ORDER BY ski_id, date DESC`, [ids]),
+        (pool as any).query(
+          `SELECT DISTINCT ON (race_ski_id) race_ski_id AS id, date, grind_type AS "grindType"
+           FROM race_ski_regrinds WHERE race_ski_id = ANY($1::int[]) ORDER BY race_ski_id, date DESC`, [ids]),
+      ]);
+      const byId = <T extends { id: number }>(rows: T[]) => new Map(rows.map((x) => [x.id, x]));
+      const tMap = byId(tests.rows), rMap = byId(races.rows), gMap = byId(grinds.rows);
+      for (const row of r.rows) {
+        const t = tMap.get(row.id) as any, ra = rMap.get(row.id) as any, g = gMap.get(row.id) as any;
+        row.testCount = t?.n ?? 0;
+        row.lastTestDate = t?.last ?? null;
+        row.bestRank = t?.best ?? null;
+        row.raceCount = ra?.n ?? 0;
+        row.lastRaceDate = ra?.date ?? null;
+        row.lastRaceLocation = ra?.location ?? null;
+        row.lastRaceResult = ra?.result ?? null;
+        row.lastGrindDate = g?.date ?? null;
+        row.lastGrindType = g?.grindType ?? null;
+      }
+    }
     res.json(r.rows);
   });
 
@@ -10215,6 +10328,26 @@ export async function registerRoutes(
   app.get("/api/runsheets", requireAuth, async (req, res) => {
     const teamId = getActiveTeamId(req);
     const items = await storage.listRunsheets(teamId);
+    // The test behind the runsheet, and the conditions it was run in. A runsheet
+    // without the weather it belongs to is only half the documentation.
+    const ids = items.map((x: any) => x.testId).filter(Boolean);
+    if (ids.length) {
+      try {
+        const { pool: pgR } = await import("./db");
+        const r = await (pgR as any).query(
+          `SELECT t.id, t.date, t.location, t.test_name AS "testName", t.test_type AS "testType",
+                  t.created_by_name AS "createdByName",
+                  w.air_temperature_c AS "airTemperatureC", w.snow_temperature_c AS "snowTemperatureC",
+                  w.snow_type AS "snowType",
+                  (SELECT COUNT(*)::int FROM test_entries e WHERE e.test_id = t.id) AS "entryCount",
+                  (SELECT COUNT(*)::int FROM test_entries e WHERE e.test_id = t.id
+                     AND (e.result_0km_cm_behind IS NOT NULL OR e.rank_0km IS NOT NULL)) AS "resultCount"
+           FROM tests t LEFT JOIN daily_weather w ON w.id = t.weather_id
+           WHERE t.id = ANY($1::int[])`, [ids]);
+        const m = new Map(r.rows.map((x: any) => [x.id, x]));
+        for (const it of items as any[]) it.test = m.get(it.testId) ?? null;
+      } catch (e) { console.error("[runsheets] test context failed:", e); }
+    }
     res.json(items);
   });
 

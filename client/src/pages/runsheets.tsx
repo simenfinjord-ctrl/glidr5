@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ClipboardList, Trash2, Trophy, Loader2 } from "lucide-react";
+import { ClipboardList, Trash2, Trophy, Loader2, Thermometer, Snowflake } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { fmtT } from "@/lib/temperature";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 import {
   AlertDialog,
@@ -27,6 +28,13 @@ type RunsheetItem = {
   createdAt: string;
   createdById: number;
   teamId: number;
+  // The test this runsheet belongs to, and the conditions it was run in.
+  test?: {
+    id: number; date: string; location: string; testName: string | null; testType: string;
+    createdByName: string | null;
+    airTemperatureC: number | null; snowTemperatureC: number | null; snowType: string | null;
+    entryCount: number; resultCount: number;
+  } | null;
 };
 
 type TestEntry = {
@@ -43,7 +51,8 @@ type TestEntry = {
 
 export default function Runsheets() {
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [activeRunsheet, setActiveRunsheet] = useState<RunsheetItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<RunsheetItem | null>(null);
   const [applyingForTestId, setApplyingForTestId] = useState<number | null>(null);
@@ -161,14 +170,16 @@ export default function Runsheets() {
                       {item.label}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {t("runsheets.added")} {new Date(item.createdAt).toLocaleDateString()}
+                      {item.test
+                        ? `${item.test.date} · ${item.test.location}`
+                        : `${t("runsheets.added")} ${new Date(item.createdAt).toLocaleDateString()}`}
                     </div>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-muted-foreground hover:text-destructive"
+                  className="text-muted-foreground hover:text-destructive shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteTarget(item);
@@ -178,6 +189,31 @@ export default function Runsheets() {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+
+              {/* Conditions and progress — a runsheet without the weather it
+                  belongs to is only half the documentation. */}
+              {item.test && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/50 pt-2.5 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Thermometer className="h-3 w-3 text-sky-500" />
+                    {item.test.airTemperatureC != null ? fmtT(item.test.airTemperatureC) : "—"}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Snowflake className="h-3 w-3 text-emerald-500" />
+                    {item.test.snowTemperatureC != null ? fmtT(item.test.snowTemperatureC) : "—"}
+                  </span>
+                  {item.test.snowType && <span>{item.test.snowType}</span>}
+                  <span className={cn("ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+                    item.test.resultCount > 0
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      : "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300")}>
+                    {item.test.resultCount > 0
+                      ? `${item.test.resultCount}/${item.test.entryCount} ${L("resultater", "results")}`
+                      : L("ingen resultater ennå", "no results yet")}
+                  </span>
+                  {item.test.createdByName && <span className="w-full">{item.test.createdByName}</span>}
+                </div>
+              )}
             </Card>
           ))}
         </div>

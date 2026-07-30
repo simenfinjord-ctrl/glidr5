@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Boxes, Pencil, Trash2, Accessibility } from "lucide-react";
+import { Plus, Boxes, Pencil, Trash2, Accessibility, FlaskConical, Trophy, Wrench } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,24 @@ type FleetSki = {
   isTrainingSki: number;
   isSitski: number;
   createdByName: string | null;
+  // What the pair has actually done — the reason you open this page before a race.
+  testCount: number;
+  lastTestDate: string | null;
+  bestRank: number | null;
+  raceCount: number;
+  lastRaceDate: string | null;
+  lastRaceLocation: string | null;
+  lastRaceResult: string | null;
+  lastGrindDate: string | null;
+  lastGrindType: string | null;
 };
+
+function daysSince(iso: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
 
 const EMPTY = {
   skiId: "", serialNumber: "", brand: "", discipline: "", construction: "", mold: "", base: "",
@@ -153,7 +170,41 @@ export default function RaceFleet() {
                         <span key={label}><span className="font-medium text-foreground">{label}:</span> {v}</span>
                       ))}
                     </div>
-                    {s.notes && <div className="mt-0.5 text-[11px] text-muted-foreground italic">{s.notes}</div>}
+                    {/* History: how the pair has tested, when it last raced,
+                        and how long since the grind. */}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300">
+                        <FlaskConical className="h-3 w-3" />
+                        {s.testCount > 0
+                          ? L(`${s.testCount} tester · sist ${s.lastTestDate}`, `${s.testCount} tests · last ${s.lastTestDate}`)
+                          : L("Aldri testet", "Never tested")}
+                        {s.bestRank ? L(` · beste plass ${s.bestRank}`, ` · best rank ${s.bestRank}`) : ""}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-violet-700 dark:bg-violet-950/30 dark:text-violet-300">
+                        <Trophy className="h-3 w-3" />
+                        {s.raceCount > 0
+                          ? L(`${s.raceCount} renn · sist ${s.lastRaceDate}${s.lastRaceLocation ? ` (${s.lastRaceLocation})` : ""}${s.lastRaceResult ? ` · ${s.lastRaceResult}` : ""}`,
+                              `${s.raceCount} races · last ${s.lastRaceDate}${s.lastRaceLocation ? ` (${s.lastRaceLocation})` : ""}${s.lastRaceResult ? ` · ${s.lastRaceResult}` : ""}`)
+                          : L("Aldri brukt i renn", "Never raced")}
+                      </span>
+                      {(() => {
+                        const d = daysSince(s.lastGrindDate);
+                        // Long since the last grind is worth spotting at a glance.
+                        const stale = d != null && d > 180;
+                        return (
+                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+                            stale ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                                  : "bg-muted text-muted-foreground")}>
+                            <Wrench className="h-3 w-3" />
+                            {d == null
+                              ? L("Ingen slip registrert", "No grind logged")
+                              : L(`Slipt for ${d} dager siden${s.lastGrindType ? ` · ${s.lastGrindType}` : ""}`,
+                                  `Ground ${d} days ago${s.lastGrindType ? ` · ${s.lastGrindType}` : ""}`)}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    {s.notes && <div className="mt-1 text-[11px] text-muted-foreground italic">{s.notes}</div>}
                   </div>
                   {canEdit && (
                     <div className="flex items-center gap-1 shrink-0">

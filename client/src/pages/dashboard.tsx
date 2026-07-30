@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { timeGreeting, dailyQuote } from "@/lib/greeting";
-import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X, User, Disc3, Flag, BarChart2, Layers, ChevronDown } from "lucide-react";
+import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X, User, Disc3, Flag, BarChart2, Layers, ChevronDown, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/app-shell";
@@ -367,6 +367,9 @@ export default function Dashboard() {
   const sDesc = (id: string, en: string) => (language === "no" ? (SHORTCUT_DESC_NO[id] ?? en) : en);
   const hasGarminWatch = can("garmin_watch");
   const [resultLimit, setResultLimit] = useState("10");
+  const { data: attention } = useQuery<{ items: { key: string; count: number; href: string; severity: "warn" | "info" }[] }>({
+    queryKey: ["/api/dashboard/attention"],
+  });
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
@@ -869,6 +872,42 @@ export default function Dashboard() {
               );
             })}
           </div>
+        )}
+
+        {/* What is waiting for someone. These facts live on five different
+            pages, so nobody sees them until they go looking. */}
+        {isWidgetEnabled("attention") && (attention?.items.length ?? 0) > 0 && (
+          <Card className="fs-card rounded-2xl p-4" data-testid="card-attention">
+            <div className="mb-2.5 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <h2 className="text-sm font-semibold">{L("Krever oppmerksomhet", "Needs attention")}</h2>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {attention!.items.map((it) => {
+                const label: Record<string, string> = {
+                  missingWeather: L("tester mangler vær", "tests missing weather"),
+                  noResults: L("tester uten resultater", "tests without results"),
+                  needRegrind: L("fleet trenger sliping", "fleets need regrinding"),
+                  outOfStock: L("produkter tomme på lager", "products out of stock"),
+                  onOrder: L("produkter i bestilling", "products on order"),
+                  joinRequests: L("forespørsler om lagtilgang", "team access requests"),
+                };
+                return (
+                  <AppLink key={it.key} href={it.href} testId={`attention-${it.key}`}>
+                    <span className={cn(
+                      "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium ring-1 transition-colors",
+                      it.severity === "warn"
+                        ? "bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900"
+                        : "bg-muted text-muted-foreground ring-border hover:bg-muted/70",
+                    )}>
+                      <span className="font-bold tabular-nums">{it.count}</span>
+                      {label[it.key] ?? it.key}
+                    </span>
+                  </AppLink>
+                );
+              })}
+            </div>
+          </Card>
         )}
 
         {/* Stats row — 4 summary cards */}

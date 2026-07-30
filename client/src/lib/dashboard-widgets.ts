@@ -1,4 +1,5 @@
 export type WidgetId =
+  | "attention"
   | "stats" | "today-tests" | "watch-queue" | "quick-actions"
   | "recent-results" | "recent-weather" | "products-overview"
   | "top-products" | "athlete-recent-tests" | "recent-activity";
@@ -21,6 +22,7 @@ export interface WidgetPref {
 }
 
 export const WIDGET_REGISTRY: WidgetDef[] = [
+  { id: "attention",            label: "Needs Attention",      description: "Missing weather, results, regrinds, stock and requests", icon: "AlertTriangle", defaultEnabled: true },
   { id: "stats",                label: "Stats Overview",       description: "Tests, products, venues and watch queue counts",    icon: "BarChart3",  defaultEnabled: true },
   { id: "today-tests",          label: "Today's Tests",        description: "Tests scheduled or run today",                      icon: "Zap",        defaultEnabled: true },
   { id: "watch-queue",          label: "Watch Queue",          description: "Active Garmin watch queue items",                   icon: "Watch",      defaultEnabled: true, featureFlag: "garmin_watch" },

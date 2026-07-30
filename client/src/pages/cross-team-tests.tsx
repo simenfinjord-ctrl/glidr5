@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 import { parseApplication } from "@/lib/parse-application";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +65,12 @@ const swap = (a: number | null, b: number | null): [number | null, number | null
 
 export default function CrossTeamTests() {
   const { language } = useI18n();
+  const { user } = useAuth();
+  const activeTeamId = (user as any)?.activeTeamId ?? user?.teamId;
+  // A test from ANOTHER team opens in the read-only cross-team view — editing
+  // requires switching to the owning team.
+  const testHref = (tt: { id: number; teamId: number }) =>
+    tt.teamId === activeTeamId ? `/tests/${tt.id}` : `/tests/cross/${tt.id}`;
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const [, navigate] = useLocation();
 
@@ -481,7 +488,7 @@ export default function CrossTeamTests() {
         ) : viewMode === "cards" ? (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {filtered.map((t) => (
-              <AppLink key={`${t.teamId}-${t.id}`} href={`/tests/${t.id}`} testId={`link-crossteam-test-${t.id}`}>
+              <AppLink key={`${t.teamId}-${t.id}`} href={testHref(t)} testId={`link-crossteam-test-${t.id}`}>
                 <Card className="fs-card rounded-2xl p-4 transition-all hover:shadow-lg hover:shadow-indigo-500/5 cursor-pointer">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

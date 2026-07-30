@@ -5072,6 +5072,68 @@ export async function registerRoutes(
     }
   });
 
+  // GET /api/tests/:id/cross-team — READ-ONLY view of a test that belongs to
+  // ANOTHER of the caller's teams. The All teams page lists such tests, so it
+  // must also be able to open them; the gate mirrors that list exactly (All
+  // teams permission + membership + per-team tests permission + group scope),
+  // and the payload is deliberately flat and read-only.
+  app.get("/api/tests/:id/cross-team", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const rawUser = req.user as any;
+    const testId = parseInt(req.params.id);
+    if (isNaN(testId)) return res.status(400).json({ message: "Invalid test id" });
+    const test: any = await storage.getTest(testId);
+    if (!test) return res.status(404).json({ message: "Not found" });
+
+    const { pool: pX } = await import("./db");
+    const memberships = await storage.getUserTeams(u.id);
+    const myTeamIds = new Set<number>([u.teamId, ...memberships.map((m: any) => m.teamId)]);
+    // Same gate as the All teams list.
+    if (!u.isAdmin) {
+      if (rawUser.canViewAllTeams !== 1 || myTeamIds.size < 2) {
+        return res.status(403).json({ message: "No access to the All teams view" });
+      }
+      if (!myTeamIds.has(test.teamId)) return res.status(403).json({ message: "Forbidden" });
+
+      // Permissions for the OWNING team: per-team override, else the global set.
+      const tp = await (pX as any).query(
+        "SELECT permissions, group_scope, is_team_admin FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
+        [u.id, test.teamId]);
+      const row = tp.rows[0];
+      const isTaThere = row ? row.is_team_admin === 1 : (test.teamId === u.teamId && rawUser.isTeamAdmin === 1);
+      const perms = parsePermissions(row?.permissions ?? rawUser.permissions, false, isTaThere);
+      if (perms.tests === "none") return res.status(403).json({ message: "Forbidden" });
+      if (test.testType === "Grind" && perms.grinding === "none") {
+        return res.status(403).json({ message: "Grinding access required" });
+      }
+      // Athlete ski tests stay behind athlete access.
+      if (test.testSkiSource === "raceskis") {
+        const ok = test.athleteId
+          ? await storage.hasAthleteAccess(test.athleteId, u.id, isTaThere, test.teamId)
+          : false;
+        if (!ok) return res.status(403).json({ message: "Forbidden" });
+      } else if (!isTaThere) {
+        const scope = String(row?.group_scope ?? "").trim() || rawUser.groupScope;
+        if (!userHasGroupAccess(scope, false, test.groupScope)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+    }
+
+    const entries = (await (pX as any).query(
+      `SELECT te.ski_number AS "skiNumber", te.rank_0km AS "rank0km", te.rank_xkm AS "rankXkm",
+              te.result_0km_cm_behind AS "result0km", te.result_xkm_cm_behind AS "resultXkm",
+              te.feeling_rank AS "feelingRank", te.feeling_note AS "feelingNote", te.kick_rank AS "kickRank",
+              te.kick_solution AS "kickSolution", te.methodology, te.free_text_product AS "freeTextProduct",
+              te.grind_type AS "grindType", p.brand, p.name AS "productName", p.category
+       FROM test_entries te LEFT JOIN products p ON p.id = te.product_id
+       WHERE te.test_id = $1 ORDER BY COALESCE(te.rank_0km, 999), te.ski_number`, [testId])).rows;
+    const team = await storage.getTeam(test.teamId);
+    const weather = test.weatherId ? await storage.getWeather(test.weatherId) : null;
+    const { runsheetBracket: _rb, ...safeTest } = test;
+    res.json({ test: safeTest, entries, weather, teamName: team?.name ?? "", readOnly: true });
+  });
+
   // GET /api/tests/share-links — every active public link for this team, so a
   // TA can see what is exposed and pull it back.
   app.get("/api/tests/share-links", requirePermission("tests", "view"), async (req, res) => {

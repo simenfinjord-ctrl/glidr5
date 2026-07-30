@@ -5127,7 +5127,7 @@ export async function registerRoutes(
               te.kick_solution AS "kickSolution", te.methodology, te.free_text_product AS "freeTextProduct",
               te.grind_type AS "grindType", p.brand, p.name AS "productName", p.category
        FROM test_entries te LEFT JOIN products p ON p.id = te.product_id
-       WHERE te.test_id = $1 ORDER BY COALESCE(te.rank_0km, 999), te.ski_number`, [testId])).rows;
+       WHERE te.test_id = $1 ORDER BY te.ski_number ASC`, [testId])).rows;
     const team = await storage.getTeam(test.teamId);
     const weather = test.weatherId ? await storage.getWeather(test.weatherId) : null;
     const { runsheetBracket: _rb, ...safeTest } = test;

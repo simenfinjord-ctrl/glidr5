@@ -76,13 +76,44 @@ export default function CrossTeamTest() {
           </p>
         </div>
 
-        {w && (
+        {w ? (
           <Card className="fs-card rounded-2xl p-4">
-            <div className="flex flex-wrap gap-4 text-sm">
-              <span className="inline-flex items-center gap-1.5"><Thermometer className="h-4 w-4 text-sky-500" />{L("Luft", "Air")} {fmtT(w.airTemperatureC)}</span>
-              <span className="inline-flex items-center gap-1.5"><Snowflake className="h-4 w-4 text-emerald-500" />{L("Snø", "Snow")} {fmtT(w.snowTemperatureC)}</span>
-              {w.snowType && <span className="text-muted-foreground">{w.snowType}</span>}
+            <h2 className="mb-3 text-sm font-semibold">{L("Vær- og føreforhold", "Weather and snow conditions")}</h2>
+            <div className="mb-3 flex flex-wrap gap-4 text-sm">
+              <span className="inline-flex items-center gap-1.5"><Thermometer className="h-4 w-4 text-sky-500" />{L("Luft", "Air")} <strong>{fmtT(w.airTemperatureC)}</strong></span>
+              <span className="inline-flex items-center gap-1.5"><Snowflake className="h-4 w-4 text-emerald-500" />{L("Snø", "Snow")} <strong>{fmtT(w.snowTemperatureC)}</strong></span>
+              {w.time && <span className="text-muted-foreground">{L("Målt", "Measured")} {w.time}</span>}
+              {w.location && w.location !== t.location && <span className="text-muted-foreground">{w.location}</span>}
             </div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-4">
+              {([
+                [L("Luftfuktighet", "Air humidity"), w.airHumidityPct != null ? `${w.airHumidityPct}%` : null],
+                [L("Snøfuktighet", "Snow humidity"), w.snowHumidityPct != null ? `${w.snowHumidityPct}%` : null],
+                [L("Fuktighetstype", "Humidity type"), w.snowHumidityType],
+                [L("Snøtype", "Snow type"), w.snowType],
+                [L("Kornstørrelse", "Grain size"), w.grainSize],
+                [L("Kunstsnø", "Artificial snow"), w.artificialSnow],
+                [L("Naturlig snø", "Natural snow"), w.naturalSnow],
+                [L("Sporhardhet", "Track hardness"), w.trackHardness],
+                [L("Nedbør", "Precipitation"), w.precipitation],
+                [L("Vind", "Wind"), w.wind],
+                [L("Skydekke", "Cloud cover"), w.clouds != null ? `${w.clouds}%` : null],
+                [L("Sikt", "Visibility"), w.visibility],
+                [L("Testkvalitet", "Test quality"), w.testQuality != null ? `${w.testQuality}/5` : null],
+                [L("Registrert av", "Logged by"), w.createdByName],
+              ] as [string, string | null | undefined][])
+                .filter(([, v]) => v != null && v !== "")
+                .map(([label, v]) => (
+                  <div key={label} className="min-w-0">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+                    <div className="truncate text-sm">{v}</div>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        ) : (
+          <Card className="fs-card rounded-2xl p-4 text-sm text-muted-foreground">
+            {L("Ingen værdata er koblet til denne testen.", "No weather data linked to this test.")}
           </Card>
         )}
 

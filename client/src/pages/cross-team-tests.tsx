@@ -114,7 +114,6 @@ export default function CrossTeamTests() {
   const [location, setLocation] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [snowType, setSnowType] = useState("");
   const [airMin, setAirMin] = useState(""); const [airMax, setAirMax] = useState("");
   const [snowMin, setSnowMin] = useState(""); const [snowMax, setSnowMax] = useState("");
   const [airHumMin, setAirHumMin] = useState(""); const [airHumMax, setAirHumMax] = useState("");
@@ -156,10 +155,6 @@ export default function CrossTeamTests() {
       if (dateFrom && (t.date ?? "") < dateFrom) return false;
       if (dateTo && (t.date ?? "") > dateTo) return false;
       const w = t.weather;
-      if (snowType) {
-        const label = [w?.artificialSnow, w?.naturalSnow, w?.snowType].filter(Boolean).join(" ").toLowerCase();
-        if (!label.includes(snowType.toLowerCase())) return false;
-      }
       if (aMin != null && (!w || w.airTemperatureC == null || w.airTemperatureC < aMin)) return false;
       if (aMax != null && (!w || w.airTemperatureC == null || w.airTemperatureC > aMax)) return false;
       if (sMin != null && (!w || w.snowTemperatureC == null || w.snowTemperatureC < sMin)) return false;
@@ -196,10 +191,10 @@ export default function CrossTeamTests() {
       }
     });
     return list;
-  }, [tests, excludedTeams, typeFilter, location, dateFrom, dateTo, snowType, airMin, airMax, snowMin, snowMax, airHumMin, airHumMax, snowHumMin, snowHumMax, cloudMin, cloudMax, artSnow, natSnow, snowHumType, grainSize, trackHardness, precipitation, wind, visibility, q, sort]);
+  }, [tests, excludedTeams, typeFilter, location, dateFrom, dateTo, airMin, airMax, snowMin, snowMax, airHumMin, airHumMax, snowHumMin, snowHumMax, cloudMin, cloudMax, artSnow, natSnow, snowHumType, grainSize, trackHardness, precipitation, wind, visibility, q, sort]);
 
-  const hasFilters = !!(q || excludedTeams.size > 0 || typeFilter !== "all" || location || dateFrom || dateTo || snowType || airMin || airMax || snowMin || snowMax || airHumMin || airHumMax || snowHumMin || snowHumMax || cloudMin || cloudMax || artSnow !== "all" || natSnow !== "all" || snowHumType !== "all" || grainSize !== "all" || trackHardness !== "all" || precipitation || wind || visibility);
-  const clearFilters = () => { setSearch(""); setExcludedTeams(new Set()); setTypeFilter("all"); setLocation(""); setDateFrom(""); setDateTo(""); setSnowType(""); setAirMin(""); setAirMax(""); setSnowMin(""); setSnowMax(""); setAirHumMin(""); setAirHumMax(""); setSnowHumMin(""); setSnowHumMax(""); setCloudMin(""); setCloudMax(""); setArtSnow("all"); setNatSnow("all"); setSnowHumType("all"); setGrainSize("all"); setTrackHardness("all"); setPrecipitation(""); setWind(""); setVisibility(""); };
+  const hasFilters = !!(q || excludedTeams.size > 0 || typeFilter !== "all" || location || dateFrom || dateTo || airMin || airMax || snowMin || snowMax || airHumMin || airHumMax || snowHumMin || snowHumMax || cloudMin || cloudMax || artSnow !== "all" || natSnow !== "all" || snowHumType !== "all" || grainSize !== "all" || trackHardness !== "all" || precipitation || wind || visibility);
+  const clearFilters = () => { setSearch(""); setExcludedTeams(new Set()); setTypeFilter("all"); setLocation(""); setDateFrom(""); setDateTo(""); setAirMin(""); setAirMax(""); setSnowMin(""); setSnowMax(""); setAirHumMin(""); setAirHumMax(""); setSnowHumMin(""); setSnowHumMax(""); setCloudMin(""); setCloudMax(""); setArtSnow("all"); setNatSnow("all"); setSnowHumType("all"); setGrainSize("all"); setTrackHardness("all"); setPrecipitation(""); setWind(""); setVisibility(""); };
 
   const isForbidden = (error as any)?.message?.includes("403");
 
@@ -393,7 +388,6 @@ export default function CrossTeamTests() {
                 </SelectContent>
               </Select>
               <LocationAutocomplete value={location} onChange={setLocation} placeholder={L("Sted", "Location")} inputClassName="h-9 text-xs" data-testid="filter-crossteam-location" options={locationOptions} />
-              <Input value={snowType} onChange={(e) => setSnowType(e.target.value)} placeholder={L("Snøtype", "Snow type")} className="h-9 text-xs" data-testid="filter-crossteam-snowtype" />
               <div className="flex items-center gap-1 col-span-2 sm:col-span-1">
                 <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-xs" title={L("Fra dato", "Date from")} />
                 <span className="text-muted-foreground">–</span>

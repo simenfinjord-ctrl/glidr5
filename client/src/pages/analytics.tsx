@@ -426,7 +426,7 @@ function OverviewStats({
 
     // Top locations
     const locMap = new Map<string, { tests: number; weatherTests: number; wins: Map<number, number> }>();
-    for (const t of productTests) {
+    for (const t of tests) {
       if (!locMap.has(t.location)) locMap.set(t.location, { tests: 0, weatherTests: 0, wins: new Map() });
       const lm = locMap.get(t.location)!;
       lm.tests++;
@@ -446,7 +446,7 @@ function OverviewStats({
     const airTempDist = new Map<string, number>();
     const humidityTypeDist = new Map<string, number>();
     const trackHardnessDist = new Map<string, number>();
-    for (const t of productTests) {
+    for (const t of tests) {
       if (!t.weatherId) continue;
       const w = weatherById.get(t.weatherId);
       if (!w) continue;
@@ -859,7 +859,7 @@ function BestProductsByConditions({
     if (!bracket) return [];
 
     const matchingTestIds = new Set<number>();
-    for (const t of productTests) {
+    for (const t of tests) {
       if (!t.weatherId) continue;
       const w = weatherById.get(t.weatherId);
       if (!w) continue;

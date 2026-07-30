@@ -842,7 +842,7 @@ function WeatherRow({ weather, lang }: { weather: Weather; lang: string }) {
     { label: L("Skyer", "Clouds"), value: weather.clouds != null ? `${weather.clouds}/8` : null },
     { label: L("Nedbør", "Precipitation"), value: weather.precipitation },
     { label: L("Kornstørrelse", "Grain size"), value: weather.grainSize },
-    { label: L("Testkvalitet", "Test quality"), value: weather.testQuality != null ? String(weather.testQuality) : null },
+    { label: L("Testkvalitet", "Test quality"), value: weather.testQuality != null ? `${weather.testQuality}/10` : null },
   ];
   const visible = rows.filter(r => r.value != null && r.value !== "");
   if (visible.length === 0) return null;

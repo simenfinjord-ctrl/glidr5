@@ -655,13 +655,16 @@ function WeatherForm({
               name="testQuality"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("weather.testQuality")}</FormLabel>
+                  <FormLabel>{t("weather.testQuality")} (1–10)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       min={1}
                       max={10}
+                      step={1}
                       inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="1–10"
                       data-testid="input-weather-test-quality"
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}

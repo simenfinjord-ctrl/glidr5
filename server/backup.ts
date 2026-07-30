@@ -1660,7 +1660,7 @@ function buildExportHtml(data: {
       ['Date', 'Time', 'Location', 'Snow °C', 'Air °C', 'Snow Hum%', 'Air Hum%', 'Clouds', 'Wind', 'Precip.', 'Visibility', 'Snow Type', 'Grain', 'Track', 'Quality', 'Group'],
       data.weather.map((w: any) => {
         const st = [w.artificialSnow ? `Art: ${w.artificialSnow}` : null, w.naturalSnow ? `Nat: ${w.naturalSnow}` : null].filter(Boolean).join(', ');
-        return [w.date || '', w.time || '', w.location || '', String(w.snowTemperatureC ?? ''), String(w.airTemperatureC ?? ''), String(w.snowHumidityPct ?? ''), String(w.airHumidityPct ?? ''), w.clouds != null ? `${w.clouds}/8` : '', w.wind || '', w.precipitation || '', w.visibility || '', st || '', w.grainSize || '', w.trackHardness || '', w.testQuality != null ? String(w.testQuality) : '', w.groupScope || ''];
+        return [w.date || '', w.time || '', w.location || '', String(w.snowTemperatureC ?? ''), String(w.airTemperatureC ?? ''), String(w.snowHumidityPct ?? ''), String(w.airHumidityPct ?? ''), w.clouds != null ? `${w.clouds}/8` : '', w.wind || '', w.precipitation || '', w.visibility || '', st || '', w.grainSize || '', w.trackHardness || '', w.testQuality != null ? `${w.testQuality}/10` : '', w.groupScope || ''];
       }),
       true
     ));

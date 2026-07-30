@@ -99,7 +99,7 @@ export default function CrossTeamTest() {
                 [L("Vind", "Wind"), w.wind],
                 [L("Skydekke", "Cloud cover"), w.clouds != null ? `${w.clouds}%` : null],
                 [L("Sikt", "Visibility"), w.visibility],
-                [L("Testkvalitet", "Test quality"), w.testQuality != null ? `${w.testQuality}/5` : null],
+                [L("Testkvalitet", "Test quality"), w.testQuality != null ? `${w.testQuality}/10` : null],
                 [L("Registrert av", "Logged by"), w.createdByName],
               ] as [string, string | null | undefined][])
                 .filter(([, v]) => v != null && v !== "")

@@ -363,9 +363,9 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaults }: Prop
                 )} />
                 <FormField control={form.control} name="testQuality" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("weather.testQuality")}</FormLabel>
+                    <FormLabel>{t("weather.testQuality")} (1–10)</FormLabel>
                     <FormControl>
-                      <Input type="number" min={1} max={10} inputMode="numeric" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))} />
+                      <Input type="number" min={1} max={10} step={1} inputMode="numeric" pattern="[0-9]*" placeholder="1–10" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

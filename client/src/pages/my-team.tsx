@@ -4,11 +4,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Users, Shield, Mail, Search, X,
+  Users, Shield, Mail, Search, X, Phone, Globe, Clock, FlaskConical, Trash2,
   ArrowUpDown, ChevronDown, List, LayoutGrid, AlignJustify, Calendar,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
+import { useAppSettings } from "@/lib/app-settings";
 import { cn } from "@/lib/utils";
 
 interface TeamMember {
@@ -34,6 +34,31 @@ interface TeamMember {
   username: string | null;
   avatarUrl: string | null;
   createdAt: string | null;
+  phone: string | null;
+  // Shared in from another team: labelled by where they come from, since
+  // "Admin"/"Member" says nothing useful about a guest.
+  isExternal: boolean;
+  homeTeamName: string | null;
+  testCount: number;
+  lastTestAt: string | null;
+  // Team Admins only — the server omits it for everyone else.
+  lastSeen?: string | null;
+}
+
+type TeamProfile = {
+  id: number;
+  name: string;
+  teamLogo: string | null;
+  nation: string | null;
+  timezone: string;
+  memberCount: number;
+  billing?: {
+    maxUsers: number | null;
+    planName: string | null;
+    subscriptionStatus: string | null;
+    currentPeriodEnd: string | null;
+    trialEndsAt: string | null;
+  };
 }
 
 import { useI18n } from "@/lib/i18n";
@@ -88,9 +113,20 @@ function MemberAvatar({ member, size = "sm" }: { member: TeamMember; size?: "sm"
   );
 }
 
-function RoleBadge({ isTeamAdmin }: { isTeamAdmin: boolean }) {
+function RoleBadge({ member }: { member: TeamMember }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
+  const isTeamAdmin = member.isTeamAdmin;
+  // A guest's role belongs to their own team — here, what matters is who they
+  // represent.
+  if (member.isExternal) {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+        <Users className="h-2.5 w-2.5" />
+        {member.homeTeamName || L("Annet lag", "Another team")}
+      </span>
+    );
+  }
   if (isTeamAdmin) {
     return (
       <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
@@ -103,6 +139,169 @@ function RoleBadge({ isTeamAdmin }: { isTeamAdmin: boolean }) {
     <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
       {L("Medlem", "Member")}
     </span>
+  );
+}
+
+/** Contribution + contact, on one line. Everything here is team-visible. */
+function MemberMeta({ member, showLastSeen }: { member: TeamMember; showLastSeen: boolean }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  return (
+    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Mail className="h-3 w-3 shrink-0" />
+        {member.email}
+      </span>
+      {member.phone && (
+        <a href={`tel:${member.phone.replace(/\s/g, "")}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <Phone className="h-3 w-3 shrink-0" />
+          {member.phone}
+        </a>
+      )}
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <FlaskConical className="h-3 w-3 shrink-0" />
+        {member.testCount > 0
+          ? L(`${member.testCount} tester · sist ${formatMemberSince(member.lastTestAt)}`,
+              `${member.testCount} tests · last ${formatMemberSince(member.lastTestAt)}`)
+          : L("Ingen tester ennå", "No tests yet")}
+      </span>
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Calendar className="h-3 w-3 shrink-0" />
+        {L("Medlem siden:", "Member since:")} {formatMemberSince(member.createdAt)}
+      </span>
+      {showLastSeen && (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
+          <Clock className="h-3 w-3 shrink-0" />
+          {L("Sist aktiv:", "Last active:")} {formatMemberSince(member.lastSeen ?? null)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Identity for everyone; seats and plan only where the server sent them. */
+function TeamCard({ profile }: { profile: TeamProfile }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const b = profile.billing;
+  const seatsUsed = profile.memberCount;
+  const seatsMax = b?.maxUsers ?? null;
+  const full = seatsMax != null && seatsUsed >= seatsMax;
+  return (
+    <Card className="rounded-2xl p-4 flex flex-wrap items-center gap-4">
+      {profile.teamLogo ? (
+        <img src={profile.teamLogo} alt={profile.name} className="h-12 w-12 rounded-xl object-contain bg-muted/40 p-1 shrink-0" />
+      ) : (
+        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold shrink-0">
+          {profile.name.slice(0, 2).toUpperCase()}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold truncate">{profile.name}</p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          {profile.nation && <span className="inline-flex items-center gap-1"><Globe className="h-3 w-3" />{profile.nation}</span>}
+          {/* Everyone needs this: it decides what every logged time means. */}
+          <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{profile.timezone}</span>
+          <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{L(`${seatsUsed} medlemmer`, `${seatsUsed} members`)}</span>
+        </div>
+      </div>
+      {b && (
+        <div className="text-right shrink-0">
+          {seatsMax != null && (
+            <p className={cn("text-sm font-semibold", full ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
+              {L(`${seatsUsed} av ${seatsMax} plasser`, `${seatsUsed} of ${seatsMax} seats`)}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {[b.planName, b.subscriptionStatus].filter(Boolean).join(" · ")}
+            {b.currentPeriodEnd ? ` · ${L("til", "until")} ${formatMemberSince(b.currentPeriodEnd)}` : ""}
+          </p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function ManageMemberForm({ member, allGroups, onSave, onRemove, saving }: {
+  member: TeamMember;
+  allGroups: string[];
+  onSave: (body: Record<string, unknown>) => void;
+  onRemove: () => void;
+  saving: boolean;
+}) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const [groups, setGroups] = useState<string[]>(
+    member.groupScope ? member.groupScope.split(",").map((g) => g.trim()).filter(Boolean) : [],
+  );
+  const [phone, setPhone] = useState(member.phone ?? "");
+  const [admin, setAdmin] = useState(member.isTeamAdmin);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const toggle = (g: string) => setGroups((p) => (p.includes(g) ? p.filter((x) => x !== g) : [...p, g]));
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-xs font-medium text-muted-foreground mb-1.5">{L("Grupper", "Groups")}</p>
+        {allGroups.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">{L("Ingen grupper er opprettet ennå.", "No groups created yet.")}</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {allGroups.map((g) => (
+              <button key={g} type="button" onClick={() => toggle(g)}
+                className={cn("rounded-full px-2.5 py-1 text-xs ring-1 transition-colors",
+                  groups.includes(g)
+                    ? "bg-green-500 text-white ring-green-500"
+                    : "bg-muted text-muted-foreground ring-border hover:bg-muted/70")}>
+                {g}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {!member.isExternal && (
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-1.5">{L("Telefon", "Phone")}</p>
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+47 000 00 000" className="h-9 text-sm" />
+          <p className="mt-1 text-[11px] text-muted-foreground">{L("Synlig for hele laget.", "Visible to the whole team.")}</p>
+        </div>
+      )}
+
+      {member.isExternal ? (
+        <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          {L(`${member.name} er delt inn fra ${member.homeTeamName}. Rollen deres styres av det laget — her setter du bare gruppetilgangen.`,
+             `${member.name} is shared in from ${member.homeTeamName}. Their role is managed by that team — here you only set group access.`)}
+        </p>
+      ) : (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} className="h-4 w-4 accent-green-600" />
+          <span className="inline-flex items-center gap-1"><Shield className="h-3.5 w-3.5" />{L("Lagadministrator", "Team admin")}</span>
+        </label>
+      )}
+
+      <div className="flex items-center justify-between gap-2 pt-1">
+        {confirmRemove ? (
+          <button type="button" disabled={saving} onClick={onRemove}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
+            <Trash2 className="h-3.5 w-3.5" />
+            {member.isExternal ? L("Bekreft: fjern tilgang", "Confirm: remove access") : L("Bekreft: deaktiver (kan gjenopprettes i Admin)", "Confirm: deactivate (restorable in Admin)")}
+          </button>
+        ) : (
+          <button type="button" onClick={() => setConfirmRemove(true)}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600">
+            <Trash2 className="h-3.5 w-3.5" />
+            {member.isExternal ? L("Fjern fra laget", "Remove from team") : L("Deaktiver medlem", "Deactivate member")}
+          </button>
+        )}
+        <Button size="sm" disabled={saving}
+          onClick={() => onSave(member.isExternal
+            ? { groupScope: groups.join(",") }
+            : { groupScope: groups.join(","), phone, isTeamAdmin: admin })}>
+          {saving ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -136,11 +335,60 @@ export default function MyTeam() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/team-join-requests"] }),
   });
 
+  // Editing a member without leaving the roster. Guests keep their role at
+  // home — for them only their groups in THIS team are ours to set.
+  const saveMember = useMutation({
+    mutationFn: async ({ id, body }: { id: number; body: Record<string, unknown> }) => {
+      const res = await apiRequest("PUT", `/api/team/members/${id}/access`, body);
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+      toast({ title: L("Lagret", "Saved") });
+      setManageId(null);
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke lagre", "Could not save"), description: e?.message, variant: "destructive" }),
+  });
+  const removeMember = useMutation({
+    mutationFn: async (m: TeamMember) => {
+      // A guest is only unshared from this team; an own member is deactivated,
+      // not deleted, so a mistake can be undone from Admin.
+      const res = m.isExternal
+        ? await apiRequest("DELETE", `/api/users/${m.id}/team-permissions/${profileTeamId ?? 0}`, undefined)
+        : await apiRequest("PUT", `/api/team/members/${m.id}/access`, { isActive: false });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json().catch(() => ({}));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/profile"] });
+      toast({ title: L("Medlem fjernet", "Member removed") });
+      setManageId(null);
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke fjerne", "Could not remove"), description: e?.message, variant: "destructive" }),
+  });
+
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name-asc");
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "member">("all");
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  // "own" = members of this team, otherwise the name of the team a guest is from.
+  const [teamFilter, setTeamFilter] = useState<string | null>(null);
+  const [manageId, setManageId] = useState<number | null>(null);
+  const { commercializationEnabled } = useAppSettings();
+
+  const { data: profile } = useQuery<TeamProfile>({
+    queryKey: ["/api/team/profile"],
+    enabled: !!user,
+  });
+  const profileTeamId = profile?.id ?? null;
+
+  const { data: teamGroups = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/groups"],
+    enabled: isTeamAdmin,
+  });
 
   const { data: members = [], isLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team/members"],
@@ -152,9 +400,11 @@ export default function MyTeam() {
     enabled: !!user,
   });
 
-  // Collect all unique group names across all members
+  // Every group name in play: the team's own groups plus any scope already on
+  // a member (a guest may carry a scope that is no longer in the group list).
   const allGroups = useMemo(() => {
     const set = new Set<string>();
+    teamGroups.forEach((g) => { if (g?.name) set.add(g.name); });
     members.forEach((m) => {
       m.groupScope
         ?.split(",")
@@ -162,6 +412,14 @@ export default function MyTeam() {
         .filter(Boolean)
         .forEach((g) => set.add(g));
     });
+    return Array.from(set).sort();
+  }, [members, teamGroups]);
+
+  // The teams represented on this page: our own, plus every team a guest is
+  // shared in from — both are things you may want to filter down to.
+  const externalTeams = useMemo(() => {
+    const set = new Set<string>();
+    members.forEach((m) => { if (m.isExternal && m.homeTeamName) set.add(m.homeTeamName); });
     return Array.from(set).sort();
   }, [members]);
 
@@ -184,6 +442,10 @@ export default function MyTeam() {
     if (roleFilter === "admin") list = list.filter((m) => m.isTeamAdmin);
     if (roleFilter === "member") list = list.filter((m) => !m.isTeamAdmin);
 
+    // Team filter
+    if (teamFilter === "own") list = list.filter((m) => !m.isExternal);
+    else if (teamFilter) list = list.filter((m) => m.homeTeamName === teamFilter);
+
     // Group filter
     if (groupFilter) {
       list = list.filter((m) =>
@@ -201,10 +463,11 @@ export default function MyTeam() {
     });
 
     return list;
-  }, [members, search, roleFilter, groupFilter, sortKey]);
+  }, [members, search, roleFilter, groupFilter, teamFilter, sortKey]);
 
   const activeFilters =
-    (roleFilter !== "all" ? 1 : 0) + (groupFilter ? 1 : 0);
+    (roleFilter !== "all" ? 1 : 0) + (groupFilter ? 1 : 0) + (teamFilter ? 1 : 0);
+  const managed = members.find((m) => m.id === manageId) ?? null;
 
   return (
     <AppShell>
@@ -243,6 +506,23 @@ export default function MyTeam() {
             </div>
           </DialogContent>
         </Dialog>
+        {/* Manage a single member, without leaving the roster */}
+        <Dialog open={!!managed} onOpenChange={(o) => !o && setManageId(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{managed?.name}</DialogTitle>
+            </DialogHeader>
+            {managed && <ManageMemberForm
+              key={managed.id}
+              member={managed}
+              allGroups={allGroups}
+              onSave={(body) => saveMember.mutate({ id: managed.id, body })}
+              onRemove={() => removeMember.mutate(managed)}
+              saving={saveMember.isPending || removeMember.isPending}
+            />}
+          </DialogContent>
+        </Dialog>
+
         {/* Header */}
         <div className="flex items-center gap-3">
           <Users className="h-7 w-7 text-green-500 shrink-0" />
@@ -258,6 +538,8 @@ export default function MyTeam() {
             </span>
           )}
         </div>
+
+        {profile && <TeamCard profile={commercializationEnabled ? profile : { ...profile, billing: undefined }} />}
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -327,11 +609,27 @@ export default function MyTeam() {
                 </>
               )}
 
+              {externalTeams.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal uppercase tracking-wide pb-1">
+                    {L("Lag", "Team")}
+                  </DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={teamFilter ?? ""} onValueChange={(v) => setTeamFilter(v || null)}>
+                    <DropdownMenuRadioItem value="">{L("Alle lag", "All teams")}</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="own">{profile?.name ?? L("Eget lag", "Own team")}</DropdownMenuRadioItem>
+                    {externalTeams.map((tn) => (
+                      <DropdownMenuRadioItem key={tn} value={tn}>{tn}</DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </>
+              )}
+
               {activeFilters > 0 && (
                 <>
                   <DropdownMenuSeparator />
                   <button
-                    onClick={() => { setRoleFilter("all"); setGroupFilter(null); }}
+                    onClick={() => { setRoleFilter("all"); setGroupFilter(null); setTeamFilter(null); }}
                     className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {L("Nullstill filtre", "Clear filters")}
@@ -422,7 +720,7 @@ export default function MyTeam() {
               </p>
               {(search || activeFilters > 0) && (
                 <button
-                  onClick={() => { setSearch(""); setRoleFilter("all"); setGroupFilter(null); }}
+                  onClick={() => { setSearch(""); setRoleFilter("all"); setGroupFilter(null); setTeamFilter(null); }}
                   className="text-xs text-green-600 hover:underline"
                 >
                   {L("Nullstill alle filtre", "Clear all filters")}
@@ -450,20 +748,11 @@ export default function MyTeam() {
                       {/* Name + role badge */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm truncate">{member.name}</span>
-                        <RoleBadge isTeamAdmin={member.isTeamAdmin} />
+                        <RoleBadge member={member} />
                       </div>
 
-                      {/* Email + member since */}
-                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Mail className="h-3 w-3 shrink-0" />
-                          {member.email}
-                        </span>
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3 shrink-0" />
-                          {L("Medlem siden:", "Member since:")} {formatMemberSince(member.createdAt)}
-                        </span>
-                      </div>
+                      {/* Contact, contribution and (admins only) last activity */}
+                      <MemberMeta member={member} showLastSeen={isTeamAdmin} />
 
                       {/* Groups */}
                       {groups.length > 0 ? (
@@ -491,12 +780,10 @@ export default function MyTeam() {
                     </div>
 
                     {isTeamAdmin && member.id !== user?.id && (
-                      <AppLink
-                        href="/admin"
-                        className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                      >
-                        Manage
-                      </AppLink>
+                      <button type="button" onClick={() => setManageId(member.id)}
+                        className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors">
+                        {L("Administrer", "Manage")}
+                      </button>
                     )}
                   </div>
                 );
@@ -520,11 +807,13 @@ export default function MyTeam() {
                   <div className="w-full">
                     <p className="font-medium text-sm truncate">{member.name}</p>
                     <div className="flex justify-center mt-1">
-                      <RoleBadge isTeamAdmin={member.isTeamAdmin} />
+                      <RoleBadge member={member} />
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-1">{member.email}</p>
+                    {member.phone && <p className="text-xs text-muted-foreground truncate">{member.phone}</p>}
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {L("Siden:", "Since:")} {formatMemberSince(member.createdAt)}
+                      {member.testCount > 0 ? L(`${member.testCount} tester`, `${member.testCount} tests`) : L("Ingen tester", "No tests")}
+                      {" · "}{L("siden", "since")} {formatMemberSince(member.createdAt)}
                     </p>
                   </div>
                   {groups.length > 0 && (
@@ -546,12 +835,10 @@ export default function MyTeam() {
                     </div>
                   )}
                   {isTeamAdmin && member.id !== user?.id && (
-                    <AppLink
-                      href="/admin"
-                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                    >
-                      Manage
-                    </AppLink>
+                    <button type="button" onClick={() => setManageId(member.id)}
+                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors">
+                      {L("Administrer", "Manage")}
+                    </button>
                   )}
                 </Card>
               );
@@ -572,8 +859,10 @@ export default function MyTeam() {
                     className="flex items-center gap-2 px-4 py-2 hover:bg-muted/30 transition-colors flex-wrap"
                   >
                     <span className="font-medium text-sm">{member.name}</span>
-                    <RoleBadge isTeamAdmin={member.isTeamAdmin} />
+                    <RoleBadge member={member} />
                     <span className="text-xs text-muted-foreground">{member.email}</span>
+                    {member.phone && <span className="text-xs text-muted-foreground">{member.phone}</span>}
+                    <span className="text-xs text-muted-foreground">{member.testCount > 0 ? L(`${member.testCount} tester`, `${member.testCount} tests`) : "—"}</span>
                     {groups.map((g) => (
                       <button
                         key={g}
@@ -589,12 +878,10 @@ export default function MyTeam() {
                       </button>
                     ))}
                     {isTeamAdmin && member.id !== user?.id && (
-                      <AppLink
-                        href="/admin"
-                        className="ml-auto text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                      >
-                        Manage
-                      </AppLink>
+                      <button type="button" onClick={() => setManageId(member.id)}
+                        className="ml-auto text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors">
+                        {L("Administrer", "Manage")}
+                      </button>
                     )}
                   </div>
                 );

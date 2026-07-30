@@ -1,7 +1,7 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight, AtSign, Pencil, Trash2, UserPlus, PanelLeft, PanelTop, Camera } from "lucide-react";
+import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight, AtSign, Pencil, Trash2, UserPlus, PanelLeft, PanelTop, Camera, Phone } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -867,7 +867,8 @@ interface NavItem {
 
 // ─── Main page ──────────────────────────────────────────────────────────────────
 export default function MyAccount() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -878,6 +879,11 @@ export default function MyAccount() {
   const [copied, setCopied] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
   const [pinRegenerating, setPinRegenerating] = useState(false);
+
+  // Contact number, kept by the member themselves and shown to their team.
+  const [phone, setPhone] = useState("");
+  const [phoneDirty, setPhoneDirty] = useState(false);
+  useEffect(() => { if (!phoneDirty) setPhone(((user as any)?.phone as string) ?? ""); }, [(user as any)?.phone, phoneDirty]);
 
   const [showUsernameForm, setShowUsernameForm] = useState(false);
   const [newUsername, setNewUsername] = useState("");
@@ -1146,6 +1152,33 @@ export default function MyAccount() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Phone — visible to the team on My Team */}
+              <div className="rounded-xl bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-muted-foreground">{L("Telefon", "Phone")}</div>
+                    <Input
+                      value={phone}
+                      onChange={(e) => { setPhone(e.target.value); setPhoneDirty(true); }}
+                      placeholder="+47 000 00 000"
+                      className="h-8 mt-1 text-sm"
+                      data-testid="input-profile-phone"
+                    />
+                  </div>
+                  {phoneDirty && (
+                    <Button size="sm" disabled={updateProfileMutation.isPending}
+                      onClick={() => { updateProfileMutation.mutate({ phone }); setPhoneDirty(false); }}>
+                      {t("common.save")}
+                    </Button>
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {L("Vises for lagkameratene dine under Mitt lag, så de får tak i deg på reise.",
+                     "Shown to your teammates on My Team, so they can reach you on the road.")}
+                </p>
               </div>
 
               {groups.length > 0 && (

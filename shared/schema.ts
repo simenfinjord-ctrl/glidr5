@@ -284,6 +284,9 @@ export const users = pgTable("users", {
   incognito: integer("incognito").notNull().default(0),
   stealth: integer("stealth").notNull().default(0),
   avatarUrl: text("avatar_url"),
+  // Contact number, shown to the whole team on My Team — on a race trip the
+  // member list is only useful if you can actually reach people from it.
+  phone: text("phone"),
   isAthleteAccess: integer("is_athlete_access").notNull().default(0),
   // Tester role: account restricted to the Watch Queue (runs queued tests
   // from watch or phone, enters results) — enforced server-side.

@@ -874,6 +874,7 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS date_format TEXT DEFAULT 'european';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_unit TEXT DEFAULT 'C';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Europe/Oslo';
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NOK';
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS vat_exempt INTEGER NOT NULL DEFAULT 0;
@@ -5439,6 +5440,7 @@ export async function registerRoutes(
       data.username = newUsername;
     }
     if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
+    if (req.body.phone !== undefined) data.phone = String(req.body.phone).trim().slice(0, 40) || null;
     if (u.isAdmin === 1 && req.body.isAdmin !== undefined) data.isAdmin = req.body.isAdmin ? 1 : 0;
     if (req.body.isTeamAdmin !== undefined) data.isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
     if (req.body.permissions !== undefined) {
@@ -6010,6 +6012,13 @@ export async function registerRoutes(
       updates.push(`temp_unit = $${values.length + 1}`);
       values.push(tempUnit);
     }
+    // Contact details are the member's own to maintain; the whole team sees them.
+    const { phone } = req.body;
+    if (phone !== undefined) {
+      const clean = String(phone).trim().slice(0, 40);
+      updates.push(`phone = $${values.length + 1}`);
+      values.push(clean || null);
+    }
     if (updates.length === 0) return res.status(400).json({ message: "No fields to update" });
     values.push(u.id);
     const { pool } = await import("./db");
@@ -6120,6 +6129,106 @@ export async function registerRoutes(
   });
 
   // GET /api/team/members — members of the caller's active team
+  // Header card on My Team. Identity (name, logo, nation, timezone) is for
+  // everyone — the timezone in particular decides what every logged time means.
+  // Seats and subscription are management data: Team Admins only, and only
+  // while the SA has commercialization switched on.
+  app.get("/api/team/profile", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    if (!teamId) return res.status(400).json({ message: "No active team" });
+    try {
+      const { pool: pgT } = await import("./db");
+      const r = await (pgT as any).query(
+        `SELECT id, name, team_logo, nation, timezone, max_users, plan_name,
+                subscription_status, current_period_end, trial_ends_at
+         FROM teams WHERE id = $1`, [teamId]);
+      const t = r.rows[0];
+      if (!t) return res.status(404).json({ message: "Team not found" });
+
+      const cnt = await (pgT as any).query(
+        `SELECT COUNT(DISTINCT id)::int AS n FROM (
+           SELECT id FROM users WHERE team_id = $1 AND is_active = 1 AND is_admin <> 1
+           UNION
+           SELECT u.id FROM users u WHERE u.is_active = 1 AND u.is_admin <> 1 AND u.team_id <> $1 AND (
+             u.id IN (SELECT user_id FROM user_teams WHERE team_id = $1)
+             OR u.id IN (SELECT user_id FROM user_team_permissions WHERE team_id = $1))
+         ) x`, [teamId]);
+
+      let commercial = true;
+      try {
+        const cRes = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'commercialization_enabled'`);
+        commercial = ((cRes as any).rows?.[0]?.value) !== 'false';
+      } catch {}
+
+      const out: any = {
+        id: t.id, name: t.name, teamLogo: t.team_logo ?? null,
+        nation: t.nation ?? null, timezone: t.timezone ?? "Europe/Oslo",
+        memberCount: cnt.rows[0]?.n ?? 0,
+      };
+      if (canManageTeam(req) && commercial) {
+        out.billing = {
+          maxUsers: t.max_users ?? null,
+          planName: t.plan_name ?? null,
+          subscriptionStatus: t.subscription_status ?? null,
+          currentPeriodEnd: t.current_period_end ?? null,
+          trialEndsAt: t.trial_ends_at ?? null,
+        };
+      }
+      return res.json(out);
+    } catch (err) {
+      console.error("Failed to fetch team profile:", err);
+      return res.status(500).json({ message: "Failed to fetch team profile" });
+    }
+  });
+
+  // Inline member management from My Team. Deliberately narrow: groups, phone
+  // and the admin flag — nothing else. For a member shared in from another team
+  // only their groups IN THIS TEAM are ours to change; their account, role and
+  // contact details belong to their own team.
+  app.put("/api/team/members/:id/access", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getActiveTeamId(req);
+    if (!teamId) return res.status(400).json({ message: "No active team" });
+    const id = parseInt(req.params.id);
+    const target = await storage.getUser(id);
+    if (!target) return res.status(404).json({ message: "Not found" });
+    if ((target as any).isAdmin === 1) return res.status(400).json({ message: "Super Admins are not team members" });
+
+    const { pool: pgM } = await import("./db");
+    const external = target.teamId !== teamId;
+    if (external) {
+      const member = await (pgM as any).query(
+        `SELECT 1 FROM user_teams WHERE user_id = $1 AND team_id = $2
+         UNION SELECT 1 FROM user_team_permissions WHERE user_id = $1 AND team_id = $2 LIMIT 1`,
+        [id, teamId]);
+      if (member.rows.length === 0) return res.status(403).json({ message: "User is not shared with this team" });
+      if (req.body.groupScope !== undefined) {
+        // Update the scope in place; never touch the stored permissions.
+        const upd = await (pgM as any).query(
+          `UPDATE user_team_permissions SET group_scope = $1 WHERE user_id = $2 AND team_id = $3`,
+          [String(req.body.groupScope), id, teamId]);
+        if (upd.rowCount === 0) {
+          await (pgM as any).query(
+            `INSERT INTO user_team_permissions (user_id, team_id, permissions, group_scope, is_team_admin)
+             VALUES ($1, $2, $3, $4, 0)
+             ON CONFLICT ON CONSTRAINT utp_user_team_unique DO UPDATE SET group_scope = $4`,
+            [id, teamId, JSON.stringify(sanitizePermissions((target as any).permissions ? JSON.parse((target as any).permissions) : undefined)), String(req.body.groupScope)]);
+        }
+      }
+      return res.json({ ok: true });
+    }
+
+    const data: any = {};
+    if (req.body.groupScope !== undefined) data.groupScope = String(req.body.groupScope);
+    if (req.body.phone !== undefined) data.phone = String(req.body.phone).trim().slice(0, 40) || null;
+    if (req.body.isTeamAdmin !== undefined && id !== req.user!.id) data.isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
+    // "Remove from team" deactivates rather than deletes — reversible from Admin.
+    if (req.body.isActive !== undefined && id !== req.user!.id) data.isActive = req.body.isActive ? 1 : 0;
+    if (Object.keys(data).length === 0) return res.json({ ok: true });
+    await storage.updateUser(id, data);
+    return res.json({ ok: true });
+  });
+
   app.get("/api/team/members", requireAuth, async (req, res) => {
     const teamId = getActiveTeamId(req);
     if (!teamId) return res.status(400).json({ message: "No active team" });
@@ -6143,24 +6252,72 @@ export async function registerRoutes(
             ...r,
             isActive: r.is_active, isAdmin: r.is_admin, isTeamAdmin: r.is_team_admin,
             groupScope: r.group_scope, avatarUrl: r.avatar_url, createdAt: r.created_at,
+            phone: r.phone, lastSeen: r.last_seen,
           } as any);
         }
       } catch (e) { console.error("[team/members] shared merge failed:", e); }
 
-      const members = rows
+      const visible = rows
         .filter((u) => u.isActive === 1 || u.isActive === true)
         // Super Admins are not team members — never listed on My Team.
-        .filter((u) => u.isAdmin !== 1)
-        .map((u) => ({
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          isTeamAdmin: u.isTeamAdmin === 1 || (u.isTeamAdmin as unknown) === true,
-          groupScope: u.groupScope ?? "",
-          username: u.username ?? null,
-          avatarUrl: u.avatarUrl ?? null,
-          createdAt: u.createdAt ?? null,
-        }))
+        .filter((u) => u.isAdmin !== 1);
+      const ids = visible.map((u: any) => u.id);
+
+      // Work contribution is team-visible: "who ran the glide tests in Davos?"
+      // is an ordinary question between colleagues, and the answer already sits
+      // on every test. Login times are NOT — those are attendance, and only the
+      // Team Admin, who carries the personnel responsibility, sees them.
+      const { pool: pgAct } = await import("./db");
+      const counts = new Map<number, { tests: number; lastTest: string | null }>();
+      const homeTeams = new Map<number, string>();
+      const extScopes = new Map<number, string>();
+      if (ids.length) {
+        try {
+          const r = await (pgAct as any).query(
+            `SELECT created_by_id AS id, COUNT(*)::int AS n, MAX(date) AS last
+             FROM tests WHERE team_id = $1 AND created_by_id = ANY($2::int[]) GROUP BY created_by_id`,
+            [teamId, ids]);
+          for (const row of r.rows) counts.set(row.id, { tests: row.n, lastTest: row.last ?? null });
+        } catch (e) { console.error("[team/members] test counts failed:", e); }
+        try {
+          // Members shared in from elsewhere are labelled by the team they come
+          // from — "Admin"/"Member" would say nothing about who they are here.
+          const r = await (pgAct as any).query(
+            `SELECT u.id, t.name FROM users u JOIN teams t ON t.id = u.team_id
+             WHERE u.id = ANY($1::int[]) AND u.team_id <> $2`, [ids, teamId]);
+          for (const row of r.rows) homeTeams.set(row.id, row.name);
+        } catch (e) { console.error("[team/members] home teams failed:", e); }
+        try {
+          // A shared member's groups in THIS team, not the ones from home.
+          const r = await (pgAct as any).query(
+            `SELECT user_id, group_scope FROM user_team_permissions WHERE team_id = $1 AND user_id = ANY($2::int[])`,
+            [teamId, ids]);
+          for (const row of r.rows) if (row.group_scope != null) extScopes.set(row.user_id, row.group_scope);
+        } catch (e) { console.error("[team/members] per-team scopes failed:", e); }
+      }
+
+      const isTA = canManageTeam(req);
+      const members = visible
+        .map((u) => {
+          const external = homeTeams.has(u.id);
+          const act = counts.get(u.id);
+          return {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            phone: (u as any).phone ?? null,
+            isTeamAdmin: u.isTeamAdmin === 1 || (u.isTeamAdmin as unknown) === true,
+            groupScope: (external ? extScopes.get(u.id) : u.groupScope) ?? u.groupScope ?? "",
+            username: u.username ?? null,
+            avatarUrl: u.avatarUrl ?? null,
+            createdAt: u.createdAt ?? null,
+            isExternal: external,
+            homeTeamName: homeTeams.get(u.id) ?? null,
+            testCount: act?.tests ?? 0,
+            lastTestAt: act?.lastTest ?? null,
+            lastSeen: isTA ? ((u as any).lastSeen ?? null) : undefined,
+          };
+        })
         .sort((a, b) => a.name.localeCompare(b.name));
 
       return res.json(members);

@@ -698,7 +698,7 @@ function FormTracker({ allEntries, productsById, testsById }: {
   const rows = useMemo(() => {
     const pData = new Map<number, { name: string; rankedEntries: { date: string; rank: number }[] }>();
     for (const e of allEntries) {
-      if (!e.productId) continue;
+      if (!e.productId || !productsById.has(e.productId)) continue;
       const rank = getRank(e);
       if (rank === null) continue;
       const test = testsById.get(e.testId);
@@ -870,7 +870,7 @@ function BestProductsByConditions({
 
     const pStats = new Map<number, { totalRank: number; count: number; wins: number }>();
     for (const e of allEntries) {
-      if (!matchingTestIds.has(e.testId) || !e.productId) continue;
+      if (!matchingTestIds.has(e.testId) || !e.productId || !productsById.has(e.productId)) continue;
       const rank = getRank(e);
       if (rank === null) continue;
       const s = pStats.get(e.productId) || { totalRank: 0, count: 0, wins: 0 };
@@ -2201,7 +2201,7 @@ function HeadToHeadMatrix({ allEntries, productsById, testsById }: {
     // Build test→ranks map
     const testRanks = new Map<number, Map<number, number>>(); // testId → productId → rank
     for (const e of allEntries) {
-      if (!e.productId) continue;
+      if (!e.productId || !productsById.has(e.productId)) continue;
       const rank = getRank(e);
       if (rank === null) continue;
       if (!testRanks.has(e.testId)) testRanks.set(e.testId, new Map());
@@ -2923,7 +2923,7 @@ function DurabilityAnalysis({
 
       const entries = allEntries.filter((e) => e.testId === test.id);
       for (const entry of entries) {
-        if (!entry.productId) continue;
+        if (!entry.productId || !productsById.has(entry.productId)) continue;
         const rounds = getRounds(entry, n);
 
         if (!ranksByProduct.has(entry.productId)) ranksByProduct.set(entry.productId, new Map());
@@ -4135,6 +4135,9 @@ export default function Analytics() {
   const { lang } = useLanguage();
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+  // Archived products still own their history — load them for NAME LOOKUP only,
+  // so analytics shows "Swix … (arkivert)" instead of a bare database id.
+  const { data: archivedProducts = [] } = useQuery<Product[]>({ queryKey: ["/api/products/archived"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });
 
   const allTestIds = tests.map((t) => t.id);
@@ -4155,7 +4158,14 @@ export default function Analytics() {
   const [seasonFilter, setSeasonFilter] = useState<string>("All");
   const [activeTab, setActiveTab] = useState<string>(() => deepLink.get("tab") || "overview");
 
-  const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const productsById = useMemo(() => {
+    const m = new Map(products.map((p) => [p.id, p]));
+    const suffix = lang === "en" ? "(archived)" : "(arkivert)";
+    for (const p of archivedProducts) {
+      if (!m.has(p.id)) m.set(p.id, { ...p, name: `${p.name} ${suffix}` });
+    }
+    return m;
+  }, [products, archivedProducts, lang]);
   const testsById = useMemo(() => new Map(tests.map((t) => [t.id, t])), [tests]);
   const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
 

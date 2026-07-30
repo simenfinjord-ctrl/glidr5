@@ -867,8 +867,7 @@ interface NavItem {
 
 // ─── Main page ──────────────────────────────────────────────────────────────────
 export default function MyAccount() {
-  const { t, language } = useI18n();
-  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { t } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();

@@ -54,6 +54,15 @@ async function enforceTeamAreas(perms: Record<string, string>, teamId: number | 
   }
 }
 
+// A Team Admin administers the team, so they hold edit rights everywhere the
+// team actually has — anything less and they cannot do the job they were just
+// given. Areas the team has not bought stay "none".
+async function teamAdminPermissions(teamId: number | undefined): Promise<Record<string, string>> {
+  const all: Record<string, string> = {};
+  for (const area of PERMISSION_AREAS) all[area] = "edit";
+  return await enforceTeamAreas(all, teamId);
+}
+
 function sanitizePermissions(input: any): Record<string, string> {
   const result: Record<string, string> = { ...DEFAULT_PERMISSIONS };
   if (!input) return result;
@@ -5451,6 +5460,12 @@ export async function registerRoutes(
       }
       data.permissions = JSON.stringify(perms);
     }
+    // Same rule as the per-team menu: making someone a Team Admin grants edit
+    // across every area the team has, so the two menus never disagree.
+    if (data.isTeamAdmin === 1) {
+      const targetTeamId = data.teamId || (await storage.getUser(id))?.teamId;
+      data.permissions = JSON.stringify(await teamAdminPermissions(targetTeamId));
+    }
     if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
     if (u.isAdmin === 1 && req.body.teamId !== undefined) data.teamId = req.body.teamId;
     if (req.body.isBlindTester !== undefined) data.isBlindTester = req.body.isBlindTester ? 1 : 0;
@@ -5587,7 +5602,23 @@ export async function registerRoutes(
     const rows = u.isAdmin === 1
       ? result.rows
       : result.rows.filter((r: any) => r.team_id === getActiveTeamId(req));
-    res.json(rows.map((r: any) => ({ ...r, isTeamAdmin: r.is_team_admin === 1 || r.is_team_admin === true })));
+    const out = rows.map((r: any) => ({ ...r, isTeamAdmin: r.is_team_admin === 1 || r.is_team_admin === true }));
+
+    // The user's own team is stored on the user row, not here. Report it in the
+    // same shape so every menu reads one answer per team instead of showing
+    // "using global settings" for a team that in fact has concrete settings.
+    const target = await storage.getUser(userId);
+    if (target && (u.isAdmin === 1 || target.teamId === getActiveTeamId(req))) {
+      out.push({
+        team_id: target.teamId,
+        permissions: target.permissions,
+        group_scope: target.groupScope ?? "",
+        is_team_admin: target.isTeamAdmin,
+        isTeamAdmin: target.isTeamAdmin === 1 || (target.isTeamAdmin as unknown) === true,
+        isHomeTeam: true,
+      });
+    }
+    res.json(out);
   });
 
   app.put("/api/users/:id/team-permissions/:teamId", requireAuth, async (req, res) => {
@@ -5614,12 +5645,29 @@ export async function registerRoutes(
       );
       if (member.rows.length === 0) return res.status(403).json({ message: "User is not shared with this team" });
     }
-    let perms = sanitizePermissions(req.body.permissions);
-    if (u.isAdmin !== 1) {
+    const isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
+    let perms = isTeamAdmin
+      ? await teamAdminPermissions(teamId)
+      : sanitizePermissions(req.body.permissions);
+    if (u.isAdmin !== 1 && !isTeamAdmin) {
       perms = await enforceTeamAreas(perms, teamId);
     }
     const groupScope = req.body.groupScope !== undefined ? String(req.body.groupScope) : "";
-    const isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
+
+    // One record per (user, team): a user's OWN team lives on the user row, every
+    // other team in user_team_permissions. Writing an override for the user's own
+    // team would leave two menus editing two different records for the same team
+    // and disagreeing about the answer.
+    if (targetShared && targetShared.teamId === teamId) {
+      await storage.updateUser(userId, {
+        permissions: JSON.stringify(perms),
+        groupScope,
+        isTeamAdmin,
+      } as any);
+      await (p as any).query(`DELETE FROM user_team_permissions WHERE user_id = $1 AND team_id = $2`, [userId, teamId]);
+      return res.json({ ok: true });
+    }
+
     await (p as any).query(
       `INSERT INTO user_team_permissions (user_id, team_id, permissions, group_scope, is_team_admin)
        VALUES ($1, $2, $3, $4, $5)
@@ -5636,6 +5684,11 @@ export async function registerRoutes(
     const u = req.user!;
     if (u.isAdmin !== 1 && teamId !== getActiveTeamId(req)) {
       return res.status(403).json({ message: "Cannot manage permissions for other teams" });
+    }
+    // Their own team IS the baseline — there is nothing to fall back to.
+    const target = await storage.getUser(userId);
+    if (target && target.teamId === teamId) {
+      return res.status(400).json({ message: "This is the user's own team — edit the settings instead of resetting them" });
     }
     const { pool: p } = await import("./db");
     await (p as any).query(
@@ -6221,7 +6274,12 @@ export async function registerRoutes(
     const data: any = {};
     if (req.body.groupScope !== undefined) data.groupScope = String(req.body.groupScope);
     if (req.body.phone !== undefined) data.phone = String(req.body.phone).trim().slice(0, 40) || null;
-    if (req.body.isTeamAdmin !== undefined && id !== req.user!.id) data.isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
+    if (req.body.isTeamAdmin !== undefined && id !== req.user!.id) {
+      data.isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
+      // Granting team admin grants edit everywhere the team has — same rule as
+      // the Admin menus, so a user's rights read the same wherever you look.
+      if (data.isTeamAdmin === 1) data.permissions = JSON.stringify(await teamAdminPermissions(teamId));
+    }
     // "Remove from team" deactivates rather than deletes — reversible from Admin.
     if (req.body.isActive !== undefined && id !== req.user!.id) data.isActive = req.body.isActive ? 1 : 0;
     if (Object.keys(data).length === 0) return res.json({ ok: true });

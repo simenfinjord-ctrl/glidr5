@@ -112,7 +112,7 @@ type NavItem = {
   tourTarget?: string; // data-tour attribute for guided tour
 };
 
-const nav: NavItem[
+const nav: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
@@ -123,7 +123,7 @@ const nav: NavItem[
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "dashboard",
   },
-  // ── Data ──────────────────────────────────────────
+  // ── Testing: the test loop, live tools and its analysis ──
   {
     section: "nav.sectionTesting",
     href: "/tests",
@@ -265,7 +265,6 @@ const nav: NavItem[
     permArea: "raceprep",
     tourTarget: "nav-racepreps",
   },
-  // ── System ────────────────────────────────────────
   {
     section: "nav.sectionSystem",
     href: "/all-teams-tests",

@@ -655,6 +655,23 @@ export default function TestDetail() {
     ]);
     setLocation(`/tests/${id}/edit`);
   }
+  // Active public links for this team — so a TA can see what is exposed and
+  // pull it back. Loaded lazily; the menu shows a revoke item when THIS test
+  // has a live link.
+  const { data: shareLinks = [] } = useQuery<any[]>({ queryKey: ["/api/tests/share-links"] });
+  const thisTestShared = shareLinks.some((l) => l.id === Number(id));
+  const revokeLink = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/tests/${id}/public-link`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tests/share-links"] });
+      toast({ title: L("Delingslenken er trukket tilbake", "Share link revoked") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke trekke tilbake", "Could not revoke"), description: e?.message, variant: "destructive" }),
+  });
+
   async function copyPublicLink() {
     setCopyLinkLoading(true);
     try {
@@ -662,6 +679,7 @@ export default function TestDetail() {
       if (!res.ok) throw new Error("Failed to generate link");
       const { url } = await res.json();
       await navigator.clipboard.writeText(url);
+      queryClient.invalidateQueries({ queryKey: ["/api/tests/share-links"] });
       toast({ title: L("Lenke kopiert til utklippstavle", "Link copied to clipboard") });
     } catch {
       toast({ title: L("Kunne ikke kopiere lenke", "Could not copy link"), variant: "destructive" });
@@ -1270,6 +1288,12 @@ export default function TestDetail() {
                       {L("Kopier delingslenke (lesevisning)", "Copy share link (read-only)")}
                     </DropdownMenuItem>
                   )}
+                  {canEditTests && thisTestShared && (
+                    <DropdownMenuItem onClick={() => revokeLink.mutate()} disabled={revokeLink.isPending} data-testid="button-revoke-link">
+                      <EyeOff className="mr-2 h-4 w-4" />
+                      {L("Trekk tilbake delingslenke", "Revoke share link")}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => setLocation(`/tests/new?duplicate=${id}`)}>
                     <Copy className="mr-2 h-4 w-4" />
                     {t("newTest.duplicateTest")}
@@ -1338,6 +1362,12 @@ export default function TestDetail() {
                     <DropdownMenuItem onClick={copyPublicLink} disabled={copyLinkLoading} data-testid="button-copy-link">
                       <Link2 className="mr-2 h-4 w-4" />
                       {L("Kopier delingslenke (lesevisning)", "Copy share link (read-only)")}
+                    </DropdownMenuItem>
+                  )}
+                  {canEditTests && thisTestShared && (
+                    <DropdownMenuItem onClick={() => revokeLink.mutate()} disabled={revokeLink.isPending} data-testid="button-revoke-link">
+                      <EyeOff className="mr-2 h-4 w-4" />
+                      {L("Trekk tilbake delingslenke", "Revoke share link")}
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => setLocation(`/tests/new?duplicate=${id}`)} data-testid="button-duplicate-test">

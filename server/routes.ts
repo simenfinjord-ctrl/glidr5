@@ -4168,6 +4168,25 @@ export async function registerRoutes(
         }
       });
       sharedTeamNames.push(team.name);
+      // Access transparency: data leaving one team for another is logged in
+      // BOTH teams' activity logs — the same principle as SA team access.
+      // Never suppressed by incognito: silent data movement is not acceptable.
+      try {
+        const nowLog = new Date().toISOString();
+        const srcTeam = await storage.getTeam((sourceTest as any).teamId);
+        await storage.createActivityLog({
+          userId: u.id, userName: u.name, action: "test_shared_out",
+          entityType: "test", entityId: testId,
+          details: `Test "${sourceTest.testName ?? sourceTest.location}" (${sourceTest.date}) shared to ${team.name}`,
+          createdAt: nowLog, groupScope: "", teamId: (sourceTest as any).teamId,
+        } as any);
+        await storage.createActivityLog({
+          userId: u.id, userName: u.name, action: "test_shared_in",
+          entityType: "test", entityId: testId,
+          details: `Test "${sourceTest.testName ?? sourceTest.location}" (${sourceTest.date}) received from ${srcTeam?.name ?? "another team"} — shared by Glidr support`,
+          createdAt: nowLog, groupScope: "", teamId: targetTeamId,
+        } as any);
+      } catch (e) { console.error("[share-log] failed:", e); }
     }
     res.json({ success: true, sharedTeams: sharedTeamNames });
   });
@@ -5036,11 +5055,52 @@ export async function registerRoutes(
       const crypto = await import("crypto");
       const token = crypto.randomBytes(20).toString("hex");
       await (pool as any).query(`UPDATE tests SET share_token = $1 WHERE id = $2`, [token, testId]);
+      // A public link is data leaving the team — logged like any other export.
+      try {
+        const uLink = userInfo(req);
+        await storage.createActivityLog({
+          userId: uLink.id, userName: uLink.name, action: "share_link_created",
+          entityType: "test", entityId: testId,
+          details: `Public read-only link created for "${test.testName ?? test.location}" (${test.date})`,
+          createdAt: new Date().toISOString(), groupScope: "", teamId: (test as any).teamId,
+        } as any);
+      } catch (e) { console.error("[share-link-log] failed:", e); }
       return res.json({ token, url: `${req.protocol}://${req.get("host")}/share/test/${token}` });
     } catch (err: any) {
       console.error("[/api/tests/:id/public-link]", err);
       return res.status(500).json({ message: err?.message ?? "Internal server error" });
     }
+  });
+
+  // GET /api/tests/share-links — every active public link for this team, so a
+  // TA can see what is exposed and pull it back.
+  app.get("/api/tests/share-links", requirePermission("tests", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool: pL } = await import("./db");
+    const rows = (await (pL as any).query(
+      `SELECT id, date, location, test_name AS "testName", share_token AS "token"
+       FROM tests WHERE team_id = $1 AND share_token IS NOT NULL ORDER BY date DESC`, [teamId])).rows;
+    res.json(rows.map((r: any) => ({ ...r, url: `${req.protocol}://${req.get("host")}/share/test/${r.token}` })));
+  });
+
+  // DELETE /api/tests/:id/public-link — revoke the link (token cleared).
+  app.delete("/api/tests/:id/public-link", requirePermission("tests", "edit"), async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const test = await storage.getTest(testId);
+    if (!test) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(test, req)) return res.status(403).json({ message: "Forbidden" });
+    const { pool: pR } = await import("./db");
+    await (pR as any).query(`UPDATE tests SET share_token = NULL WHERE id = $1`, [testId]);
+    try {
+      const uR = userInfo(req);
+      await storage.createActivityLog({
+        userId: uR.id, userName: uR.name, action: "share_link_revoked",
+        entityType: "test", entityId: testId,
+        details: `Public link revoked for "${test.testName ?? test.location}" (${test.date})`,
+        createdAt: new Date().toISOString(), groupScope: "", teamId: (test as any).teamId,
+      } as any);
+    } catch (e) { console.error("[share-link-log] failed:", e); }
+    res.json({ ok: true });
   });
 
   // GET /api/public/test/:token — public read-only test data (no auth)

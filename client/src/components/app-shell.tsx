@@ -63,6 +63,7 @@ import { AppLink } from "@/components/app-link";
 import { CommandSearch } from "@/components/command-search";
 import { useGlobalShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { MobileNav, useMobileNav } from "@/components/mobile-nav";
+import { usePullToRefresh, PullIndicator } from "@/components/pull-to-refresh";
 import { AddToHomeBanner } from "@/components/add-to-home-banner";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -722,6 +723,9 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
     return list.find((t: any) => t.id === tid) ?? null;
   })();
   const teamLogo: string | null = (activeTeamInfo?.teamLogo as string | undefined) ?? null;
+  // Pull down from the top to refresh — the installed app has no address bar.
+  const mainScrollRef = useRef<HTMLElement>(null);
+  const { pull: ptrPull, busy: ptrBusy } = usePullToRefresh(mainScrollRef);
   // Collapsed sidebar groups, remembered per device.
   const [collapsedSections, setCollapsedSections] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("glidr-nav-collapsed") || "[]"); } catch { return []; }
@@ -1325,7 +1329,12 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           You're offline — showing cached data. Changes will not be saved.
         </div>
       )}
-      <main className={cn("flex-1 overflow-y-auto flex flex-col app-main-pad", mobileNavEnabled && "app-main-pad-force")}>
+      <main
+        ref={mainScrollRef}
+        className={cn("relative flex-1 overflow-y-auto flex flex-col app-main-pad", mobileNavEnabled && "app-main-pad-force")}
+        style={{ transform: ptrPull > 0 ? `translateY(${Math.min(ptrPull, 40)}px)` : undefined, transition: ptrPull > 0 ? "none" : "transform .2s" }}
+      >
+        <PullIndicator pull={ptrPull} busy={ptrBusy} />
         <div className="flex-1 mx-auto w-full min-w-0 max-w-[1400px] px-4 sm:px-6 py-6">
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>

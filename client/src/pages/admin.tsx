@@ -713,6 +713,31 @@ function TeamPermRow({
     existingGroupScope ? parseGroups(existingGroupScope) : []
   );
   const [localIsTeamAdmin, setLocalIsTeamAdmin] = useState<boolean>(existingIsTeamAdmin);
+  const [dirty, setDirty] = useState(false);
+
+  // Read the stored record for THIS team rather than trusting whatever the
+  // caller happened to pass in — several menus edit the same thing, and they
+  // must all show the same answer. The endpoint reports the user's own team
+  // too, since those settings live on the user row.
+  const { data: storedRows = [] } = useQuery<any[]>({
+    queryKey: [`/api/users/${userId}/team-permissions`],
+    enabled: isExpanded,
+  });
+  const stored = storedRows.find((r) => r.team_id === team.id);
+  const isHomeTeam = !!stored?.isHomeTeam;
+  useEffect(() => {
+    if (!stored || dirty) return;
+    setLocalPerms(stored.permissions ? parsePermissions(stored.permissions) : { ...DEFAULT_PERMISSIONS });
+    setLocalGroupScope(stored.group_scope ? parseGroups(stored.group_scope) : []);
+    setLocalIsTeamAdmin(!!stored.isTeamAdmin);
+  }, [stored?.permissions, stored?.group_scope, stored?.isTeamAdmin, dirty]);
+
+  const teamDisabled = getTeamDisabledAreas(allTeams, team.id, isSuperAdmin);
+  // A Team Admin holds edit everywhere the team has — shown as such, and not
+  // editable, so the matrix cannot claim something the server will not honour.
+  const shownPerms: UserPermissions = localIsTeamAdmin
+    ? (Object.fromEntries(PERMISSION_AREAS.map((a) => [a, teamDisabled.includes(a) ? "none" : "edit"])) as unknown as UserPermissions)
+    : localPerms;
 
   const { data: teamGroupsData = [] } = useQuery<ApiGroup[]>({
     queryKey: [`/api/groups?teamScope=${team.id}`],
@@ -729,7 +754,15 @@ function TeamPermRow({
       });
       return res.json();
     },
-    onSuccess: () => { onSaved(); toast({ title: `Settings saved for ${team.name}` }); },
+    onSuccess: () => {
+      setDirty(false);
+      // Every view of this user's rights, in any menu, re-reads after a save.
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/team-permissions`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+      onSaved();
+      toast({ title: `Settings saved for ${team.name}` });
+    },
     onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
@@ -738,7 +771,14 @@ function TeamPermRow({
       const res = await apiRequest("DELETE", `/api/users/${userId}/team-permissions/${team.id}`);
       return res.json();
     },
-    onSuccess: () => { onReset(); toast({ title: `Reset to global settings for ${team.name}` }); },
+    onSuccess: () => {
+      setDirty(false);
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/team-permissions`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+      onReset();
+      toast({ title: `Reset to global settings for ${team.name}` });
+    },
     onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
@@ -751,10 +791,13 @@ function TeamPermRow({
       >
         <span className="text-xs font-medium">{team.name}</span>
         <div className="flex items-center gap-2">
-          {(existingPerms || existingGroupScope) && (
+          {!isHomeTeam && (stored?.permissions || existingPerms || existingGroupScope) && (
             <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">{L("Egendefinert", "Custom")}</span>
           )}
-          {existingIsTeamAdmin && (
+          {isHomeTeam && (
+            <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">{L("Eget lag", "Own team")}</span>
+          )}
+          {(stored ? !!stored.isTeamAdmin : existingIsTeamAdmin) && (
             <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">{L("Lagadmin", "Team Admin")}</span>
           )}
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
@@ -763,18 +806,21 @@ function TeamPermRow({
       {isExpanded && (
         <div className="p-3 space-y-3 border-t border-border">
           <p className="text-[11px] text-muted-foreground">
-            {existingPerms ? L("Egendefinerte innstillinger aktive for dette laget.", "Custom settings active for this team.") : L("Bruker globale innstillinger. Lagre for å opprette en lagspesifikk overstyring.", "Using global settings. Save to create team-specific override.")}
+            {isHomeTeam
+              ? L("Dette er brukerens eget lag. Innstillingene her er de samme som i brukerens hovedinnstillinger og under Mitt lag.",
+                  "This is the user's own team. These settings are the same ones shown in the user's main settings and on My Team.")
+              : (stored?.permissions ? L("Egendefinerte innstillinger aktive for dette laget.", "Custom settings active for this team.") : L("Bruker globale innstillinger. Lagre for å opprette en lagspesifikk overstyring.", "Using global settings. Save to create team-specific override."))}
           </p>
 
           {/* Team Admin toggle */}
           <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
             <div>
               <p className="text-xs font-medium">{L("Lagadmin for ", "Team Admin for ")}{team.name}</p>
-              <p className="text-[10px] text-muted-foreground">{L("Kan administrere brukere og innstillinger for dette laget", "Can manage users and settings for this team")}</p>
+              <p className="text-[10px] text-muted-foreground">{L("Kan administrere brukere og innstillinger for dette laget. Gir automatisk redigeringstilgang til alle områder laget har.", "Can manage users and settings for this team. Automatically grants edit access to every area the team has.")}</p>
             </div>
             <button
               type="button"
-              onClick={() => setLocalIsTeamAdmin((v) => !v)}
+              onClick={() => { setDirty(true); setLocalIsTeamAdmin((v) => !v); }}
               className={cn(
                 "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors",
                 localIsTeamAdmin ? "bg-purple-500" : "bg-muted-foreground/25"
@@ -794,20 +840,26 @@ function TeamPermRow({
               <GroupCheckboxes
                 groupNames={teamGroupNames}
                 selected={localGroupScope}
-                onChange={setLocalGroupScope}
+                onChange={(g: string[]) => { setDirty(true); setLocalGroupScope(g); }}
                 testIdPrefix={`team-group-${team.id}`}
               />
             </div>
           )}
 
+          {localIsTeamAdmin && (
+            <p className="rounded-lg bg-purple-50 px-3 py-2 text-[11px] text-purple-700 dark:bg-purple-900/20 dark:text-purple-300">
+              {L("Lagadmin har redigeringstilgang overalt laget har tilgang. Slå av lagadmin for å sette tilganger enkeltvis.",
+                 "Team admins hold edit access everywhere the team has access. Turn off team admin to set areas individually.")}
+            </p>
+          )}
           <PermissionsMatrix
-            value={localPerms}
-            onChange={setLocalPerms}
+            value={shownPerms}
+            onChange={(pm: UserPermissions) => { if (!localIsTeamAdmin) { setDirty(true); setLocalPerms(pm); } }}
             testIdPrefix={`team-perm-${team.id}`}
-            disabledAreas={getTeamDisabledAreas(allTeams, team.id, isSuperAdmin)}
+            disabledAreas={localIsTeamAdmin ? [...PERMISSION_AREAS] : teamDisabled}
           />
           <div className="flex items-center justify-between pt-1">
-            {(existingPerms || existingGroupScope) && (
+            {!isHomeTeam && (stored?.permissions || existingPerms || existingGroupScope) && (
               <Button
                 type="button"
                 variant="ghost"
@@ -824,7 +876,7 @@ function TeamPermRow({
                 type="button"
                 size="sm"
                 className="text-xs"
-                onClick={() => saveTeamPermsMutation.mutate(localPerms)}
+                onClick={() => saveTeamPermsMutation.mutate(shownPerms)}
                 disabled={saveTeamPermsMutation.isPending}
               >
                 Save for {team.name}
@@ -2516,10 +2568,13 @@ type UserHistoryData = {
 function AccessPreviewDialog({ user: pu, teams, onClose }: { user: ApiUser | null; teams: ApiTeam[]; onClose: () => void }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
-  const { data: teamPerms = [] } = useQuery<any[]>({
+  const { data: teamPermRows = [] } = useQuery<any[]>({
     queryKey: [`/api/users/${pu?.id}/team-permissions`],
     enabled: !!pu,
   });
+  // The home team is reported by the endpoint too, but it is not an override —
+  // it is the baseline this dialog already shows above.
+  const teamPerms = teamPermRows.filter((r: any) => !r.isHomeTeam);
 
   const team = pu ? teams.find((t) => t.id === pu.teamId) : undefined;
   let enabledAreas: string[] | null = null;

@@ -274,10 +274,17 @@ function ManageMemberForm({ member, allGroups, onSave, onRemove, saving }: {
              `${member.name} is shared in from ${member.homeTeamName}. Their role is managed by that team — here you only set group access.`)}
         </p>
       ) : (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} className="h-4 w-4 accent-green-600" />
-          <span className="inline-flex items-center gap-1"><Shield className="h-3.5 w-3.5" />{L("Lagadministrator", "Team admin")}</span>
-        </label>
+        <div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} className="h-4 w-4 accent-green-600" />
+            <span className="inline-flex items-center gap-1"><Shield className="h-3.5 w-3.5" />{L("Lagadministrator", "Team admin")}</span>
+          </label>
+          {admin && !member.isTeamAdmin && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {L("Gir redigeringstilgang til alle områder laget har.", "Grants edit access to every area the team has.")}
+            </p>
+          )}
+        </div>
       )}
 
       <div className="flex items-center justify-between gap-2 pt-1">

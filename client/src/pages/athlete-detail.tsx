@@ -7135,7 +7135,7 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] 
                         if (w.trackHardness) parts.push(w.trackHardness);
                         if (w.grainSize) parts.push(w.grainSize);
                         if (w.precipitation) parts.push(w.precipitation);
-                        if (w.testQuality != null) parts.push(`Q${w.testQuality}/5`);
+                        if (w.testQuality != null) parts.push(`Q${w.testQuality}/10`);
                         return parts.length > 0
                           ? <span className="text-muted-foreground">{parts.join(" · ")}</span>
                           : <span className="opacity-50">—</span>;
@@ -7480,7 +7480,7 @@ function RaceSkiTestCard({
               if (w.visibility) badges.push({ label: "Visibility", value: w.visibility, color: "bg-muted text-muted-foreground ring-border" });
               if (w.naturalSnow) badges.push({ label: "Natural", value: w.naturalSnow, color: "bg-muted text-muted-foreground ring-border" });
               if (w.artificialSnow) badges.push({ label: "Artificial", value: w.artificialSnow, color: "bg-muted text-muted-foreground ring-border" });
-              if (w.testQuality != null) badges.push({ label: "Quality", value: `${w.testQuality}/5`, color: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800" });
+              if (w.testQuality != null) badges.push({ label: "Quality", value: `${w.testQuality}/10`, color: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800" });
               return badges.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-1 mt-0.5">
                   {badges.map((b, i) => (

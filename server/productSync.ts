@@ -125,20 +125,15 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     return { success: false, added: 0, skipped: 0, rows: 0, error: "Sheet is empty or has no data rows" };
   }
 
-  // Map header columns → canonical field.
-  const header = values[0].map((h) => key(h));
-  const colOf: Partial<Record<"category" | "brand" | "name" | "stock" | "order", number>> = {};
-  header.forEach((h, i) => {
-    const field = HEADER_SYNONYMS[h];
-    if (field && colOf[field] === undefined) colOf[field] = i;
-  });
-
-  if (colOf.brand === undefined || colOf.name === undefined) {
+  // Map header columns → canonical field. The header may sit below a title row.
+  const located = locateHeader(values);
+  if (!located) {
     return {
       success: false, added: 0, skipped: 0, rows: 0,
       error: "Could not find a 'Brand'/'Merke' and 'Name'/'Navn' column in the sheet header",
     };
   }
+  const { idx: headerIdx, colOf } = located;
 
   // Existing products in this team (incl. archived), keyed by brand+name so a
   // product's tag/category can be corrected on re-sync instead of duplicated.
@@ -162,7 +157,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   // Rows per signature: when a signature appears in several sheet rows the
   // types differ, and only type evidence may disambiguate.
   const sheetSigCounts = new Map<string, number>();
-  for (const row of values.slice(1)) {
+  for (const row of values.slice(headerIdx + 1)) {
     const b = norm(row[colOf.brand!]); const n = norm(row[colOf.name!]);
     if (!b || !n) continue;
     const { sig } = productSig(b, n);
@@ -176,8 +171,8 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   let blankRows = 0;
   const matchedIds = new Map<number, number>(); // productId -> first claiming row#
   const collisions: { row: number; label: string; withProductId: number }[] = [];
-  const dataRows = values.slice(1);
-  let rowNo = 1;
+  const dataRows = values.slice(headerIdx + 1);
+  let rowNo = headerIdx + 1; // sheet row number of the header
 
   for (const row of dataRows) {
     rowNo++;
@@ -314,6 +309,24 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
 // sheet, and products created in Glidr are appended following the sheet's own
 // column layout. Debounced per product so rapid +/- clicking becomes ONE write.
 
+/**
+ * Finds the header row. It is NOT always row 1: sheets carry title rows, and
+ * a bad append can push the header down. Scans the first rows for one that
+ * yields both a brand and a name column.
+ */
+function locateHeader(values: any[][]): { idx: number; colOf: Partial<Record<"category" | "brand" | "name" | "stock" | "order", number>> } | null {
+  for (let i = 0; i < Math.min(values.length, 10); i++) {
+    const row = values[i] ?? [];
+    const colOf: Partial<Record<"category" | "brand" | "name" | "stock" | "order", number>> = {};
+    row.forEach((h, c) => {
+      const field = HEADER_SYNONYMS[key(h)];
+      if (field && colOf[field] === undefined) colOf[field] = c;
+    });
+    if (colOf.brand !== undefined && colOf.name !== undefined) return { idx: i, colOf };
+  }
+  return null;
+}
+
 function colLetter(i: number): string {
   let n = i + 1, out = "";
   while (n > 0) { const r = (n - 1) % 26; out = String.fromCharCode(65 + r) + out; n = Math.floor((n - 1) / 26); }
@@ -336,13 +349,10 @@ export async function pushProductToSheet(teamId: number, productId: number): Pro
   });
   const values: any[][] = (resp.data.values as any[][]) || [];
   if (values.length === 0) return;
-  const header = values[0].map((h) => key(h));
-  const colOf: Partial<Record<"category" | "brand" | "name" | "stock" | "order", number>> = {};
-  header.forEach((h, i) => {
-    const field = HEADER_SYNONYMS[h];
-    if (field && colOf[field] === undefined) colOf[field] = i;
-  });
-  if (colOf.brand === undefined || colOf.name === undefined) return;
+  const located = locateHeader(values);
+  if (!located) return;
+  const { idx: headerIdx, colOf } = located;
+  const header = values[headerIdx] ?? [];
 
   const prod = productSig(product.brand, product.name);
   const prodCat = String(product.category ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -357,11 +367,11 @@ export async function pushProductToSheet(teamId: number, productId: number): Pro
   };
   // Same core signature, preferring the row whose type agrees — the same
   // name can exist as Powder AND Liquid in the sheet.
-  let rowIdx = values.findIndex((row, i) => i > 0 && sigMatches(row) && typeMatches(row));
-  if (rowIdx < 0) rowIdx = values.findIndex((row, i) => i > 0 && sigMatches(row));
+  let rowIdx = values.findIndex((row, i) => i > headerIdx && sigMatches(row) && typeMatches(row));
+  if (rowIdx < 0) rowIdx = values.findIndex((row, i) => i > headerIdx && sigMatches(row));
 
   const data: { range: string; values: any[][] }[] = [];
-  if (rowIdx > 0) {
+  if (rowIdx > headerIdx) {
     const rowNo = rowIdx + 1;
     if (colOf.stock !== undefined) data.push({ range: `${colLetter(colOf.stock)}${rowNo}`, values: [[product.stock_quantity ?? 0]] });
     if (colOf.order !== undefined) data.push({ range: `${colLetter(colOf.order)}${rowNo}`, values: [[product.order_quantity ?? 0]] });
@@ -371,16 +381,27 @@ export async function pushProductToSheet(teamId: number, productId: number): Pro
       requestBody: { valueInputOption: "RAW", data },
     });
   } else {
-    // Not in the sheet yet — append a row shaped by the sheet's own header.
-    const row: any[] = new Array(header.length).fill("");
+    // Not in the sheet yet — write it on the FIRST FREE ROW after the existing
+    // products. (values.append with insertDataOption inserted a row at the top
+    // instead, pushing the header down and breaking the next import.)
+    const width = Math.max(header.length, (colOf.order ?? 0) + 1, (colOf.stock ?? 0) + 1);
+    const row: any[] = new Array(width).fill("");
     if (colOf.category !== undefined) row[colOf.category] = product.category ?? "";
     row[colOf.brand] = product.brand;
     row[colOf.name] = product.name;
     if (colOf.stock !== undefined) row[colOf.stock] = product.stock_quantity ?? 0;
     if (colOf.order !== undefined) row[colOf.order] = product.order_quantity ?? 0;
-    await sheets.spreadsheets.values.append({
-      spreadsheetId, range: "A1", valueInputOption: "RAW",
-      insertDataOption: "INSERT_ROWS",
+
+    let lastData = headerIdx; // index of the last row that holds a product
+    for (let i = headerIdx + 1; i < values.length; i++) {
+      const r = values[i] ?? [];
+      if (norm(r[colOf.brand!]) || norm(r[colOf.name!])) lastData = i;
+    }
+    const targetRow = lastData + 2; // 0-based index -> 1-based row, then next
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `A${targetRow}`,
+      valueInputOption: "RAW",
       requestBody: { values: [row] },
     });
   }

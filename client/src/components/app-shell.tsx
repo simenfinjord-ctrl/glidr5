@@ -112,7 +112,7 @@ type NavItem = {
   tourTarget?: string; // data-tour attribute for guided tour
 };
 
-const nav: NavItem[] = [
+const nav: NavItem[
   {
     href: "/dashboard",
     label: "Dashboard",
@@ -125,6 +125,7 @@ const nav: NavItem[] = [
   },
   // ── Data ──────────────────────────────────────────
   {
+    section: "nav.sectionTesting",
     href: "/tests",
     label: "Tests",
     icon: ListChecks,
@@ -133,19 +134,27 @@ const nav: NavItem[] = [
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "tests",
-    section: "nav.sectionData",
     tourTarget: "nav-tests",
   },
   {
-    href: "/all-teams-tests",
-    label: "All teams",
-    icon: Layers,
-    testId: "link-all-teams-tests",
+    href: "/live-runsheets",
+    label: "Live Runsheets",
+    icon: Radio,
+    testId: "link-live-runsheets",
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "tests",
-    multiTeamOnly: true,
+    permArea: "liverunsheets",
+  },
+  {
+    href: "/watch-queue",
+    label: "Watch Queue",
+    icon: Watch,
+    testId: "link-watch-queue",
+    color: "text-muted-foreground",
+    activeColor: "text-green-700",
+    activeBg: "bg-green-50 dark:bg-green-900/20",
+    featureArea: "garmin_watch",
   },
   {
     href: "/analytics",
@@ -159,16 +168,7 @@ const nav: NavItem[] = [
     tourTarget: "nav-analytics",
   },
   {
-    href: "/suggestions",
-    label: "Suggestions",
-    icon: Sparkles,
-    testId: "link-suggestions",
-    color: "text-muted-foreground",
-    activeColor: "text-green-700",
-    activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "suggestions",
-  },
-  {
+    section: "nav.sectionConditions",
     href: "/weather",
     label: "Weather",
     icon: CloudSun,
@@ -181,17 +181,17 @@ const nav: NavItem[] = [
   },
   // ── Equipment ─────────────────────────────────────
   {
-    href: "/testskis",
-    label: "Testfleets",
-    icon: Snowflake,
-    testId: "link-testskis",
+    href: "/suggestions",
+    label: "Suggestions",
+    icon: Sparkles,
+    testId: "link-suggestions",
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "testskis",
-    section: "nav.sectionEquipment",
+    permArea: "suggestions",
   },
   {
+    section: "nav.sectionEquipment",
     href: "/products",
     label: "Products",
     icon: Package,
@@ -203,14 +203,14 @@ const nav: NavItem[] = [
     tourTarget: "nav-products",
   },
   {
-    href: "/grinding",
-    label: "Grinding",
-    icon: Disc3,
-    testId: "link-grinding",
+    href: "/testskis",
+    label: "Testfleets",
+    icon: Snowflake,
+    testId: "link-testskis",
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "grinding",
+    permArea: "testskis",
   },
   {
     href: "/raceskis",
@@ -234,6 +234,16 @@ const nav: NavItem[] = [
     featureArea: "para_team",
   },
   {
+    href: "/grinding",
+    label: "Grinding",
+    icon: Disc3,
+    testId: "link-grinding",
+    color: "text-muted-foreground",
+    activeColor: "text-green-700",
+    activeBg: "bg-green-50 dark:bg-green-900/20",
+    permArea: "grinding",
+  },
+  {
     href: "/kick",
     label: "Kick",
     icon: Footprints,
@@ -244,6 +254,7 @@ const nav: NavItem[] = [
     permArea: "kick",
   },
   {
+    section: "nav.sectionRaceDay",
     href: "/raceprep",
     label: "Raceprep",
     icon: Flag,
@@ -256,25 +267,16 @@ const nav: NavItem[] = [
   },
   // ── System ────────────────────────────────────────
   {
-    href: "/live-runsheets",
-    label: "Live Runsheets",
-    icon: Radio,
-    testId: "link-live-runsheets",
-    color: "text-muted-foreground",
-    activeColor: "text-green-700",
-    activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "liverunsheets",
     section: "nav.sectionSystem",
-  },
-  {
-    href: "/watch-queue",
-    label: "Watch Queue",
-    icon: Watch,
-    testId: "link-watch-queue",
+    href: "/all-teams-tests",
+    label: "All teams",
+    icon: Layers,
+    testId: "link-all-teams-tests",
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
-    featureArea: "garmin_watch",
+    permArea: "tests",
+    multiTeamOnly: true,
   },
   {
     href: "/admin",
@@ -721,6 +723,17 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
     return list.find((t: any) => t.id === tid) ?? null;
   })();
   const teamLogo: string | null = (activeTeamInfo?.teamLogo as string | undefined) ?? null;
+  // Collapsed sidebar groups, remembered per device.
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("glidr-nav-collapsed") || "[]"); } catch { return []; }
+  });
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+      try { localStorage.setItem("glidr-nav-collapsed", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
   // Nation design pack: SA switches it on per team (Teams → Edit plan).
   const nationTheme = (activeTeamInfo?.nationThemeEnabled ?? activeTeamInfo?.nation_theme_enabled)
     ? getNationTheme(activeTeamInfo?.nation)
@@ -923,9 +936,17 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   // User role label
   const userRole = isSuperAdmin ? "Super Admin" : isTeamAdmin ? "Team Admin" : "Member";
 
-  // Sidebar nav list
+  // Sidebar nav list. Groups are collapsible (state remembered per device) so a
+  // team that uses every area can fold away what today's work doesn't need.
   const SidebarNav = () => {
     let lastSection: string | undefined = undefined;
+    // Which group each item belongs to, so collapsing hides its members.
+    const sectionOf = new Map<string, string | undefined>();
+    let cur: string | undefined = undefined;
+    for (const it of visibleNav) {
+      if (it.section) cur = it.section;
+      sectionOf.set(it.href, cur);
+    }
     return (
       <nav className="flex-1 overflow-y-auto py-2" data-testid="nav-primary">
         {visibleNav.map((item) => {
@@ -933,16 +954,26 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           const Icon = item.icon;
           const showSection = !sidebarCollapsed && item.section && item.section !== lastSection;
           if (item.section) lastSection = item.section;
+          const mySection = sectionOf.get(item.href);
+          // Never hide the page you are on, even in a collapsed group.
+          const hidden = !sidebarCollapsed && !!mySection && collapsedSections.includes(mySection) && !active;
           return (
             <div key={item.href}>
               {showSection && (
-                <div
-                  className="px-3.5 pt-4 pb-1 font-semibold uppercase tracking-[0.07em] text-muted-foreground/60 select-none"
+                <button
+                  type="button"
+                  onClick={() => toggleSection(item.section!)}
+                  className="flex w-full items-center gap-1 px-3.5 pt-4 pb-1 font-semibold uppercase tracking-[0.07em] text-muted-foreground/60 select-none hover:text-muted-foreground"
                   style={{ fontSize: `${10 * sidebarScale}px` }}
+                  data-testid={`nav-section-${item.section}`}
                 >
+                  <ChevronRight
+                    className={cn("h-2.5 w-2.5 shrink-0 transition-transform", !collapsedSections.includes(item.section!) && "rotate-90")}
+                  />
                   {t(item.section!)}
-                </div>
+                </button>
               )}
+              {hidden ? null : (<>
               <AppLink
                 href={item.href}
                 testId={item.testId}
@@ -973,6 +1004,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
                   </span>
                 )}
               </AppLink>
+              </>)}
             </div>
           );
         })}

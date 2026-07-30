@@ -426,7 +426,7 @@ function OverviewStats({
 
     // Top locations
     const locMap = new Map<string, { tests: number; weatherTests: number; wins: Map<number, number> }>();
-    for (const t of tests) {
+    for (const t of productTests) {
       if (!locMap.has(t.location)) locMap.set(t.location, { tests: 0, weatherTests: 0, wins: new Map() });
       const lm = locMap.get(t.location)!;
       lm.tests++;
@@ -446,7 +446,7 @@ function OverviewStats({
     const airTempDist = new Map<string, number>();
     const humidityTypeDist = new Map<string, number>();
     const trackHardnessDist = new Map<string, number>();
-    for (const t of tests) {
+    for (const t of productTests) {
       if (!t.weatherId) continue;
       const w = weatherById.get(t.weatherId);
       if (!w) continue;
@@ -859,7 +859,7 @@ function BestProductsByConditions({
     if (!bracket) return [];
 
     const matchingTestIds = new Set<number>();
-    for (const t of tests) {
+    for (const t of productTests) {
       if (!t.weatherId) continue;
       const w = weatherById.get(t.weatherId);
       if (!w) continue;
@@ -3391,11 +3391,6 @@ function buildBrandNote(b: BrandStat, lang: string): string {
 }
 
 // ── Kick report (#9): the interpreted kick-test reports + recipes, in Analytics.
-type KickRptSki = { id: number; name: string | null; brand: string | null; color: string | null };
-type KickRptEntry = { id?: number; kickSkiId: number; binder: string | null; kickSolution: string | null; feelingRank: number | null; feelingNotes: string | null };
-type KickRptTest = { id: number; date: string; location: string | null; weatherId: number | null; testPersons: string | null; notes: string | null; report: string | null; entries: KickRptEntry[] };
-type KickRptWeather = { id: number; location: string; airTemperatureC: number | null; snowType: string | null; snowHumidityType: string | null };
-type KickUse = { solution: string; binder: string | null; date: string; location: string | null; airTemp: number | null; snowType: string | null; feelingRank: number | null; feelingNotes: string | null; skiId: number };
 
 const KICK_POS = ["bra", "godt", "god", "perfekt", "stabil", "good", "great", "grip", "feste", "solid"];
 const KICK_NEG = ["dårlig", "darlig", "glipper", "glir", "slips", "icing", "ising", "bom", "poor", "bad", "no grip"];
@@ -3435,175 +3430,6 @@ function buildKickSolutionSummary(uses: KickUse[], lang: string): string {
   else if (pos > neg && pos > 0) parts.push(L("Overveiende godt feste i notatene.", "Mostly good grip in the notes."));
 
   return parts.join(" ");
-}
-
-function KickReportView() {
-  const { language } = useI18n();
-  const L = (no: string, en: string) => (language === "no" ? no : en);
-  const { data: tests = [], isLoading } = useQuery<KickRptTest[]>({ queryKey: ["/api/kick-tests"] });
-  const { data: skis = [] } = useQuery<KickRptSki[]>({ queryKey: ["/api/kick-skis"] });
-  const { data: weather = [] } = useQuery<KickRptWeather[]>({ queryKey: ["/api/weather/for-filtering"] });
-  const skiById = useMemo(() => new Map(skis.map((s) => [s.id, s])), [skis]);
-  const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
-  const skiName = (id: number) => { const s = skiById.get(id); return s ? ([s.name, s.brand].filter(Boolean).join(" — ") || `Ski #${s.id}`) : "—"; };
-  const [openSolution, setOpenSolution] = useState<string | null>(null);
-
-  // Aggregate every kick entry by its kick solution, attaching test conditions.
-  const solutions = useMemo(() => {
-    const map = new Map<string, KickUse[]>();
-    for (const test of tests) {
-      const w = test.weatherId ? weatherById.get(test.weatherId) : null;
-      for (const e of test.entries) {
-        const sol = (e.kickSolution || "").trim();
-        if (!sol) continue;
-        const key = sol.toLowerCase();
-        if (!map.has(key)) map.set(key, []);
-        map.get(key)!.push({
-          solution: sol, binder: e.binder, date: test.date, location: test.location,
-          airTemp: w?.airTemperatureC ?? null, snowType: w?.snowType ?? w?.snowHumidityType ?? null,
-          feelingRank: e.feelingRank, feelingNotes: e.feelingNotes, skiId: e.kickSkiId,
-        });
-      }
-    }
-    return [...map.entries()].map(([key, uses]) => {
-      const ranks = uses.map((u) => u.feelingRank).filter((r): r is number => typeof r === "number");
-      return { key, solution: uses[0].solution, uses, count: uses.length, avgFeeling: ranks.length ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null };
-    }).sort((a, b) => (a.avgFeeling ?? 99) - (b.avgFeeling ?? 99));
-  }, [tests, weatherById]);
-
-  if (isLoading) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Laster…", "Loading…")}</Card>;
-  if (tests.length === 0) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Ingen kick-tester ennå. Legg dem inn under Kick.", "No kick tests yet. Add them under Kick.")}</Card>;
-
-  const num = (n: number | null) => (n == null ? "—" : n.toFixed(1));
-
-  return (
-    <div className="space-y-6" data-testid="kick-report">
-      {/* ── Per-solution analysis (tied to weather/snow) ── */}
-      {solutions.length > 0 && (
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-base font-semibold">{L("Løsninger", "Solutions")}</h3>
-            <p className="text-sm text-muted-foreground">
-              {L("Hver kick-løsning på tvers av tester, koblet mot vær og snø/føre. Klikk for en skriftlig oppsummering.",
-                 "Every kick solution across tests, tied to weather and snow/conditions. Click for a written summary.")}
-            </p>
-          </div>
-          <div className="space-y-2">
-            {solutions.map((s) => {
-              const isOpen = openSolution === s.key;
-              return (
-                <Card key={s.key} className="fs-card rounded-2xl overflow-hidden">
-                  <button type="button" onClick={() => setOpenSolution(isOpen ? null : s.key)} className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors">
-                    <div className="min-w-0">
-                      <div className="font-semibold truncate">{s.solution}</div>
-                      <div className="text-xs text-muted-foreground">{s.count} {L("bruk", "uses")}</div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 text-xs">
-                      {s.avgFeeling != null && <span className="text-muted-foreground">{L("Feeling", "Feeling")} <span className="font-semibold text-foreground">{num(s.avgFeeling)}</span></span>}
-                      {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                    </div>
-                  </button>
-                  {isOpen && (
-                    <div className="border-t border-border/40 px-4 py-3 space-y-3">
-                      <div className="rounded-lg bg-violet-50 dark:bg-violet-950/20 px-3 py-2 text-sm">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300 mb-1">
-                          <Sparkles className="h-3.5 w-3.5" />{L("Oppsummering", "Summary")}
-                        </div>
-                        {buildKickSolutionSummary(s.uses, language)}
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="text-left text-xs text-muted-foreground">
-                            <tr>
-                              <th className="py-1 pr-3 font-medium">{L("Dato", "Date")}</th>
-                              <th className="py-1 pr-3 font-medium">{L("Ski", "Ski")}</th>
-                              <th className="py-1 pr-3 font-medium">{L("Binder", "Binder")}</th>
-                              <th className="py-1 pr-3 font-medium">{L("Føre", "Conditions")}</th>
-                              <th className="py-1 pr-3 font-medium">{L("Feeling", "Feeling")}</th>
-                              <th className="py-1 font-medium">{L("Notater", "Notes")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {s.uses.map((u, i) => (
-                              <tr key={i} className="border-t">
-                                <td className="py-1.5 pr-3 whitespace-nowrap">{u.date}</td>
-                                <td className="py-1.5 pr-3">{skiName(u.skiId)}</td>
-                                <td className="py-1.5 pr-3">{u.binder || "—"}</td>
-                                <td className="py-1.5 pr-3 whitespace-nowrap">{u.airTemp != null ? `${fmtT(u.airTemp)}` : "—"}{u.snowType ? ` · ${u.snowType}` : ""}</td>
-                                <td className="py-1.5 pr-3">{u.feelingRank ?? "—"}</td>
-                                <td className="py-1.5 text-muted-foreground">{u.feelingNotes || "—"}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Per-test reports ── */}
-      <div className="space-y-3">
-      <h3 className="text-base font-semibold">{L("Tester", "Tests")}</h3>
-      <p className="text-sm text-muted-foreground">
-        {L("Tolket rapport fra hver kick-test, knyttet til vær/føre — grunnlaget for å forstå hva som gjøres når og gjenskape tidligere oppskrifter.",
-           "Interpreted report from each kick test, tied to weather/conditions — the basis for understanding what works when and recreating past recipes.")}
-      </p>
-      {tests.map((test) => {
-        const w = test.weatherId ? weatherById.get(test.weatherId) : null;
-        return (
-          <Card key={test.id} className="fs-card rounded-2xl p-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-semibold">{test.date}</span>
-              {test.location && <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{test.location}</span>}
-              {w && <span className="inline-flex items-center gap-1 text-muted-foreground"><Cloud className="h-3.5 w-3.5" />{w.airTemperatureC != null ? `${fmtT(w.airTemperatureC)}` : w.location}</span>}
-              {test.testPersons && <span className="inline-flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" />{test.testPersons}</span>}
-            </div>
-            {test.report && (
-              <div className="mt-3 rounded-lg bg-green-50 dark:bg-green-900/15 px-3 py-2 text-sm">
-                <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400 mb-1">
-                  <FileText className="h-3.5 w-3.5" />{L("Rapport", "Report")}
-                </div>
-                {test.report}
-              </div>
-            )}
-            {test.entries.length > 0 && (
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-left text-xs text-muted-foreground">
-                    <tr>
-                      <th className="py-1 pr-3 font-medium">{L("Ski", "Ski")}</th>
-                      <th className="py-1 pr-3 font-medium">{L("Binder", "Binder")}</th>
-                      <th className="py-1 pr-3 font-medium">{L("Kick-løsning", "Kick solution")}</th>
-                      <th className="py-1 pr-3 font-medium">{L("Rank", "Rank")}</th>
-                      <th className="py-1 font-medium">{L("Notater", "Notes")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {test.entries.map((e, i) => (
-                      <tr key={e.id ?? i} className="border-t">
-                        <td className="py-1.5 pr-3 font-medium">{skiName(e.kickSkiId)}</td>
-                        <td className="py-1.5 pr-3">{e.binder || "—"}</td>
-                        <td className="py-1.5 pr-3">{e.kickSolution || "—"}</td>
-                        <td className="py-1.5 pr-3">{e.feelingRank ?? "—"}</td>
-                        <td className="py-1.5 text-muted-foreground">{e.feelingNotes || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {test.notes && <p className="mt-3 text-sm text-muted-foreground italic">{test.notes}</p>}
-          </Card>
-        );
-      })}
-      </div>
-    </div>
-  );
 }
 
 function BrandStatsView() {
@@ -4147,7 +3973,14 @@ export default function Analytics() {
   const { data: archivedProducts = [] } = useQuery<Product[]>({ queryKey: ["/api/products/archived"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });
 
-  const allTestIds = tests.map((t) => t.id);
+  // This page analyses PRODUCT testing only — the same tests the Tests page
+  // lists. Grind tests are analysed under Grinding, athlete ski tests under
+  // Athlete Skis, and kick on the Kick page.
+  const productTests = useMemo(
+    () => tests.filter((t) => t.testType !== "Grind" && (t as any).testSkiSource !== "raceskis"),
+    [tests]
+  );
+  const allTestIds = productTests.map((t) => t.id);
   const { data: allEntries = [] } = useQuery<TestEntry[]>({
     queryKey: ["/api/tests/entries/all-analytics", allTestIds],
     queryFn: () => fetchEntriesBulk(allTestIds),
@@ -4173,7 +4006,7 @@ export default function Analytics() {
     }
     return m;
   }, [products, archivedProducts, lang]);
-  const testsById = useMemo(() => new Map(tests.map((t) => [t.id, t])), [tests]);
+  const testsById = useMemo(() => new Map(productTests.map((t) => [t.id, t])), [productTests]);
   const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
 
   // Resolve a deep-linked product: by id, or by name (used from the All-teams
@@ -4190,17 +4023,17 @@ export default function Analytics() {
   }, [initialProductId, products, deepLink]);
 
   const seasons = useMemo(() => {
-    const s = new Set(tests.map(t => getSkiSeason(t.date)));
+    const s = new Set(productTests.map(t => getSkiSeason(t.date)));
     return ["All", ...Array.from(s).sort().reverse()];
-  }, [tests]);
+  }, [productTests]);
 
   const filteredTests = useMemo(() => {
     // "Glide" and "Structure" are product-category filters, not test-type filters
     const isProductCategoryFilter = testTypeFilter === "Glide" || testTypeFilter === "Structure";
-    let result = (testTypeFilter === "All" || isProductCategoryFilter) ? tests : tests.filter(t => t.testType === testTypeFilter);
+    let result = (testTypeFilter === "All" || isProductCategoryFilter) ? productTests : productTests.filter(t => t.testType === testTypeFilter);
     if (seasonFilter !== "All") result = result.filter(t => getSkiSeason(t.date) === seasonFilter);
     return result;
-  }, [tests, testTypeFilter, seasonFilter]);
+  }, [productTests, testTypeFilter, seasonFilter]);
 
   const filteredTestIds = useMemo(() => new Set(filteredTests.map((t) => t.id)), [filteredTests]);
   const filteredEntries = useMemo(() => allEntries.filter((e) => filteredTestIds.has(e.testId)), [allEntries, filteredTestIds]);
@@ -4316,7 +4149,7 @@ export default function Analytics() {
 
   const testsByMonth = useMemo(() => {
     const months = new Map<string, { glide: number; structure: number }>();
-    for (const t of tests) {
+    for (const t of productTests) {
       const month = t.date.slice(0, 7);
       if (!months.has(month)) months.set(month, { glide: 0, structure: 0 });
       const m = months.get(month)!;
@@ -4326,9 +4159,9 @@ export default function Analytics() {
     return Array.from(months.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, counts]) => ({ month, ...counts }));
-  }, [tests]);
+  }, [productTests]);
 
-  const hasData = tests.length > 0;
+  const hasData = productTests.length > 0;
 
   // Compute topByWinRate for PDF export (same logic as OverviewStats, using allEntries)
   const exportTopByWinRate = useMemo(() => {
@@ -4367,10 +4200,10 @@ export default function Analytics() {
     const newWin = window.open("", "_blank");
     if (!newWin) return;
 
-    const totalTests = tests.length;
+    const totalTests = productTests.length;
     const productsTested = new Set(allEntries.map((e) => e.productId).filter(Boolean)).size;
-    const uniqueLocations = new Set(tests.map((t) => t.location)).size;
-    const withWeather = tests.filter((t) => t.weatherId != null).length;
+    const uniqueLocations = new Set(productTests.map((t) => t.location)).size;
+    const withWeather = productTests.filter((t) => t.weatherId != null).length;
     const weatherPct = totalTests > 0 ? Math.round((withWeather / totalTests) * 100) : 0;
 
     const topRows = exportTopByWinRate.map((p, i) => [i + 1, p.name, p.appearances, p.avgRank, `${p.winRate}%`, p.wins]);
@@ -4408,7 +4241,6 @@ export default function Analytics() {
     { id: "racedproducts", label: "Raced Products", icon: <Trophy className="h-4 w-4" /> },
     { id: "racedskis", label: L("Kjørte ski", "Raced Skis"), icon: <Trophy className="h-4 w-4" /> },
     { id: "brands", label: L("Merkestatistikk", "Brand stats"), icon: <Search className="h-4 w-4" /> },
-    ...(can("kick", "view") ? [{ id: "kick", label: "Kick", icon: <Footprints className="h-4 w-4" /> }] : []),
   ];
 
   const { data: grindProfiles = [] } = useQuery<any[]>({
@@ -4607,9 +4439,9 @@ export default function Analytics() {
               </Card>
             ) : (
               <>
-                <ActivityHeatmap tests={tests} />
+                <ActivityHeatmap tests={productTests} />
                 <OverviewStats
-                  tests={tests}
+                  tests={productTests}
                   allEntries={allEntries}
                   products={products}
                   productsById={productsById}
@@ -4708,7 +4540,7 @@ export default function Analytics() {
           <ErrorBoundary label="Products">
             <ProductSearchStats
               products={products}
-              tests={tests}
+              tests={productTests}
               allEntries={allEntries}
               productsById={productsById}
               testsById={testsById}
@@ -4807,7 +4639,7 @@ export default function Analytics() {
           <ErrorBoundary label="Durability">
             <DurabilityAnalysis
               products={products}
-              tests={tests}
+              tests={productTests}
               allEntries={allEntries}
               productsById={productsById}
               testsById={testsById}
@@ -4829,7 +4661,6 @@ export default function Analytics() {
 
         {activeTab === "brands" && <BrandStatsView />}
 
-        {activeTab === "kick" && <KickReportView />}
 
       </div>
     </AppShell>

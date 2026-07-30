@@ -4,9 +4,10 @@
 // (date, weather, location, test persons, per-ski binder + kick solution +
 // feeling rank + notes), and an interpreted report tied to weather/conditions.
 import { useMemo, useState } from "react";
+import { KickReportView } from "@/components/kick-report";
 import { fmtT } from "@/lib/temperature";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Footprints, Pencil, Trash2, Cloud, MapPin, Users, FileText, Copy, FlaskConical, Layers } from "lucide-react";
+import { Plus, Footprints, Pencil, Trash2, Cloud, MapPin, Users, FileText, Copy, FlaskConical, Layers, BarChart3 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -604,7 +605,7 @@ export default function Kick() {
 
         {/* Jump-nav so you don't scroll past many test skis to reach tests/mixes */}
         <div className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-2 bg-background/95 px-1 py-2 backdrop-blur">
-          {[["kick-skis", L("Testski", "Test skis")], ["kick-tests", L("Kick-tester", "Kick tests")], ["kick-mixes", "Mixes"]].map(([id, label]) => (
+          {[["kick-skis", L("Testski", "Test skis")], ["kick-tests", L("Kick-tester", "Kick tests")], ["kick-mixes", "Mixes"], ["kick-analysis", L("Analyse", "Analysis")]].map(([id, label]) => (
             <button key={id} type="button" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
               className="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
               {label}
@@ -832,6 +833,21 @@ export default function Kick() {
               })}
             </div>
           )}
+        </section>
+
+        {/* ── Kick analysis — kick has its own analysis, not a tab under
+             the product Analytics page ── */}
+        <section id="kick-analysis" className="scroll-mt-16">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+              <BarChart3 className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">{L("Analyse", "Analysis")}</h2>
+              <p className="text-xs text-muted-foreground">{L("Festeløsninger på tvers av tester, med forhold og følelse.", "Kick solutions across tests, with conditions and feel.")}</p>
+            </div>
+          </div>
+          <KickReportView />
         </section>
       </div>
 

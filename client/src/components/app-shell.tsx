@@ -123,7 +123,8 @@ const nav: NavItem[] = [
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "dashboard",
   },
-  // ── Testing: the test loop, live tools and its analysis ──
+  // ── Testing: the data, its analysis, the conditions behind it,
+  //    and the live tools used while testing ──
   {
     section: "nav.sectionTesting",
     href: "/tests",
@@ -137,26 +138,6 @@ const nav: NavItem[] = [
     tourTarget: "nav-tests",
   },
   {
-    href: "/live-runsheets",
-    label: "Live Runsheets",
-    icon: Radio,
-    testId: "link-live-runsheets",
-    color: "text-muted-foreground",
-    activeColor: "text-green-700",
-    activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "liverunsheets",
-  },
-  {
-    href: "/watch-queue",
-    label: "Watch Queue",
-    icon: Watch,
-    testId: "link-watch-queue",
-    color: "text-muted-foreground",
-    activeColor: "text-green-700",
-    activeBg: "bg-green-50 dark:bg-green-900/20",
-    featureArea: "garmin_watch",
-  },
-  {
     href: "/analytics",
     label: "Analytics",
     icon: BarChart3,
@@ -168,7 +149,6 @@ const nav: NavItem[] = [
     tourTarget: "nav-analytics",
   },
   {
-    section: "nav.sectionConditions",
     href: "/weather",
     label: "Weather",
     icon: CloudSun,
@@ -189,6 +169,26 @@ const nav: NavItem[] = [
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "suggestions",
+  },
+  {
+    href: "/live-runsheets",
+    label: "Live Runsheets",
+    icon: Radio,
+    testId: "link-live-runsheets",
+    color: "text-muted-foreground",
+    activeColor: "text-green-700",
+    activeBg: "bg-green-50 dark:bg-green-900/20",
+    permArea: "liverunsheets",
+  },
+  {
+    href: "/watch-queue",
+    label: "Watch Queue",
+    icon: Watch,
+    testId: "link-watch-queue",
+    color: "text-muted-foreground",
+    activeColor: "text-green-700",
+    activeBg: "bg-green-50 dark:bg-green-900/20",
+    featureArea: "garmin_watch",
   },
   {
     section: "nav.sectionEquipment",

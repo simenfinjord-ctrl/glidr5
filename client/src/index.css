@@ -164,7 +164,9 @@
   /* Reserve room below the fixed mobile bottom nav (+ home indicator) so the
      last content isn't hidden behind it. Removed on large screens (no bar). */
   .app-main-pad { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
-  @media (min-width: 1024px) { .app-main-pad { padding-bottom: 0; } }
+  @media (min-width: 1280px) { .app-main-pad { padding-bottom: 0; } }
+  /* Mobile mode keeps the bottom bar at every width, so keep the clearance. */
+  .app-main-pad-force { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)) !important; }
 
   .fs-grid {
     background: hsl(210 50% 88%);

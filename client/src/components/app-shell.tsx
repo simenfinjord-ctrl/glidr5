@@ -1124,7 +1124,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
             <div className={cn("h-1.5 w-1.5 rounded-full shrink-0 ml-0.5", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
             {isSuperAdmin && teams.length > 1 && (
               <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
-                <SelectTrigger className="h-6 ml-auto w-auto min-w-0 max-w-[80px] border-border bg-muted/50 text-[10px] font-medium px-2" data-testid="select-team">
+                <SelectTrigger className="h-6 ml-auto w-auto min-w-[64px] max-w-[130px] border-border bg-muted/50 text-[10px] font-medium px-2" data-testid="select-team">
                   <SelectValue placeholder={t("shell.selectTeam")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -1136,7 +1136,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
             )}
             {!isSuperAdmin && userTeams.length > 1 && (
               <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
-                <SelectTrigger className="h-6 ml-auto w-auto min-w-0 max-w-[80px] border-border bg-muted/50 text-[10px] font-medium px-2" data-testid="select-user-team">
+                <SelectTrigger className="h-6 ml-auto w-auto min-w-[64px] max-w-[130px] border-border bg-muted/50 text-[10px] font-medium px-2" data-testid="select-user-team">
                   <SelectValue placeholder={t("shell.selectTeam")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -1325,7 +1325,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           You're offline — showing cached data. Changes will not be saved.
         </div>
       )}
-      <main className="flex-1 overflow-y-auto flex flex-col app-main-pad">
+      <main className={cn("flex-1 overflow-y-auto flex flex-col app-main-pad", mobileNavEnabled && "app-main-pad-force")}>
         <div className="flex-1 mx-auto w-full min-w-0 max-w-[1400px] px-4 sm:px-6 py-6">
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>
@@ -1354,7 +1354,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
         </footer>
       </main>
       {/* Bottom nav is always available on small screens (mobile-by-default). */}
-      <div className="lg:hidden"><MobileNav watchQueueCount={watchQueueCount} /></div>
+      <div className={mobileNavEnabled ? "" : "xl:hidden"}><MobileNav watchQueueCount={watchQueueCount} /></div>
       <AddToHomeBanner />
     </>
   );
@@ -1463,14 +1463,18 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   return (
     <div className="min-h-screen flex flex-col bg-[#f4f4f6] dark:bg-zinc-950">
       {nationTheme && (
-        <div className="h-1 w-full shrink-0 z-50" style={{ background: ribbonGradient(nationTheme) }} data-testid="nation-ribbon" />
+        <div
+          className="w-full shrink-0 z-50"
+          style={{ background: ribbonGradient(nationTheme), height: "calc(4px + env(safe-area-inset-top))" }}
+          data-testid="nation-ribbon"
+        />
       )}
       <div className="flex flex-1 min-h-0">
 
       {/* ── Desktop Sidebar (lg+) ── */}
       <aside
-        style={{ width: sidebarCollapsed ? "52px" : `${sidebarWidth}px` }}
-        className="hidden lg:flex flex-col relative shrink-0 h-screen sticky top-0 bg-card dark:bg-zinc-900 border-r border-border overflow-hidden"
+        style={{ width: sidebarCollapsed ? "52px" : `${sidebarWidth}px`, paddingTop: "env(safe-area-inset-top)" }}
+        className="hidden xl:flex flex-col relative shrink-0 h-screen sticky top-0 bg-card dark:bg-zinc-900 border-r border-border overflow-hidden"
       >
         <SidebarContent />
         {/* Drag-to-resize handle */}
@@ -1487,8 +1491,8 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
       {/* ── Mobile Sidebar Drawer (< lg) ── */}
       {sidebarOpen && (
         <>
-          <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <aside className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[240px] max-w-[82vw] flex flex-col bg-card dark:bg-zinc-900 border-r border-border shadow-xl overflow-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+          <div className="xl:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          <aside className="xl:hidden fixed left-0 top-0 bottom-0 z-50 w-[240px] max-w-[82vw] flex flex-col bg-card dark:bg-zinc-900 border-r border-border shadow-xl overflow-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
             <SidebarContent isMobileDrawer />
           </aside>
         </>
@@ -1506,7 +1510,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Button
               variant="ghost" size="sm"
-              className="lg:hidden -ml-1 text-muted-foreground hover:text-foreground hover:bg-muted h-8 w-8 p-0"
+              className="xl:hidden -ml-1 text-muted-foreground hover:text-foreground hover:bg-muted h-8 w-8 p-0"
               onClick={() => setSidebarOpen(true)}
               data-testid="button-sidebar-open"
             >

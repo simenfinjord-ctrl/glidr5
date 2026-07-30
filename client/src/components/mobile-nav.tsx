@@ -41,7 +41,7 @@ const ALL_NAV = [
 ];
 
 // Primary tabs always shown in the bottom bar (the rest go in "More").
-const PRIMARY_HREFS = ["/dashboard", "/tests", "/raceskis", "/kick"];
+const PRIMARY_HREFS = ["/dashboard", "/tests", "/weather", "/products"];
 
 export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
   const [location] = useLocation();

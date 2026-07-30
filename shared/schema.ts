@@ -337,6 +337,10 @@ export const testSkiSeries = pgTable("test_ski_series", {
   archivedAt: text("archived_at"),
   actionStatus: text("action_status"),       // Need regrind / In for regrind / Grinded / In use
   actionLocation: text("action_location"),   // where it's in for regrind
+  // Who last edited this record, and when — created_by only says who started it.
+  updatedAt: text("updated_at"),
+  updatedById: integer("updated_by_id"),
+  updatedByName: text("updated_by_name"),
 });
 
 export const insertSeriesSchema = createInsertSchema(testSkiSeries).omit({ id: true });
@@ -362,6 +366,10 @@ export const products = pgTable("products", {
   serialNumber: text("serial_number"),
   isMix: integer("is_mix").notNull().default(0),
   recipe: text("recipe"),
+  // Who last edited this record, and when — created_by only says who started it.
+  updatedAt: text("updated_at"),
+  updatedById: integer("updated_by_id"),
+  updatedByName: text("updated_by_name"),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
@@ -393,6 +401,10 @@ export const dailyWeather = pgTable("daily_weather", {
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
   teamId: integer("team_id").notNull().default(1),
+  // Who last edited this record, and when — created_by only says who started it.
+  updatedAt: text("updated_at"),
+  updatedById: integer("updated_by_id"),
+  updatedByName: text("updated_by_name"),
 });
 
 export const insertWeatherSchema = createInsertSchema(dailyWeather).omit({ id: true });
@@ -423,6 +435,10 @@ export const tests = pgTable("tests", {
   noWeather: integer("no_weather").notNull().default(0), // "Do not add weather" — excluded from missing-weather counts
   watchOperatorName: text("watch_operator_name"), // name of person who ran the test on watch
   startTime: text("start_time"), // HH:MM format
+  // Who last edited this record, and when — created_by only says who started it.
+  updatedAt: text("updated_at"),
+  updatedById: integer("updated_by_id"),
+  updatedByName: text("updated_by_name"),
 });
 
 export const insertTestSchema = createInsertSchema(tests).omit({ id: true, runsheetBracket: true });
@@ -639,6 +655,10 @@ export const raceSkis = pgTable("race_skis", {
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
+  // Who last edited this record, and when — created_by only says who started it.
+  updatedAt: text("updated_at"),
+  updatedById: integer("updated_by_id"),
+  updatedByName: text("updated_by_name"),
 });
 
 export const insertRaceSkiSchema = createInsertSchema(raceSkis).omit({ id: true });

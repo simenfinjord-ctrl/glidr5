@@ -9,6 +9,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star, Wifi, WifiOff, LayoutGrid, List, Search, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+import { LastEdited } from "@/components/last-edited";
 import { AppLink } from "@/components/app-link";
 import { EmptyState } from "@/components/empty-state";
 import { SkeletonCards } from "@/components/skeleton-card";
@@ -1394,6 +1395,7 @@ export default function WeatherPage() {
                         {w.groupScope}
                       </span>
                     </div>
+                    <LastEdited record={w as any} className="mt-0.5" />
                   </div>
 
                   <div className="flex items-center gap-1.5">

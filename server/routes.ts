@@ -207,6 +207,22 @@ async function refreshPerTeamAccess(req: Request): Promise<void> {
   }
 }
 
+// Who last touched a record, and when. "Who changed this?" is the most common
+// disagreement on a team with several waxers, and created_by only answers who
+// started it. The table name is always a literal from our own code, never input.
+const EDIT_STAMPED = new Set(["tests", "products", "test_ski_series", "race_skis", "daily_weather"]);
+async function stampEdit(table: string, id: number | null | undefined, req: Request): Promise<void> {
+  if (!id || !EDIT_STAMPED.has(table)) return;
+  try {
+    const u = req.user;
+    if (!u) return;
+    const { pool: pgE } = await import("./db");
+    await (pgE as any).query(
+      `UPDATE ${table} SET updated_at = $1, updated_by_id = $2, updated_by_name = $3 WHERE id = $4`,
+      [new Date().toISOString(), u.id, u.name, id]);
+  } catch (e) { console.error(`[stampEdit] ${table} failed:`, e); }
+}
+
 function getEffectivePermissionsStr(req: Request): string {
   // Per-team permissions override global permissions when viewing a non-primary team
   const sessionPerms = (req.session as any)?.effectivePermissions;
@@ -884,6 +900,21 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS date_format TEXT DEFAULT 'european';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_unit TEXT DEFAULT 'C';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
+      ALTER TABLE tests ADD COLUMN IF NOT EXISTS updated_at TEXT;
+      ALTER TABLE tests ADD COLUMN IF NOT EXISTS updated_by_id INTEGER;
+      ALTER TABLE tests ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_by_id INTEGER;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
+      ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS updated_at TEXT;
+      ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS updated_by_id INTEGER;
+      ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS updated_at TEXT;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS updated_by_id INTEGER;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
+      ALTER TABLE daily_weather ADD COLUMN IF NOT EXISTS updated_at TEXT;
+      ALTER TABLE daily_weather ADD COLUMN IF NOT EXISTS updated_by_id INTEGER;
+      ALTER TABLE daily_weather ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Europe/Oslo';
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NOK';
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS vat_exempt INTEGER NOT NULL DEFAULT 0;
@@ -2682,6 +2713,7 @@ export async function registerRoutes(
     if (req.body.skiType !== undefined) data.skiType = req.body.skiType;
     if (req.body.groupScope) data.groupScope = req.body.groupScope;
     const updated = await storage.updateSeries(id, data);
+    await stampEdit("test_ski_series", id, req);
     res.json(updated);
   });
 
@@ -2695,6 +2727,7 @@ export async function registerRoutes(
       actionStatus: req.body.actionStatus || null,
       actionLocation: req.body.actionLocation || null,
     } as any);
+    await stampEdit("test_ski_series", id, req);
     res.json(updated);
   });
 
@@ -2853,6 +2886,7 @@ export async function registerRoutes(
     const updated = await storage.updateProduct(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     await recordChange(req, "product", id, `Product edited: ${existing.brand ?? ""} ${existing.name ?? ""}`.trim(), existing, updated);
+    await stampEdit("products", id, req);
     res.json(updated);
   });
 
@@ -2894,6 +2928,7 @@ export async function registerRoutes(
         });
       } catch (_) {}
     }
+    await stampEdit("products", id, req);
     res.json(updated);
   });
 
@@ -3021,6 +3056,7 @@ export async function registerRoutes(
       const { schedulePushProductToSheet } = await import("./productSync");
       schedulePushProductToSheet(existing.teamId, id);
     } catch {}
+    await stampEdit("products", id, req);
     res.json(updated);
   });
   app.delete("/api/products/:id", requirePermission("products", "edit"), async (req, res) => {
@@ -3497,6 +3533,7 @@ export async function registerRoutes(
       snowType: req.body.snowType?.trim() || null,
     });
     await recordChange(req, "weather", id, `Weather edited: ${existing.location} (${existing.date})`, existing, updated);
+    await stampEdit("daily_weather", id, req);
     res.json(updated);
   });
 
@@ -4374,6 +4411,7 @@ export async function registerRoutes(
       }
     }
 
+    await stampEdit("tests", id, req);
     res.json(updated);
   });
 
@@ -4395,6 +4433,7 @@ export async function registerRoutes(
     const noWeather = req.body.noWeather ? 1 : 0;
     const weatherId = noWeather ? null : (req.body.weatherId ? parseInt(req.body.weatherId) : null);
     await (pool as any).query(`UPDATE tests SET weather_id = $1, no_weather = $2 WHERE id = $3`, [weatherId, noWeather, id]);
+    await stampEdit("tests", id, req);
     res.json({ ok: true });
   });
 
@@ -4412,6 +4451,7 @@ export async function registerRoutes(
         [r.feelingRank ?? null, r.feelingNote || null, parseInt(r.entryId), testId]
       );
     }
+    await stampEdit("tests", testId, req);
     res.json({ ok: true });
   });
 
@@ -4463,6 +4503,7 @@ export async function registerRoutes(
       });
     }
 
+    await stampEdit("tests", id, req);
     res.json({ success: true });
   });
 
@@ -9231,7 +9272,8 @@ export async function registerRoutes(
       `SELECT id, serial_number AS "serialNumber", ski_id AS "skiId", brand, discipline, construction, mold, base,
               grind, heights, year, length, type_of_ski AS "typeOfSki", where_received AS "whereReceived", notes,
               is_training_ski AS "isTrainingSki", is_sitski AS "isSitski", custom_params AS "customParams",
-              archived_at AS "archivedAt", created_at AS "createdAt", created_by_name AS "createdByName"
+              archived_at AS "archivedAt", created_at AS "createdAt", created_by_name AS "createdByName",
+              updated_at AS "updatedAt", updated_by_name AS "updatedByName"
        FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 ORDER BY id DESC`, [teamId]);
 
     // A ski register that only lists specifications answers the wrong question.
@@ -9313,6 +9355,7 @@ export async function registerRoutes(
     if (sets.length === 0) return res.json({ ok: true });
     vals.push(id);
     await (pool as any).query(`UPDATE race_skis SET ${sets.join(", ")} WHERE id = $${vals.length}`, vals);
+    await stampEdit("race_skis", id, req);
     res.json({ ok: true });
   });
 
@@ -9356,6 +9399,7 @@ export async function registerRoutes(
     if (req.body.customParams !== undefined) data.customParams = req.body.customParams;
     const updated = await storage.updateRaceSki(id, data);
     await recordChange(req, "race_ski", id, `Race ski edited: ${ski.skiId}${ski.brand ? ` (${ski.brand})` : ""}`, ski, updated);
+    await stampEdit("race_skis", id, req);
     res.json(updated);
   });
 

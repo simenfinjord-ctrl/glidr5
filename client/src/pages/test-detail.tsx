@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { AppShell } from "@/components/app-shell";
+import { LastEdited } from "@/components/last-edited";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1478,6 +1479,7 @@ export default function TestDetail() {
                 <div className="rounded-xl bg-background/40 px-3 py-2.5">
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("common.created")} {t("common.by")}</div>
                   <div className="text-sm font-medium" data-testid="text-test-created-by">{test.createdByName}</div>
+                  <LastEdited record={test as any} className="mt-0.5" />
                 </div>
               </div>
               {distLabels.length > 0 && (

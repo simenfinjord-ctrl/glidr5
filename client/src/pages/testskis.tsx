@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown, Archive, RotateCcw, Trash2, Filter, ChevronDown, FlaskConical, CalendarClock, Wrench } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
+import { LastEdited } from "@/components/last-edited";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -730,6 +731,7 @@ export default function TestSkis() {
                     <div className="mt-1 text-xs text-muted-foreground/60">
                       {s.createdByName} · {s.groupScope}
                     </div>
+                    <LastEdited record={s as any} />
                     <div className="mt-2">
                       <SeriesActionStatus series={s} />
                     </div>

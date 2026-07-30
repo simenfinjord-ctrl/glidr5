@@ -19,6 +19,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { LastEdited } from "@/components/last-edited";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -418,6 +419,7 @@ function ProductDetailInner() {
                   {L("Lagt til av", "Added by")} {product.createdByName}
                 </span>
               )}
+              <LastEdited record={product as any} />
             </div>
           )}
         </div>

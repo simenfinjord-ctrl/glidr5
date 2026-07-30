@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Boxes, Pencil, Trash2, Accessibility, FlaskConical, Trophy, Wrench } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
+import { LastEdited } from "@/components/last-edited";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -205,6 +206,7 @@ export default function RaceFleet() {
                       })()}
                     </div>
                     {s.notes && <div className="mt-1 text-[11px] text-muted-foreground italic">{s.notes}</div>}
+                    <LastEdited record={s as any} className="mt-1" />
                   </div>
                   {canEdit && (
                     <div className="flex items-center gap-1 shrink-0">

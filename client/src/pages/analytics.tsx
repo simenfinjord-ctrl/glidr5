@@ -4133,7 +4133,14 @@ export default function Analytics() {
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { can } = useAuth();
   const { lang } = useLanguage();
-  const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+  const { data: tests = [] } = useQuery<Test[]>({
+    queryKey: ["/api/tests"],
+    // Analytics is a reporting surface: stale rows read as bugs (a deleted
+    // test lingering in Test locations), so re-read on every visit — also
+    // when the deletion happened in another browser tab.
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   // Archived products still own their history — load them for NAME LOOKUP only,
   // so analytics shows "Swix … (arkivert)" instead of a bare database id.

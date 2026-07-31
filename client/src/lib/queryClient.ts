@@ -127,7 +127,15 @@ export const getQueryFn: <T>(options: {
 
       return data;
     } catch (err) {
-      if (!navigator.onLine) {
+      // Fall back to the local copy on any NETWORK-shaped failure, not only
+      // when navigator.onLine is false. The field case is precisely the
+      // opposite: connected to a mast, but no data gets through — fetch
+      // throws or times out while onLine still reads true. Real server
+      // answers (401/403/404, validation errors) are NOT network failures
+      // and must keep throwing, or stale data would mask revoked access.
+      const msg = err instanceof Error ? err.message : "";
+      const isServerAnswer = /^\d{3}:/.test(msg) && !msg.startsWith("503:");
+      if (!isServerAnswer) {
         const cached = await getCachedData(cacheKey);
         if (cached !== null) return cached;
       }

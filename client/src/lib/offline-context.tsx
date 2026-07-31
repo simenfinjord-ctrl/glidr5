@@ -42,13 +42,14 @@ const PREFETCH_KEYS = [
   "/api/tests",
   "/api/products",
   "/api/weather",
-  "/api/user",
-  "/api/skis",
   "/api/athletes",
   "/api/groups",
-  "/api/testskis",
-  "/api/race-prep",
-  "/api/suggestions",
+  "/api/series",
+  "/api/race-preps",
+  "/api/race-skis/all",
+  "/api/grinding",
+  "/api/kick-tests",
+  "/api/kick-skis",
 ];
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
@@ -96,7 +97,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const syncNow = useCallback(async () => {
-    if (syncingRef.current || !navigator.onLine) return;
+    if (syncingRef.current) return;
     syncingRef.current = true;
     setIsSyncing(true);
 
@@ -234,6 +235,22 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(prefetch, 3000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Drain the queue on app start (writes queued in a previous session), when
+  // the app comes back to the foreground, and on a slow interval while
+  // anything is pending — the 'online' event alone misses all three: a sync
+  // that broke midway, and the field case where onLine never went false.
+  useEffect(() => {
+    const t = setTimeout(() => { syncNow(); }, 2000);
+    return () => clearTimeout(t);
+  }, [syncNow]);
+  useEffect(() => {
+    if (pendingCount === 0) return;
+    const iv = setInterval(() => { syncNow(); }, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") syncNow(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVisible); };
+  }, [pendingCount, syncNow]);
 
   useEffect(() => {
     const handleOnline = () => {

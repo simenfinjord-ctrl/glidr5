@@ -886,7 +886,9 @@ export default function Dashboard() {
               {attention!.items.map((it) => {
                 const label: Record<string, string> = {
                   missingWeather: L("tester mangler vær", "tests missing weather"),
+                  missingWeatherAthlete: L("utøvertester mangler vær", "athlete tests missing weather"),
                   noResults: L("tester uten resultater", "tests without results"),
+                  noResultsAthlete: L("utøvertester uten resultater", "athlete tests without results"),
                   needRegrind: L("fleet trenger sliping", "fleets need regrinding"),
                   outOfStock: L("produkter tomme på lager", "products out of stock"),
                   onOrder: L("produkter i bestilling", "products on order"),

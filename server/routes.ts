@@ -2595,10 +2595,18 @@ export async function registerRoutes(
     // Weather is what makes a test reusable later; a test without it decays
     // into an anecdote. Only recent ones — old gaps can no longer be filled.
     const since = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+    // Split by source: the Tests page only shows series tests, so a count that
+    // includes athlete tests would point at a page where they cannot be found.
     const missingWeather = await one(
       `SELECT COUNT(*)::int AS n FROM tests
-       WHERE team_id = $1 AND weather_id IS NULL AND no_weather = 0 AND date >= $2`, [teamId, since]);
+       WHERE team_id = $1 AND weather_id IS NULL AND no_weather = 0 AND date >= $2
+         AND COALESCE(test_ski_source, 'series') <> 'raceskis'`, [teamId, since]);
     if (missingWeather && may("tests")) items.push({ key: "missingWeather", count: missingWeather, href: "/tests", severity: "warn" });
+    const missingWeatherAthlete = await one(
+      `SELECT COUNT(*)::int AS n FROM tests
+       WHERE team_id = $1 AND weather_id IS NULL AND no_weather = 0 AND date >= $2
+         AND test_ski_source = 'raceskis'`, [teamId, since]);
+    if (missingWeatherAthlete && may("raceskis")) items.push({ key: "missingWeatherAthlete", count: missingWeatherAthlete, href: "/raceskis", severity: "warn" });
 
     const needRegrind = await one(
       `SELECT COUNT(*)::int AS n FROM test_ski_series
@@ -2617,14 +2625,16 @@ export async function registerRoutes(
 
     // Tests that were set up but never got results — easy to forget after a
     // travel day, and worthless until someone enters the numbers.
-    const noResults = await one(
+    const noResultsSql = (src: string) =>
       `SELECT COUNT(*)::int AS n FROM tests t
-       WHERE t.team_id = $1 AND t.date >= $2
+       WHERE t.team_id = $1 AND t.date >= $2 AND ${src}
          AND EXISTS (SELECT 1 FROM test_entries e WHERE e.test_id = t.id)
          AND NOT EXISTS (SELECT 1 FROM test_entries e WHERE e.test_id = t.id
-                         AND (e.result_0km_cm_behind IS NOT NULL OR e.rank_0km IS NOT NULL))`,
-      [teamId, since]);
+                         AND (e.result_0km_cm_behind IS NOT NULL OR e.rank_0km IS NOT NULL))`;
+    const noResults = await one(noResultsSql(`COALESCE(t.test_ski_source, 'series') <> 'raceskis'`), [teamId, since]);
     if (noResults && may("tests")) items.push({ key: "noResults", count: noResults, href: "/tests", severity: "warn" });
+    const noResultsAthlete = await one(noResultsSql(`t.test_ski_source = 'raceskis'`), [teamId, since]);
+    if (noResultsAthlete && may("raceskis")) items.push({ key: "noResultsAthlete", count: noResultsAthlete, href: "/raceskis", severity: "warn" });
 
     if (canManageTeam(req)) {
       const joins = await one(

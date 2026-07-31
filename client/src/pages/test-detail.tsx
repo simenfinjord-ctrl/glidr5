@@ -870,6 +870,47 @@ export default function TestDetail() {
 
   const distLabels = test ? getDistanceLabels(test) : ["0 km"];
 
+  // ── Rank round (#multi-round): with several rounds, the stored rank comes
+  // from round 1 only. The waxer must be able to rank by any single round, or
+  // by the average — a pair that is consistently second everywhere can be the
+  // better race choice than one that won round 1 and died in round 2.
+  const [rankRound, setRankRound] = useState<string>("0");
+  const rankRoundSafe = rankRound === "avg" ? "avg" : String(Math.min(parseInt(rankRound) || 0, Math.max(0, distLabels.length - 1)));
+  const diffRanks = useMemo(() => {
+    const n = distLabels.length;
+    const rows = entries.map((e) => {
+      const rounds = getEntryRounds(e, n);
+      const present = rounds.map((r) => r.result).filter((v): v is number => v != null);
+      const avg = present.length ? present.reduce((a, b) => a + b, 0) / present.length : null;
+      return { id: e.id, rounds, avg };
+    });
+    // Competition ranking with ties (equal value → equal rank).
+    const rankOf = (vals: { id: number; v: number | null }[]) => {
+      const m = new Map<number, number | null>();
+      const withVal = vals.filter((x) => x.v != null).sort((a, b) => a.v! - b.v!);
+      let rank = 0, prev: number | null = null;
+      withVal.forEach((x, i) => {
+        if (prev == null || x.v! > prev) rank = i + 1;
+        prev = x.v!;
+        m.set(x.id, rank);
+      });
+      vals.forEach((x) => { if (!m.has(x.id)) m.set(x.id, null); });
+      return m;
+    };
+    const perRound: Map<number, number | null>[] = [];
+    for (let i = 0; i < n; i++) perRound.push(rankOf(rows.map((r) => ({ id: r.id, v: r.rounds[i]?.result ?? null }))));
+    const avgRank = rankOf(rows.map((r) => ({ id: r.id, v: r.avg })));
+    return { perRound, avgRank, avgById: new Map(rows.map((r) => [r.id, r.avg])) };
+  }, [entries, distLabels.length]);
+  // The displayed diff-rank for an entry under the chosen round basis. Round 1
+  // keeps the stored rank (what analytics uses); other bases are view-only.
+  function diffRankOf(entry: TestEntry): number | null {
+    if (rankRoundSafe === "avg") return diffRanks.avgRank.get(entry.id) ?? null;
+    const i = parseInt(rankRoundSafe) || 0;
+    if (i === 0) return getEntryRounds(entry, distLabels.length)[0]?.rank ?? diffRanks.perRound[0]?.get(entry.id) ?? null;
+    return getEntryRounds(entry, distLabels.length)[i]?.rank ?? diffRanks.perRound[i]?.get(entry.id) ?? null;
+  }
+
   // ── Sortable results (#16) — remembered per waxer across tests ───────────────
   const [testSort, setTestSort] = useState<string>(() => {
     try { return localStorage.getItem("glidr-raceski-test-sort") || "skiNumber|asc"; } catch { return "skiNumber|asc"; }
@@ -889,7 +930,7 @@ export default function TestDetail() {
   function testSortVal(entry: TestEntry, key: string): number | string {
     const rounds = getEntryRounds(entry, distLabels.length);
     if (key === "skiNumber") return skiLabels?.[entry.skiNumber] ?? entry.skiNumber;
-    if (key === "rank") return rounds[0]?.rank ?? Number.POSITIVE_INFINITY;
+    if (key === "rank") return diffRankOf(entry) ?? Number.POSITIVE_INFINITY;
     if (key === "feeling") return entry.feelingRank ?? Number.POSITIVE_INFINITY;
     if (key === "kick") return (entry as any).kickRank ?? Number.POSITIVE_INFINITY;
     if (key.startsWith("diff")) { const i = parseInt(key.slice(4)) || 0; const v = rounds[i]?.result; return v ?? Number.POSITIVE_INFINITY; }
@@ -914,7 +955,7 @@ export default function TestDetail() {
     });
     return arr;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, testSort, skiLabels, distLabels.length, raceSkiByIdSort]);
+  }, [entries, testSort, skiLabels, distLabels.length, raceSkiByIdSort, rankRoundSafe, diffRanks]);
 
   // ── Rank basis (#36): diff vs feeling. Diff-rank is ALWAYS what analytics
   // uses (rank0km on the entries); this toggle only changes what the Rank column
@@ -1764,7 +1805,28 @@ export default function TestDetail() {
                         {(label?.trim() || `Round ${i + 1}`)} ({t("tests.cmBehind")}){testSortArrow(`diff${i}`)}
                       </th>
                     ))}
-                    <th className="pb-3 pr-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("rank")}>{t("common.rank")}{testSortArrow("rank")}</th>
+                    <th className="pb-3 pr-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("rank")}>
+                      {distLabels.length > 1 ? (
+                        /* With several rounds the header itself picks the rank
+                           basis: any round, or the average across them. */
+                        <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Select value={rankRoundSafe} onValueChange={setRankRound}>
+                            <SelectTrigger className="h-6 w-auto gap-1 border-dashed px-1.5 text-xs uppercase tracking-wider" data-testid="select-rank-round">
+                              {t("common.rank")}: <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {distLabels.map((label, i) => (
+                                <SelectItem key={i} value={String(i)}>{label?.trim() || `${L("Runde", "Round")} ${i + 1}`}</SelectItem>
+                              ))}
+                              <SelectItem value="avg">{L("Snitt", "Average")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <span onClick={() => toggleTestSort("rank")}>{testSortArrow("rank") || "↕"}</span>
+                        </span>
+                      ) : (
+                        <>{t("common.rank")}{testSortArrow("rank")}</>
+                      )}
+                    </th>
                     <th className="pb-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("feeling")}>{t("newTest.feeling")}{testSortArrow("feeling")}</th>
                     {isClassic && <th className="pb-3 pl-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("kick")}>{t("newTest.kick")}{testSortArrow("kick")}</th>}
                   </tr>
@@ -1792,9 +1854,10 @@ export default function TestDetail() {
                     ].filter((x): x is { name: string; app: string } => !!x);
 
                     const rounds = getEntryRounds(entry, distLabels.length);
-                    const firstRank = rounds[0]?.rank ?? null;
-                    // Displayed rank follows the chosen basis; analytics still uses diff (firstRank).
-                    const displayRank = rankBothAvailable && rankBasis === "feel" ? (entry.feelingRank ?? null) : firstRank;
+                    // Displayed rank follows the chosen basis (feel, a specific
+                    // round, or the average); analytics still uses round 1.
+                    const displayRank = rankBothAvailable && rankBasis === "feel" ? (entry.feelingRank ?? null) : diffRankOf(entry);
+                    const avgValue = rankRoundSafe === "avg" ? diffRanks.avgById.get(entry.id) ?? null : null;
 
                     return (
                       <tr
@@ -1847,7 +1910,14 @@ export default function TestDetail() {
                         ))}
                         <td className="py-3 pr-3" data-label={t("common.rank")}>
                           <div className="flex items-center gap-2">
-                            <RankBadge rank={displayRank} size="lg" />
+                            <div className="flex flex-col items-center gap-0.5">
+                              <RankBadge rank={displayRank} size="lg" />
+                              {avgValue != null && (
+                                <span className="font-mono text-[10px] text-muted-foreground" data-testid={`text-avg-${entry.id}`}>
+                                  Ø {Math.round(avgValue * 10) / 10}
+                                </span>
+                              )}
+                            </div>
                             {!hideDetails && displayRank === 1 && (
                               <span
                                 className="rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 ring-1 ring-emerald-500/30"

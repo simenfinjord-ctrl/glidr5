@@ -370,6 +370,26 @@ export default function Dashboard() {
   const { data: attention } = useQuery<{ items: { key: string; count: number; href: string; severity: "warn" | "info" }[] }>({
     queryKey: ["/api/dashboard/attention"],
   });
+  // Dismissed warnings, per device. A dismissal remembers the count it was
+  // dismissed at: the chip stays hidden while the number stands still or
+  // shrinks, but comes back the moment it GROWS — new problems must never be
+  // muted by an old decision.
+  const [attnDismissed, setAttnDismissed] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("glidr-attention-dismissed") || "{}"); } catch { return {}; }
+  });
+  const dismissAttn = (key: string, count: number) => {
+    setAttnDismissed((prev) => {
+      const next = { ...prev, [key]: count };
+      try { localStorage.setItem("glidr-attention-dismissed", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  const restoreAttn = () => {
+    setAttnDismissed({});
+    try { localStorage.removeItem("glidr-attention-dismissed"); } catch {}
+  };
+  const attnVisible = (attention?.items ?? []).filter((it) => !(it.key in attnDismissed) || it.count > attnDismissed[it.key]);
+  const attnHiddenCount = (attention?.items.length ?? 0) - attnVisible.length;
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
@@ -876,14 +896,21 @@ export default function Dashboard() {
 
         {/* What is waiting for someone. These facts live on five different
             pages, so nobody sees them until they go looking. */}
-        {isWidgetEnabled("attention") && (attention?.items.length ?? 0) > 0 && (
+        {isWidgetEnabled("attention") && attnVisible.length > 0 && (
           <Card className="fs-card rounded-2xl p-4" data-testid="card-attention">
             <div className="mb-2.5 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <h2 className="text-sm font-semibold">{L("Krever oppmerksomhet", "Needs attention")}</h2>
+              {attnHiddenCount > 0 && (
+                <button type="button" onClick={restoreAttn}
+                  className="ml-auto text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  data-testid="button-restore-attention">
+                  {L(`${attnHiddenCount} skjult — vis igjen`, `${attnHiddenCount} hidden — show again`)}
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
-              {attention!.items.map((it) => {
+              {attnVisible.map((it) => {
                 const label: Record<string, string> = {
                   missingWeather: L("tester mangler vær", "tests missing weather"),
                   missingWeatherAthlete: L("utøvertester mangler vær", "athlete tests missing weather"),
@@ -895,17 +922,25 @@ export default function Dashboard() {
                   joinRequests: L("forespørsler om lagtilgang", "team access requests"),
                 };
                 return (
-                  <AppLink key={it.key} href={it.href} testId={`attention-${it.key}`}>
-                    <span className={cn(
-                      "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium ring-1 transition-colors",
-                      it.severity === "warn"
-                        ? "bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900"
-                        : "bg-muted text-muted-foreground ring-border hover:bg-muted/70",
-                    )}>
+                  <span key={it.key} className={cn(
+                    "inline-flex items-center rounded-xl text-xs font-medium ring-1 transition-colors",
+                    it.severity === "warn"
+                      ? "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900"
+                      : "bg-muted text-muted-foreground ring-border",
+                  )}>
+                    <AppLink href={it.href} testId={`attention-${it.key}`}
+                      className="inline-flex items-center gap-1.5 rounded-l-xl px-3 py-1.5 hover:bg-amber-100/70 dark:hover:bg-amber-900/30">
                       <span className="font-bold tabular-nums">{it.count}</span>
                       {label[it.key] ?? it.key}
-                    </span>
-                  </AppLink>
+                    </AppLink>
+                    <button type="button"
+                      onClick={() => dismissAttn(it.key, it.count)}
+                      className="rounded-r-xl px-1.5 py-1.5 opacity-50 transition-opacity hover:opacity-100"
+                      title={L("Skjul dette varselet til antallet øker", "Hide this warning until the number grows")}
+                      data-testid={`dismiss-attention-${it.key}`}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
                 );
               })}
             </div>

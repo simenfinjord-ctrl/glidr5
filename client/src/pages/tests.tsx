@@ -1307,6 +1307,11 @@ export default function Tests() {
   // final list — a date only shows as a chip if it actually has a matching test.
   const filteredIgnoringDay = useMemo(() => {
     return tests.filter((t) => {
+      // Attention mode promises "exactly the counted tests" — the page's own
+      // filters must not eat them. Without it, a grind test missing weather
+      // was counted by the banner but hidden by the grind-only-in-grind-view
+      // rule below, leaving a banner saying 2 over a list saying none.
+      if (attentionMode) return canViewGrinding || t.testType !== "Grind";
       if (t.testType === "Grind" && !(canViewGrinding && filterType === "Grind")) return false;
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterType !== "All" && t.testType !== filterType) return false;
@@ -1358,7 +1363,7 @@ export default function Tests() {
 
       return true;
     });
-  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, filterTrackHardness, filterSnowHumidityType, filterGrainSize, filterArtSnow, filterNatSnow, filterPrecipitation, filterWind, filterVisibility, filterCloudMin, filterCloudMax, allEntries, weatherById, canViewGrinding]);
+  }, [tests, attentionMode, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, filterTrackHardness, filterSnowHumidityType, filterGrainSize, filterArtSnow, filterNatSnow, filterPrecipitation, filterWind, filterVisibility, filterCloudMin, filterCloudMax, allEntries, weatherById, canViewGrinding]);
 
   const availableDates = useMemo(() => {
     const dates = Array.from(new Set(filteredIgnoringDay.map((t) => t.date)));
@@ -1409,7 +1414,7 @@ export default function Tests() {
   }, [tests, allEntries, productsById]);
 
   const filtered = useMemo(() => {
-    const result = quickDayDate
+    const result = quickDayDate && !attentionMode
       ? filteredIgnoringDay.filter((t) => t.date === quickDayDate)
       : [...filteredIgnoringDay];
 
@@ -1429,7 +1434,7 @@ export default function Tests() {
     });
 
     return result;
-  }, [filteredIgnoringDay, quickDayDate, sortOrder]);
+  }, [filteredIgnoringDay, quickDayDate, attentionMode, sortOrder]);
 
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || (filterDateFrom || filterDateTo) || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax || filterTrackHardness || filterSnowHumidityType || filterGrainSize || filterArtSnow || filterNatSnow || filterPrecipitation || filterWind || filterVisibility || filterCloudMin || filterCloudMax;
 
@@ -1538,10 +1543,10 @@ export default function Tests() {
               <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <span>
                 {attentionMode.kind === "missing-weather"
-                  ? L(`Viser ${tests.length} ${attentionMode.athletes ? "utøvertester" : "tester"} fra de siste 60 dagene som mangler værdata.`,
-                      `Showing ${tests.length} ${attentionMode.athletes ? "athlete tests" : "tests"} from the last 60 days missing weather data.`)
-                  : L(`Viser ${tests.length} ${attentionMode.athletes ? "utøvertester" : "tester"} fra de siste 60 dagene uten registrerte resultater.`,
-                      `Showing ${tests.length} ${attentionMode.athletes ? "athlete tests" : "tests"} from the last 60 days without recorded results.`)}
+                  ? L(`Viser ${filteredIgnoringDay.length} ${attentionMode.athletes ? "utøvertester" : "tester"} fra de siste 60 dagene som mangler værdata.`,
+                      `Showing ${filteredIgnoringDay.length} ${attentionMode.athletes ? "athlete tests" : "tests"} from the last 60 days missing weather data.`)
+                  : L(`Viser ${filteredIgnoringDay.length} ${attentionMode.athletes ? "utøvertester" : "tester"} fra de siste 60 dagene uten registrerte resultater.`,
+                      `Showing ${filteredIgnoringDay.length} ${attentionMode.athletes ? "athlete tests" : "tests"} from the last 60 days without recorded results.`)}
               </span>
               <button type="button" onClick={clearAttention}
                 className="ml-auto text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900 dark:text-amber-300"

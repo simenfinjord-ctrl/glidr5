@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState, useRef, useCallback, useEffect } from "rea
 import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
-import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar, GitCompare } from "lucide-react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar, GitCompare, AlertTriangle } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -1193,19 +1193,60 @@ export default function Tests() {
   const { isBlindTester, can } = useAuth();
   const canViewGrinding = can("grinding", "view");
   const { data: allTests = [], isLoading: testsLoading } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+
+  // Attention mode: the dashboard's warning chips deep-link here with a query
+  // string, and the page must then show EXACTLY the tests that were counted —
+  // including athlete tests, which are otherwise never listed on this page.
+  const [attentionMode, setAttentionMode] = useState<{ kind: "missing-weather" | "no-results"; athletes: boolean } | null>(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const a = q.get("attention");
+      if (a !== "missing-weather" && a !== "no-results") return null;
+      return { kind: a, athletes: q.get("scope") === "athletes" };
+    } catch { return null; }
+  });
+  const clearAttention = () => {
+    setAttentionMode(null);
+    try { window.history.replaceState(null, "", "/tests"); } catch {}
+  };
+
   // Race-ski (athlete) tests live under Race Skis only — never show them in the
-  // general Tests list (avoids the confusion of #17).
-  const tests = useMemo(() => allTests.filter((t) => (t as any).testSkiSource !== "raceskis"), [allTests]);
+  // general Tests list (avoids the confusion of #17) — EXCEPT in attention
+  // mode with scope=athletes, where they are precisely the subject.
+  const testsBase = useMemo(() => {
+    const base = attentionMode?.athletes
+      ? allTests.filter((t) => (t as any).testSkiSource === "raceskis")
+      : allTests.filter((t) => (t as any).testSkiSource !== "raceskis");
+    if (!attentionMode) return base;
+    // Same window as the dashboard count: recent tests only.
+    const since = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+    const recent = base.filter((t) => t.date >= since);
+    if (attentionMode.kind === "missing-weather") {
+      return recent.filter((t) => t.weatherId == null && !(t as any).noWeather);
+    }
+    return recent; // no-results narrows below, once the entries have loaded
+  }, [allTests, attentionMode]);
+
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });
 
-  const allTestIds = tests.map((t) => t.id);
+  const allTestIds = testsBase.map((t) => t.id);
   const { data: allEntries = [] } = useQuery<TestEntry[]>({
     queryKey: ["/api/tests/entries/all", allTestIds],
     queryFn: () => fetchEntriesBulk(allTestIds),
     enabled: allTestIds.length > 0,
   });
+
+  const tests = useMemo(() => {
+    if (attentionMode?.kind !== "no-results") return testsBase;
+    const hasEntry = new Set<number>(), hasResult = new Set<number>();
+    for (const e of allEntries) {
+      hasEntry.add(e.testId);
+      if (e.result0kmCmBehind != null || e.rank0km != null) hasResult.add(e.testId);
+    }
+    return testsBase.filter((t) => hasEntry.has(t.id) && !hasResult.has(t.id));
+  }, [testsBase, allEntries, attentionMode]);
 
   const [fromPictureOpen, setFromPictureOpen] = useState(false);
 
@@ -1490,6 +1531,26 @@ export default function Tests() {
             </AppLink>
           </div>
         </div>
+
+        {attentionMode && (
+          <Card className="fs-card rounded-2xl border-amber-300/60 bg-amber-50/60 p-3.5 dark:bg-amber-950/20" data-testid="banner-attention">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                {attentionMode.kind === "missing-weather"
+                  ? L(`Viser ${tests.length} ${attentionMode.athletes ? "utøvertester" : "tester"} fra de siste 60 dagene som mangler værdata.`,
+                      `Showing ${tests.length} ${attentionMode.athletes ? "athlete tests" : "tests"} from the last 60 days missing weather data.`)
+                  : L(`Viser ${tests.length} ${attentionMode.athletes ? "utøvertester" : "tester"} fra de siste 60 dagene uten registrerte resultater.`,
+                      `Showing ${tests.length} ${attentionMode.athletes ? "athlete tests" : "tests"} from the last 60 days without recorded results.`)}
+              </span>
+              <button type="button" onClick={clearAttention}
+                className="ml-auto text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900 dark:text-amber-300"
+                data-testid="button-clear-attention">
+                {L("Vis alle tester", "Show all tests")}
+              </button>
+            </div>
+          </Card>
+        )}
 
         <Card className="fs-card rounded-2xl p-4">
           {/* Filter toggle */}

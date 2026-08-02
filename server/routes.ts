@@ -12238,7 +12238,10 @@ RULES:
     }
 
     // 1. Find or create series — use AI-detected series name if provided
-    const SERIES_NAME = body.seriesName?.trim() || "From picture - no series available";
+    // Picture imports never invent fleets: every scanned test lands in the one
+    // placeholder fleet, regardless of what the sheet's block was called. The
+    // block title (Paraffin, Topping, Blå 1 …) is a fine TEST name instead.
+    const SERIES_NAME = "From picture - no series available";
     let seriesId: number;
     const existingSeriesRows = await (pool as any).query(
       `SELECT id FROM test_ski_series WHERE name = $1 AND team_id = $2 AND archived_at IS NULL LIMIT 1`,
@@ -12434,7 +12437,7 @@ RULES:
     const test = await storage.createTest({
       date: body.date,
       location: body.location?.trim() || "Unknown",
-      testName: body.testName?.trim() || null,
+      testName: body.testName?.trim() || body.seriesName?.trim() || null,
       weatherId,
       testType: body.testType || "Glide",
       seriesId,

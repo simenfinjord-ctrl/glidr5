@@ -632,7 +632,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg lg:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
@@ -644,7 +644,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         {step === "upload" && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              {L("Ta et bilde eller last opp et eksisterende testark. KI henter ut dataene og oppretter testen automatisk.", "Take a photo or upload an image of an existing test sheet. AI will extract the data and create the test automatically.")}
+              {L("Ta et bilde eller last opp et eksisterende testark. Dataene hentes ut og testen opprettes automatisk.", "Take a photo or upload an image of an existing test sheet. The data is extracted and the test created automatically.")}
             </p>
             <div
               ref={dropRef}
@@ -686,8 +686,8 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         {step === "analyzing" && (
           <div className="flex flex-col items-center gap-4 py-8">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-sm font-medium">Analyzing with AI…</p>
-            <p className="text-xs text-muted-foreground">This usually takes 5–15 seconds</p>
+            <p className="text-sm font-medium">{L("Analyserer bildet…", "Analyzing the image…")}</p>
+            <p className="text-xs text-muted-foreground">{L("Tar vanligvis 5–15 sekunder", "This usually takes 5–15 seconds")}</p>
           </div>
         )}
 

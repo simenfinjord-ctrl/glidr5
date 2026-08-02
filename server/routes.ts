@@ -12020,7 +12020,7 @@ RULES:
         catch (e: any) { lastErr = e?.message || lastErr || "Groq failed"; }
       }
       if (!text) {
-        return res.status(500).json({ message: `AI error: ${lastErr || "no response"}` });
+        return res.status(500).json({ message: `Could not analyze the image: ${lastErr || "no response"}` });
       }
       try {
         // Accept both array and single object response

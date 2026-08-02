@@ -900,6 +900,16 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS date_format TEXT DEFAULT 'european';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_unit TEXT DEFAULT 'C';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
+      CREATE TABLE IF NOT EXISTS scan_corrections (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        scanned TEXT NOT NULL,
+        brand TEXT NOT NULL,
+        name TEXT NOT NULL,
+        hits INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL DEFAULT '',
+        UNIQUE (team_id, scanned)
+      );
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS updated_at TEXT;
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS updated_by_id INTEGER;
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
@@ -12044,6 +12054,7 @@ RULES:
           // — ambiguous or unknown codes are left untouched.
           const BRAND_CODES: Record<string, string> = {
             swx: "Swix", mpl: "Maplus", rex: "Rex",
+            sta: "Star", str: "Star", tok: "Toko",
           };
           const dbBrands = Array.from(new Set(dbProducts.map((d) => d.brand))).filter(Boolean);
           const expandBrandCode = (raw: string): string => {
@@ -12083,11 +12094,28 @@ RULES:
             return hits / ta.length; // containment: fraction of scanned tokens found
           };
 
+          // Corrections the team has made in earlier reviews: exact recall
+          // beats fuzzy matching. Keyed on the literal transcription, so the
+          // same handwriting quirk resolves the same way every time.
+          const corrections = new Map<string, { brand: string; name: string }>();
+          try {
+            const teamIdC = getActiveTeamId(req);
+            const { pool: poolC } = await import("./db");
+            const cr = await (poolC as any).query(
+              `SELECT scanned, brand, name FROM scan_corrections WHERE team_id = $1`, [teamIdC]);
+            for (const row of cr.rows) corrections.set(row.scanned, { brand: row.brand, name: row.name });
+          } catch { /* table may not exist yet */ }
+
           for (const group of parsed) {
             if (!Array.isArray(group.products)) continue;
             group.products = group.products.map((p: any) => {
-              const scanned = expandBrandCode(`${p.brand || ""} ${p.name || ""}`.trim());
-              if (!scanned) return { ...p, matched: false };
+              const literal = `${p.brand || ""} ${p.name || ""}`.trim();
+              const learned = corrections.get(norm(literal));
+              if (learned) {
+                return { skiNumber: p.skiNumber, brand: learned.brand, name: learned.name, matched: true, scannedText: literal };
+              }
+              const scanned = expandBrandCode(literal);
+              if (!scanned) return { ...p, matched: false, scannedText: literal };
               let bestScore = 0;
               let secondScore = 0;
               let bestMatch: { id: number; brand: string; name: string } | null = null;
@@ -12101,7 +12129,7 @@ RULES:
               const confident = bestMatch != null && bestScore >= 0.6 &&
                 (bestScore >= 0.99 || bestScore - secondScore >= 0.25);
               if (confident && bestMatch) {
-                return { brand: bestMatch.brand, name: bestMatch.name, skiNumber: p.skiNumber, matched: true };
+                return { brand: bestMatch.brand, name: bestMatch.name, skiNumber: p.skiNumber, matched: true, scannedText: literal };
               }
               // No confident match — keep the transcription (brand code expanded)
               // so "Create product" prefills the real brand, not the paper code.
@@ -12109,9 +12137,9 @@ RULES:
               const knownBrand = dbBrands.find((b) => b.toLowerCase() === (parts[0] || "").toLowerCase())
                 || Object.values(BRAND_CODES).find((b) => b.toLowerCase() === (parts[0] || "").toLowerCase());
               if (knownBrand) {
-                return { skiNumber: p.skiNumber, brand: knownBrand, name: parts.slice(1).join(" ") || p.name || "", matched: false };
+                return { skiNumber: p.skiNumber, brand: knownBrand, name: parts.slice(1).join(" ") || p.name || "", matched: false, scannedText: literal };
               }
-              return { ...p, matched: false };
+              return { ...p, matched: false, scannedText: literal };
             });
           }
         } else {
@@ -12150,7 +12178,7 @@ RULES:
       seriesName?: string | null;
       notes?: string | null;
       weather?: Record<string, any> | null;
-      products?: Array<{ skiNumber: number; category: string; brand: string; name: string }>;
+      products?: Array<{ skiNumber: number; category: string; brand: string; name: string; scannedText?: string | null }>;
       entries?: Array<Record<string, any>>;
       distanceLabels?: string[] | null;
     };
@@ -12223,8 +12251,16 @@ RULES:
       seriesId = createdSeries.id;
     }
 
-    // Derive product category from test type (overrides AI-assigned category)
-    const pictureProductCategory = body.testType === "Structure" ? "Structure tool" : "Glide product";
+    // Category: structure tests create structure tools; for glide, the sheet
+    // is powder unless the name itself says otherwise ("... liquid").
+    const categoryFor = (name: string): string => {
+      if (body.testType === "Structure") return "Structure tool";
+      const n = name.toLowerCase();
+      if (/\bliquid\b|\bflytende\b/.test(n)) return "Liquid";
+      if (/\bblock\b|\bblokk\b/.test(n)) return "Block";
+      if (/\bparaffin\b/.test(n)) return "Paraffin";
+      return "Powder";
+    };
 
     // Helper: normalize a string for matching (collapse whitespace, lowercase)
     const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
@@ -12243,7 +12279,7 @@ RULES:
       );
       if (existingProds.rows.length > 0) return existingProds.rows[0].id;
       const created = await storage.createProduct({
-        category: pictureProductCategory,
+        category: categoryFor(name),
         brand: brand.trim().replace(/\s+/g, " "),
         name: name.trim().replace(/\s+/g, " "),
         createdAt: now,
@@ -12264,6 +12300,22 @@ RULES:
       const raw = Number(p.skiNumber);
       const skiNumber = (!isNaN(raw) && raw > 0) ? raw : null;
       resolvedProducts.push({ skiNumber, productId });
+
+      // The learning loop: whatever the sheet said, the product the user saved
+      // with IS the right answer for that transcription. Remembered per team
+      // and applied as an exact match on every later scan — the same
+      // handwriting quirk is never mis-read twice.
+      const scanned = String(p.scannedText ?? "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+      if (scanned) {
+        try {
+          await (pool as any).query(
+            `INSERT INTO scan_corrections (team_id, scanned, brand, name, hits, updated_at)
+             VALUES ($1, $2, $3, $4, 1, $5)
+             ON CONFLICT (team_id, scanned) DO UPDATE SET brand = $3, name = $4,
+               hits = scan_corrections.hits + 1, updated_at = $5`,
+            [teamId, scanned, p.brand.trim(), p.name.trim(), now]);
+        } catch (e) { console.error("[from-picture] correction save failed:", e); }
+      }
     }
 
     // Step 2: group by skiNumber → entryProductsMap (entry skiNum → [primaryId, ...additionalIds])

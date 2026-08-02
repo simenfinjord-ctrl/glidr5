@@ -144,7 +144,7 @@ type PictureGroup = {
   testType: string | null;
   notes: string | null;
   weather: Record<string, any> | null;
-  products: Array<{ skiNumber: number; brand: string; name: string; matched?: boolean; matchedDbIndex?: number | null }>;
+  products: Array<{ skiNumber: number; brand: string; name: string; matched?: boolean; matchedDbIndex?: number | null; scannedText?: string | null }>;
   entries: Array<{ skiNumber: number; methodology: string; results: Array<{ result: number | null; rank: number | null }> }>;
 };
 
@@ -171,7 +171,9 @@ type EditableGroup = {
   numRounds: number;
   createWeather: boolean;
   weather: EditableWeather;
-  products: Array<{ skiNumber: number; brand: string; name: string; category: string; matched: boolean }>;
+  // scannedText: the literal transcription from the sheet — sent back on save
+  // so the server can learn "this handwriting means that product".
+  products: Array<{ skiNumber: number; brand: string; name: string; category: string; matched: boolean; scannedText?: string | null }>;
   entries: Array<{ skiNumber: number; methodology: string; results: Array<number | null>; feelingRank: number | null }>;
 };
 
@@ -231,6 +233,7 @@ function toEditableGroup(g: PictureGroup): EditableGroup {
       name: p.name || "",
       category: "",
       matched: p.matched === true,
+      scannedText: p.scannedText ?? null,
     })),
     entries,
   };

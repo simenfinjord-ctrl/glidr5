@@ -11820,6 +11820,42 @@ EACH SKI-PAIR LINE HAS THIS EXACT STRUCTURE (left to right):
 
 CRITICAL: Do NOT confuse the application temperature (right after the product, with °) with a result. The application number has a degree sign and sits next to the product; the result sits far right with a gap. If a line is "PC100 200° ... 200", then 200° is methodology "200°C" and the far-right 200 is the result.
 
+=== PRE-PRINTED BLOCK SHEETS (US form) ===
+
+Some sheets are PRE-PRINTED grids instead of free-hand lists. Recognize them by:
+a header with "Venue:"/"Race:"/"Date:", and several boxed TABLE BLOCKS, each
+with a printed header row like: Series | Paraffin (or Topping / Structure) |
+cm | cm | cm | cm total | Rank.
+
+For these sheets, follow THESE rules instead of the free-hand rules:
+
+1. EACH BLOCK IS ITS OWN TEST GROUP. A sheet typically holds several blocks
+   (e.g. Paraffin, Topping, two Structure blocks) — output one object per
+   block, in reading order. Block title mapping: "Paraffin" and "Topping"
+   → testType "Glide"; "Structure" → testType "Structure". Use the block
+   title as "seriesName" (e.g. "Paraffin", "Topping", "Structure 1").
+2. SKI NUMBER = the printed "Series" number at the start of each row
+   (1–8, 21–28, 31–38 …). Keep it exactly as printed.
+3. USE ONLY TWO THINGS PER ROW: the handwritten PRODUCT NAME, and the value
+   in the "cm total" column. Put the cm-total value as the single element of
+   "results" (one round). IGNORE the individual cm run columns, IGNORE the
+   handwritten Rank column (the system recomputes ranks from cm total), and
+   IGNORE tally marks (IIII) after product names — they are run counts, not
+   part of the name.
+4. If "cm total" is blank but exactly one cm value is written, use that value.
+   If the whole row is blank, skip the row.
+5. MULTIPLE PRODUCTS in one name cell (separated by "+", "/", or clearly two
+   names) → separate entries in "products", same skiNumber — never one
+   combined name. A trailing word like "liquid" belongs to the product name.
+6. Blocks whose rows have series numbers but NO product names are extra runs
+   of an earlier block — SKIP those blocks entirely.
+7. DATE on these sheets is US-style MM.DD.YY (e.g. "01.29.25" = 2025-01-29).
+   If one part is > 12 it is the day. Venue = "Venue:" value; "Race:" value
+   goes into notes.
+8. "application" is always "" on these sheets — do not invent temperatures.
+
+=== FREE-HAND SHEETS ===
+
 "+" NOTATION: "+" means TWO SEPARATE products on the SAME ski pair (each may have its own application temp). List each as a separate product object with the same skiNumber. The methodology may then contain both temps.
 
 "–ii–" / "--ii--" / "—ii—" NOTATION: means "same product(s) as the ski pair directly ABOVE this one". Copy the product(s) from the previous ski pair. Only the part written AFTER a "+" is new. Example: ski 3 = "–ii– + FFC 34 m/ull" → same base product as ski 2, PLUS a second product "FFC 34 m/ull".

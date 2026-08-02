@@ -816,101 +816,223 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               )}
             </div>
 
-            {/* Products — editable, grouped by ski number */}
+            {/* Ski pairs — mirrors the New test entry table: one row per pair
+                with SKI | PRODUCT & APPLICATION | result | RANK | FEELING, as
+                much as possible prefilled from the sheet. */}
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("tests.products", { n: activeGroup.products.length })}
+                  {L(`Skipar (${activeGroup.entries.length})`, `Ski pairs (${activeGroup.entries.length})`)}
                 </p>
                 <button
                   type="button"
                   className="text-xs text-primary hover:underline"
-                  onClick={() => updateActiveGroup((g) => ({ ...g, products: [...g.products, { skiNumber: 0, brand: "", name: "", category: "", matched: false }] }))}
+                  onClick={() => updateActiveGroup((g) => ({
+                    ...g,
+                    entries: [...g.entries, { skiNumber: 0, methodology: "", results: Array.from({ length: g.numRounds }, () => null), feelingRank: null }],
+                  }))}
                 >
-                  + {t("tests.addProduct")}
+                  {L("+ Legg til skipar", "+ Add ski pair")}
                 </button>
               </div>
-              {activeGroup.products.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">{t("tests.noProducts")}</p>
+              {activeGroup.entries.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">{L("Ingen rader", "No entries")}</p>
               ) : (
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1">
+                  {/* Header row, like the New test table */}
+                  <div className="flex items-start gap-2 border-b border-border pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="w-12 shrink-0">{t("tests.skiCol")}</span>
+                    <span className="flex-1 min-w-[180px]">{t("tests.product")} & {L("applikasjon", "application")}</span>
+                    {Array.from({ length: activeGroup.numRounds }, (_, r) => (
+                      <span key={r} className="w-16 shrink-0 text-center">{activeGroup.numRounds > 1 ? `R${r + 1} (cm)` : "0 km (cm)"}</span>
+                    ))}
+                    <span className="w-10 shrink-0 text-center">{t("tests.rank")}</span>
+                    <span className="w-12 shrink-0 text-center">{t("tests.feelCol")}</span>
+                    <span className="w-6 shrink-0"></span>
+                  </div>
                   {(() => {
-                    // Group products by skiNumber; preserve original indices for editing
-                    const indexed = activeGroup.products.map((p, i) => ({ ...p, _i: i }));
-                    const grouped = new Map<number, typeof indexed>();
-                    for (const p of indexed) {
-                      const key = p.skiNumber || 0;
-                      if (!grouped.has(key)) grouped.set(key, []);
-                      grouped.get(key)!.push(p);
-                    }
-                    // Sort groups by ski number
-                    const sortedGroups = Array.from(grouped.entries()).sort(([a], [b]) => a - b);
-                    return sortedGroups.map(([skiNum, group]) => (
-                      <div key={skiNum} className="flex items-center gap-1 flex-wrap">
-                        {/* Ski number — shared across all products in group */}
-                        <input
-                          type="number"
-                          value={skiNum || ""}
-                          onChange={(e) => {
-                            const n = parseInt(e.target.value) || 0;
-                            updateActiveGroup((g) => ({
-                              ...g,
-                              products: g.products.map((r, j) => group.some((gp) => gp._i === j) ? { ...r, skiNumber: n } : r),
-                            }));
-                          }}
-                          placeholder="#"
-                          className="h-7 w-12 rounded border border-input bg-background px-1.5 text-xs text-center flex-shrink-0"
-                        />
-                        {/* All products for this ski, inline with "+" separator */}
-                        {group.map((p, pos) => (
-                          <Fragment key={p._i}>
-                            {pos > 0 && (
-                              <span className="text-xs font-bold text-muted-foreground px-0.5">+</span>
-                            )}
-                            <ProductPicker
-                              brand={p.brand}
-                              name={p.name}
-                              matched={p.matched}
-                              products={dbProducts}
-                              onChange={(next) => updateActiveGroup((g) => ({
+                    // Live dense ranks from round 1, so the review already shows
+                    // what the saved test will say.
+                    const vals = activeGroup.entries
+                      .map((e, i) => ({ i, v: e.results[0] }))
+                      .filter((x): x is { i: number; v: number } => x.v != null)
+                      .sort((a, b) => a.v - b.v);
+                    const liveRank = new Map<number, number>();
+                    let prev: number | null = null, rank = 0;
+                    vals.forEach((x, idx) => {
+                      if (prev == null || x.v > prev) rank = idx + 1;
+                      prev = x.v;
+                      liveRank.set(x.i, rank);
+                    });
+                    return activeGroup.entries.map((e, i) => {
+                      const indexed = activeGroup.products.map((p, pi) => ({ ...p, _i: pi }));
+                      const skiProducts = indexed.filter((p) => p.skiNumber === e.skiNumber && e.skiNumber > 0);
+                      return (
+                        <div key={i} className="flex items-start gap-2 border-b border-border/40 py-1.5 last:border-0">
+                          <input
+                            type="number"
+                            value={e.skiNumber || ""}
+                            onChange={(ev) => {
+                              const n = parseInt(ev.target.value) || 0;
+                              const prevNum = e.skiNumber;
+                              // The pair's products follow the pair when renumbered.
+                              updateActiveGroup((g) => ({
                                 ...g,
-                                products: g.products.map((r, j) => j === p._i ? { ...r, ...next } : r),
-                              }))}
-                            />
-                            {p.matched && (() => {
-                              const dp = dbProducts.find((d) => d.brand === p.brand && d.name === p.name);
-                              return dp?.category ? <span className="text-[10px] text-muted-foreground shrink-0">{dp.category}</span> : null;
-                            })()}
-                            {!p.matched && (p.brand || p.name) && (
+                                entries: g.entries.map((r, j) => j === i ? { ...r, skiNumber: n } : r),
+                                products: g.products.map((r) => r.skiNumber === prevNum && prevNum > 0 ? { ...r, skiNumber: n } : r),
+                              }));
+                            }}
+                            placeholder="#"
+                            className="h-7 w-12 rounded border border-input bg-background px-1 text-xs text-center shrink-0 mt-0.5"
+                          />
+                          <div className="flex-1 min-w-[180px] flex flex-col gap-1">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {skiProducts.map((p, pos) => (
+                                <Fragment key={p._i}>
+                                  {pos > 0 && <span className="text-xs font-bold text-muted-foreground px-0.5">+</span>}
+                                  <ProductPicker
+                                    brand={p.brand}
+                                    name={p.name}
+                                    matched={p.matched}
+                                    products={dbProducts}
+                                    onChange={(next) => updateActiveGroup((g) => ({
+                                      ...g,
+                                      products: g.products.map((r, j) => j === p._i ? { ...r, ...next } : r),
+                                    }))}
+                                  />
+                                  {p.matched && (() => {
+                                    const dp = dbProducts.find((d) => d.brand === p.brand && d.name === p.name);
+                                    return dp?.category ? <span className="text-[10px] text-muted-foreground shrink-0">{dp.category}</span> : null;
+                                  })()}
+                                  {!p.matched && (p.brand || p.name) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setCreateProductFor(p._i)}
+                                      title={L("Dette produktet finnes ikke i databasen — opprett det", "This product is not in your database — create it")}
+                                      className="h-7 px-1.5 flex items-center justify-center rounded bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 text-[10px] font-semibold flex-shrink-0"
+                                    >
+                                      {L("+ Opprett", "+ Create")}
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => updateActiveGroup((g) => ({ ...g, products: g.products.filter((_, j) => j !== p._i) }))}
+                                    className="h-7 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm flex-shrink-0"
+                                  >
+                                    ×
+                                  </button>
+                                </Fragment>
+                              ))}
                               <button
                                 type="button"
-                                onClick={() => setCreateProductFor(p._i)}
-                                title={L("Dette produktet finnes ikke i databasen — opprett det", "This product is not in your database — create it")}
-                                className="h-7 px-1.5 flex items-center justify-center rounded bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 text-[10px] font-semibold flex-shrink-0"
+                                onClick={() => updateActiveGroup((g) => ({ ...g, products: [...g.products, { skiNumber: e.skiNumber, brand: "", name: "", category: "", matched: false }] }))}
+                                className="h-7 px-1.5 flex items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary text-[11px] font-medium flex-shrink-0"
                               >
-                                {L("+ Opprett", "+ Create")}
+                                {L("+ produkt", "+ product")}
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => updateActiveGroup((g) => ({ ...g, products: g.products.filter((_, j) => j !== p._i) }))}
-                              className="h-7 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm flex-shrink-0"
-                            >
-                              ×
-                            </button>
-                          </Fragment>
-                        ))}
-                        {/* Add another product to THIS ski pair */}
-                        <button
-                          type="button"
-                          onClick={() => updateActiveGroup((g) => ({ ...g, products: [...g.products, { skiNumber: skiNum, brand: "", name: "", category: "", matched: false }] }))}
-                          title={L("Legg til et produkt på dette skiparet", "Add another product to this ski pair")}
-                          className="h-7 px-1.5 flex items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary text-[11px] font-medium flex-shrink-0"
-                        >
-                          {L("+ produkt", "+ product")}
-                        </button>
+                            </div>
+                            <input
+                              type="text"
+                              value={e.methodology}
+                              onChange={(ev) => updateActiveGroup((g) => ({ ...g, entries: g.entries.map((r, j) => j === i ? { ...r, methodology: ev.target.value } : r) }))}
+                              placeholder={t("tests.appInputPlaceholder")}
+                              className="h-6 w-full rounded border border-input bg-background px-1.5 text-xs text-muted-foreground"
+                            />
+                          </div>
+                          {Array.from({ length: activeGroup.numRounds }, (_, r) => (
+                            <input
+                              key={r}
+                              type="number"
+                              value={e.results[r] ?? ""}
+                              onChange={(ev) => updateActiveGroup((g) => ({
+                                ...g,
+                                entries: g.entries.map((row, j) => {
+                                  if (j !== i) return row;
+                                  const results = [...row.results];
+                                  while (results.length < g.numRounds) results.push(null);
+                                  results[r] = ev.target.value !== "" ? parseFloat(ev.target.value) : null;
+                                  return { ...row, results };
+                                }),
+                              }))}
+                              className="h-7 w-16 rounded border border-input bg-background px-1 text-xs text-center shrink-0 mt-0.5"
+                            />
+                          ))}
+                          <span className={cn(
+                            "h-7 w-10 flex items-center justify-center rounded text-xs font-semibold shrink-0 mt-0.5",
+                            liveRank.get(i) === 1 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-muted/60 text-muted-foreground"
+                          )}>
+                            {liveRank.get(i) ?? "—"}
+                          </span>
+                          <input
+                            type="number"
+                            value={e.feelingRank ?? ""}
+                            onChange={(ev) => updateActiveGroup((g) => ({ ...g, entries: g.entries.map((r, j) => j === i ? { ...r, feelingRank: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r) }))}
+                            placeholder="—"
+                            className="h-7 w-12 rounded border border-input bg-background px-1 text-xs text-center shrink-0 mt-0.5"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateActiveGroup((g) => ({
+                              ...g,
+                              entries: g.entries.filter((_, j) => j !== i),
+                              // The pair's products go with it.
+                              products: e.skiNumber > 0 ? g.products.filter((r) => r.skiNumber !== e.skiNumber) : g.products,
+                            }))}
+                            className="h-7 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm shrink-0 mt-0.5"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    });
+                  })()}
+
+                  {/* Products the scan read but that match no ski pair above —
+                      never dropped silently; fix the number or remove them. */}
+                  {(() => {
+                    const entryNums = new Set(activeGroup.entries.map((e) => e.skiNumber));
+                    const orphans = activeGroup.products.map((p, pi) => ({ ...p, _i: pi })).filter((p) => !p.skiNumber || !entryNums.has(p.skiNumber));
+                    if (orphans.length === 0) return null;
+                    return (
+                      <div className="rounded-md border border-amber-300/60 bg-amber-50/50 dark:bg-amber-950/20 px-2 py-1.5 mt-1">
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                          {L("Produkter uten skipar — rett nummeret eller fjern dem", "Products without a ski pair — fix the number or remove them")}
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {orphans.map((p) => (
+                            <div key={p._i} className="flex items-center gap-1 flex-wrap">
+                              <input
+                                type="number"
+                                value={p.skiNumber || ""}
+                                onChange={(ev) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, skiNumber: parseInt(ev.target.value) || 0 } : r) }))}
+                                placeholder="#"
+                                className="h-7 w-12 rounded border border-input bg-background px-1 text-xs text-center shrink-0"
+                              />
+                              <ProductPicker
+                                brand={p.brand}
+                                name={p.name}
+                                matched={p.matched}
+                                products={dbProducts}
+                                onChange={(next) => updateActiveGroup((g) => ({
+                                  ...g,
+                                  products: g.products.map((r, j) => j === p._i ? { ...r, ...next } : r),
+                                }))}
+                              />
+                              {!p.matched && (p.brand || p.name) && (
+                                <button type="button" onClick={() => setCreateProductFor(p._i)}
+                                  className="h-7 px-1.5 flex items-center justify-center rounded bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 text-[10px] font-semibold flex-shrink-0">
+                                  {L("+ Opprett", "+ Create")}
+                                </button>
+                              )}
+                              <button type="button" onClick={() => updateActiveGroup((g) => ({ ...g, products: g.products.filter((_, j) => j !== p._i) }))}
+                                className="h-7 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm flex-shrink-0">
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ));
+                    );
                   })()}
 
                   {/* Inline create-product form for the selected unmatched product */}
@@ -947,113 +1069,6 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                     </p>
                   )}
                 </div>
-              )}
-            </div>
-
-            {/* Entries — editable */}
-            <div className="rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {L(`Resultater (${activeGroup.entries.length})`, `Results (${activeGroup.entries.length} entries)`)}
-                </p>
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline"
-                  onClick={() => updateActiveGroup((g) => ({
-                    ...g,
-                    entries: [...g.entries, { skiNumber: 0, methodology: "", results: Array.from({ length: g.numRounds }, () => null), feelingRank: null }],
-                  }))}
-                >
-                  {L("+ Legg til rad", "+ Add row")}
-                </button>
-              </div>
-              {activeGroup.entries.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">{L("Ingen rader", "No entries")}</p>
-              ) : (
-                (() => {
-                  const numRounds = activeGroup.numRounds;
-                  const resultColsTemplate = Array.from({ length: numRounds }, () => "3rem").join(" ");
-                  const gridTemplate = `2rem ${resultColsTemplate} 3rem 1.5rem`;
-                  return (
-                    <div className="flex flex-col gap-2">
-                      <div className="grid gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold" style={{ gridTemplateColumns: gridTemplate }}>
-                        <span>{t("tests.skiCol")}</span>
-                        {Array.from({ length: numRounds }, (_, r) => (
-                          <span key={r}>{numRounds > 1 ? `R${r + 1}` : t("tests.resultCol")}</span>
-                        ))}
-                        <span>{t("tests.feelCol")}</span>
-                        <span></span>
-                      </div>
-                      {activeGroup.entries.map((e, i) => {
-                        const skiProducts = activeGroup.products.filter((p) => p.skiNumber === e.skiNumber);
-                        return (
-                          <div key={i} className="flex flex-col gap-1">
-                            <div className="grid gap-1 items-center" style={{ gridTemplateColumns: gridTemplate }}>
-                              <input
-                                type="number"
-                                value={e.skiNumber || ""}
-                                onChange={(ev) => updateActiveGroup((g) => ({ ...g, entries: g.entries.map((r, j) => j === i ? { ...r, skiNumber: parseInt(ev.target.value) || 0 } : r) }))}
-                                className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                              />
-                              {Array.from({ length: numRounds }, (_, r) => (
-                                <input
-                                  key={r}
-                                  type="number"
-                                  value={e.results[r] ?? ""}
-                                  onChange={(ev) => updateActiveGroup((g) => ({
-                                    ...g,
-                                    entries: g.entries.map((row, j) => {
-                                      if (j !== i) return row;
-                                      const results = [...row.results];
-                                      while (results.length < numRounds) results.push(null);
-                                      results[r] = ev.target.value !== "" ? parseFloat(ev.target.value) : null;
-                                      return { ...row, results };
-                                    }),
-                                  }))}
-                                  className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                                />
-                              ))}
-                              <input
-                                type="number"
-                                value={e.feelingRank ?? ""}
-                                onChange={(ev) => updateActiveGroup((g) => ({ ...g, entries: g.entries.map((r, j) => j === i ? { ...r, feelingRank: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r) }))}
-                                className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => updateActiveGroup((g) => ({ ...g, entries: g.entries.filter((_, j) => j !== i) }))}
-                                className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm"
-                              >
-                                ×
-                              </button>
-                            </div>
-                            {skiProducts.length > 0 && (
-                              <div className="flex items-center gap-1.5 pl-2 flex-wrap">
-                                {/* Products on this ski — read-only chips */}
-                                {skiProducts.map((p, pi) => (
-                                  <Fragment key={pi}>
-                                    {pi > 0 && <span className="text-[10px] font-bold text-muted-foreground">+</span>}
-                                    <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-foreground/80 truncate max-w-[120px]">
-                                      {[p.brand, p.name].filter(Boolean).join(" ") || "Product"}
-                                    </span>
-                                  </Fragment>
-                                ))}
-                                {/* Single application/temperature input per ski pair */}
-                                <input
-                                  type="text"
-                                  value={e.methodology}
-                                  onChange={(ev) => updateActiveGroup((g) => ({ ...g, entries: g.entries.map((r, j) => j === i ? { ...r, methodology: ev.target.value } : r) }))}
-                                  placeholder={t("tests.appInputPlaceholder")}
-                                  className="h-6 flex-1 min-w-[60px] rounded border border-input bg-background px-1.5 text-xs"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()
               )}
             </div>
 

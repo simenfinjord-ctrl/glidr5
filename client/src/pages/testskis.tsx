@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown, Archive, RotateCcw, Trash2, Filter, ChevronDown, FlaskConical, CalendarClock, Wrench } from "lucide-react";
+import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown, Archive, RotateCcw, Trash2, Filter, ChevronDown, FlaskConical } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
 import { LastEdited } from "@/components/last-edited";
@@ -43,13 +43,6 @@ type Series = {
   testCount?: number;
   lastTestDate?: string | null;
 };
-
-function daysSince(date: string | null | undefined): number | null {
-  if (!date) return null;
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return null;
-  return Math.floor((Date.now() - d.getTime()) / 86400000);
-}
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -701,32 +694,6 @@ export default function TestSkis() {
                           ? L(`${s.testCount} tester`, `${s.testCount} tests`)
                           : L("Ingen tester", "No tests")}
                       </span>
-                      {(() => {
-                        const d = daysSince(s.lastTestDate);
-                        if (d == null) return null;
-                        const idle = d > 90;
-                        return (
-                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-                            idle ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
-                                 : "bg-muted text-muted-foreground")}>
-                            <CalendarClock className="h-3 w-3" />
-                            {d === 0 ? L("Brukt i dag", "Used today")
-                              : L(`Sist brukt for ${d} dager siden`, `Last used ${d} days ago`)}
-                          </span>
-                        );
-                      })()}
-                      {(() => {
-                        const d = daysSince(s.lastRegrind);
-                        if (d == null) return null;
-                        return (
-                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-                            d > 180 ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
-                                    : "bg-muted text-muted-foreground")}>
-                            <Wrench className="h-3 w-3" />
-                            {L(`Slipt for ${d} dager siden`, `Ground ${d} days ago`)}
-                          </span>
-                        );
-                      })()}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground/60">
                       {s.createdByName} · {s.groupScope}

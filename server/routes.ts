@@ -11847,13 +11847,16 @@ For these sheets, follow THESE rules instead of the free-hand rules:
 2. SKI NUMBER = the printed "Series" number at the start of each row
    (1–8, 21–28, 31–38 …). Keep it exactly as printed.
 3. USE ONLY TWO THINGS PER ROW: the handwritten PRODUCT NAME, and the value
-   in the "cm total" column. Put the cm-total value as the single element of
-   "results" (one round). IGNORE the individual cm run columns, IGNORE the
+   in the "cm total" column — the SECOND-TO-LAST column, directly left of
+   Rank. That single number IS the distance: put it as the single element of
+   "results" (one round). NEVER sum, average or combine the individual cm run
+   columns yourself — even when cm total looks inconsistent with the runs,
+   the cm total column wins. IGNORE the cm run columns entirely, IGNORE the
    handwritten Rank column (the system recomputes ranks from cm total), and
    IGNORE tally marks (IIII) after product names — they are run counts, not
    part of the name.
-4. If "cm total" is blank but exactly one cm value is written, use that value.
-   If the whole row is blank, skip the row.
+4. If the "cm total" cell is truly blank, leave results as [null] — do NOT
+   substitute a run value or compute one. If the whole row is blank, skip it.
 5. MULTIPLE PRODUCTS in one name cell (separated by "+", "/", or clearly two
    names) → separate entries in "products", same skiNumber — never one
    combined name. A trailing word like "liquid" belongs to the product name.

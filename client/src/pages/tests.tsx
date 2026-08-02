@@ -162,6 +162,9 @@ type EditableWeather = {
 
 // An editable group held in component state.
 type EditableGroup = {
+  // Unchecked groups on a multi-test sheet are reviewed but never saved —
+  // a sheet often holds a block you already entered or don't want.
+  include: boolean;
   seriesName: string;
   date: string;
   location: string;
@@ -247,6 +250,7 @@ function toEditableGroup(g: PictureGroup): EditableGroup {
   // Default to creating weather only when the image actually contained temps.
   const hasWeather = weather.airTemperatureC != null || weather.snowTemperatureC != null;
   return {
+    include: true,
     seriesName: g.seriesName || "",
     date: g.date || "",
     location: g.location || "",
@@ -362,6 +366,8 @@ function ProductPicker({
   products: Product[];
   onChange: (next: { brand: string; name: string; matched: boolean }) => void;
 }) {
+  // Category rendered as the last part of the label — same convention as the
+  // normal test views ("Brand Name Category", never a badge).
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const { language } = useI18n();
@@ -435,7 +441,7 @@ function ProductPicker({
                 onMouseDown={(e) => { e.preventDefault(); onChange({ brand: p.brand, name: p.name, matched: true }); setOpen(false); }}
                 className="block w-full text-left px-2 py-1 text-xs hover:bg-muted"
               >
-                <span className="text-muted-foreground">{p.brand}</span> {p.name}
+                <span className="text-muted-foreground">{p.brand}</span> {p.name}{p.category ? <span className="text-muted-foreground"> {p.category}</span> : null}
               </button>
             ))}
           </div>
@@ -541,14 +547,15 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   }, []);
 
   async function handleCreateAll() {
-    if (groups.length === 0) return;
+    const toCreate = groups.filter((g) => g.include);
+    if (toCreate.length === 0) return;
     setStep("creating");
     setCreatedTestIds([]);
     const created: number[] = [];
     try {
-      for (let i = 0; i < groups.length; i++) {
-        setCreatingProgress({ current: i + 1, total: groups.length });
-        const g = groups[i];
+      for (let i = 0; i < toCreate.length; i++) {
+        setCreatingProgress({ current: i + 1, total: toCreate.length });
+        const g = toCreate[i];
         const distanceLabels =
           g.numRounds > 1
             ? Array.from({ length: g.numRounds }, (_, r) => `Round ${r + 1}`)
@@ -581,7 +588,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
           const base = data.message || t("tests.createError");
           setErrorMsg(
             created.length > 0
-              ? `${base} (${created.length} of ${groups.length} test(s) created successfully)`
+              ? `${base} (${created.length} of ${toCreate.length} test(s) created successfully)`
               : base
           );
           setStep("error");
@@ -688,23 +695,33 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               <div className="flex flex-col gap-1.5">
                 <div className="flex flex-wrap gap-1.5">
                   {groups.map((g, gi) => (
-                    <button
-                      key={gi}
-                      type="button"
-                      onClick={() => { setActiveGroupIdx(gi); setCreateProductFor(null); }}
-                      className={cn(
-                        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                        gi === activeGroupIdx
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/70"
-                      )}
-                    >
-                      {g.seriesName || `Group ${gi + 1}`}
-                    </button>
+                    <span key={gi} className={cn(
+                      "inline-flex items-center rounded-full text-xs font-medium transition-colors overflow-hidden",
+                      gi === activeGroupIdx
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground",
+                      !g.include && "opacity-50"
+                    )}>
+                      <button
+                        type="button"
+                        onClick={() => { setActiveGroupIdx(gi); setCreateProductFor(null); }}
+                        className={cn("px-3 py-1", !g.include && "line-through")}
+                      >
+                        {g.seriesName || `Group ${gi + 1}`}
+                      </button>
+                      <input
+                        type="checkbox"
+                        checked={g.include}
+                        onChange={(e) => setGroups((prev) => prev.map((x, j) => j === gi ? { ...x, include: e.target.checked } : x))}
+                        title={L("Legg inn denne testen", "Save this test")}
+                        className="mr-2 h-3.5 w-3.5 accent-green-600 cursor-pointer"
+                        data-testid={`include-group-${gi}`}
+                      />
+                    </span>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {L(`${groups.length} grupper funnet — gå gjennom hver, og opprett alle.`, `${groups.length} groups detected — review each, then create all.`)}
+                  {L(`${groups.length} tester funnet på arket — gå gjennom hver. Fjern haken på tester du ikke vil legge inn.`, `${groups.length} tests found on the sheet — review each. Untick tests you don't want to save.`)}
                 </p>
               </div>
             )}
@@ -856,6 +873,10 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                                 products: g.products.map((r, j) => j === p._i ? { ...r, ...next } : r),
                               }))}
                             />
+                            {p.matched && (() => {
+                              const dp = dbProducts.find((d) => d.brand === p.brand && d.name === p.name);
+                              return dp?.category ? <span className="text-[10px] text-muted-foreground shrink-0">{dp.category}</span> : null;
+                            })()}
                             {!p.matched && (p.brand || p.name) && (
                               <button
                                 type="button"
@@ -1028,8 +1049,12 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               <Button variant="outline" className="flex-1" onClick={reset}>
                 {L("Last opp på nytt", "Re-upload")}
               </Button>
-              <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleCreateAll}>
-                {groups.length > 1 ? L("Opprett alle", "Create all") : L("Opprett test", "Create test")}
+              <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleCreateAll}
+                disabled={groups.filter((g) => g.include).length === 0}>
+                {(() => { const n = groups.filter((g) => g.include).length;
+                  return groups.length > 1
+                    ? L(`Opprett ${n} test${n === 1 ? "" : "er"}`, `Create ${n} test${n === 1 ? "" : "s"}`)
+                    : L("Opprett test", "Create test"); })()}
               </Button>
             </div>
           </div>

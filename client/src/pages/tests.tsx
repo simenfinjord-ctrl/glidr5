@@ -190,6 +190,35 @@ function toBase64(file: File): Promise<string> {
   });
 }
 
+// A phone photo is 5–12 MB — far past the server's body limit, and the vision
+// model reads a 2000-px JPEG just as well. Downscale in the browser before
+// upload; fall back to the original file if canvas work fails (odd formats).
+const MAX_UPLOAD_DIMENSION = 2200;
+async function compressForUpload(file: File): Promise<{ base64: string; mimeType: string }> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_UPLOAD_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no canvas");
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    // Step the quality down until it fits comfortably under the server limit.
+    for (const q of [0.85, 0.7, 0.55, 0.4]) {
+      const dataUrl = canvas.toDataURL("image/jpeg", q);
+      const base64 = dataUrl.split(",")[1] || "";
+      if (base64.length < 3_500_000) return { base64, mimeType: "image/jpeg" };
+    }
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.3);
+    return { base64: dataUrl.split(",")[1] || "", mimeType: "image/jpeg" };
+  } catch {
+    return { base64: await toBase64(file), mimeType: file.type };
+  }
+}
+
 // Map a raw analyze group into an editable group.
 function toEditableGroup(g: PictureGroup): EditableGroup {
   const entries = (g.entries || []).map((e) => ({
@@ -460,7 +489,9 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   }
 
   async function processFile(file: File) {
-    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    // HEIC (iPhone default) is allowed in: Safari decodes it and the
+    // compressor re-encodes to JPEG before upload.
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/heif"];
     if (!validTypes.includes(file.type)) {
       setErrorMsg(t("tests.imageError"));
       setStep("error");
@@ -468,12 +499,12 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     }
     setStep("analyzing");
     try {
-      const base64 = await toBase64(file);
+      const { base64, mimeType } = await compressForUpload(file);
       const res = await fetch("/api/tests/from-picture/analyze", {
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+        body: JSON.stringify({ imageBase64: base64, mimeType }),
       });
       const data = await res.json();
       if (!res.ok) {

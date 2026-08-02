@@ -11962,28 +11962,43 @@ RULES:
       return parts.map((p: any) => p.text || "").join("").trim();
     };
     const callGroq = async (): Promise<string> => {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${groqKey}` },
-        body: JSON.stringify({
-          // Groq's free vision model. (Maverick exists but isn't on all accounts;
-          // scout is universally available. For real quality use Gemini above.)
-          model: process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
-          messages: [{
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url: dataUrl } },
-              { type: "text", text: prompt },
-            ],
-          }],
-          temperature: 0,
-          max_tokens: 6000,
-        }),
-        signal: AbortSignal.timeout(60000),
-      });
-      if (!r.ok) throw new Error(`Groq ${r.status}: ${(await r.text()).slice(0, 200)}`);
-      const j = await r.json() as any;
-      return (j.choices?.[0]?.message?.content || "").trim();
+      // Groq retires model ids without notice, so never depend on one name:
+      // try the env override first, then each known vision model until one
+      // answers. A 404/decommission moves on; other errors abort that model.
+      const candidates = [
+        process.env.GROQ_VISION_MODEL,
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+      ].filter(Boolean) as string[];
+      let lastGroqErr = "";
+      for (const model of candidates) {
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${groqKey}` },
+          body: JSON.stringify({
+            model,
+            messages: [{
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url: dataUrl } },
+                { type: "text", text: prompt },
+              ],
+            }],
+            temperature: 0,
+            max_tokens: 6000,
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
+        if (r.ok) {
+          const j = await r.json() as any;
+          return (j.choices?.[0]?.message?.content || "").trim();
+        }
+        const body = (await r.text()).slice(0, 200);
+        lastGroqErr = `Groq ${r.status} (${model}): ${body}`;
+        // Unknown model → try the next candidate; anything else is a real error.
+        if (!(r.status === 404 || body.includes("model_not_found") || body.includes("decommissioned"))) break;
+      }
+      throw new Error(lastGroqErr || "Groq: no vision model available");
     };
 
     try {

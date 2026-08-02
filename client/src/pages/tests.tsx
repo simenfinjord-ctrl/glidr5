@@ -320,8 +320,12 @@ function CreateProductForm({
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="Glide product">{L("Glidprodukt", "Glide product")}</SelectItem>
-              <SelectItem value="Topping product">{L("Toppingprodukt", "Topping product")}</SelectItem>
+              {/* The same categories the product database actually uses —
+                  the old Glide/Topping taxonomy no longer exists there. */}
+              <SelectItem value="Powder">Powder</SelectItem>
+              <SelectItem value="Liquid">Liquid</SelectItem>
+              <SelectItem value="Block">Block</SelectItem>
+              <SelectItem value="Paraffin">Paraffin</SelectItem>
               <SelectItem value="Structure tool">{L("Strukturverktøy", "Structure tool")}</SelectItem>
             </SelectContent>
           </Select>
@@ -914,7 +918,15 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                     <CreateProductForm
                       initialBrand={activeGroup.products[createProductFor].brand}
                       initialName={activeGroup.products[createProductFor].name}
-                      defaultCategory={activeGroup.testType === "Structure" ? "Structure tool" : "Glide product"}
+                      defaultCategory={(() => {
+                        if (activeGroup.testType === "Structure") return "Structure tool";
+                        // Unless the sheet says otherwise, it's powder.
+                        const nm = activeGroup.products[createProductFor].name.toLowerCase();
+                        if (/\bliq(uid)?\.?(\s|$)/.test(nm)) return "Liquid";
+                        if (/\bblock\b|\bblokk\b/.test(nm)) return "Block";
+                        if (/\bparaffin\b/.test(nm)) return "Paraffin";
+                        return "Powder";
+                      })()}
                       onCreated={(brand, name) => {
                         const idx = createProductFor;
                         // Set the originating row to the created values + matched,

@@ -12277,7 +12277,8 @@ RULES:
     const categoryFor = (name: string): string => {
       if (body.testType === "Structure") return "Structure tool";
       const n = name.toLowerCase();
-      if (/\bliquid\b|\bflytende\b/.test(n)) return "Liquid";
+      // The sheets abbreviate: "liq." / "liq" mean liquid.
+      if (/\bliq(uid)?\.?(\s|$)|\bflytende\b/.test(n)) return "Liquid";
       if (/\bblock\b|\bblokk\b/.test(n)) return "Block";
       if (/\bparaffin\b/.test(n)) return "Paraffin";
       return "Powder";

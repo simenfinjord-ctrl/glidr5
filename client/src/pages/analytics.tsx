@@ -1814,7 +1814,7 @@ function ProductSearchStats({
 
       {selectedProduct && !stats && (
         <p className="text-sm text-muted-foreground" data-testid="text-product-no-data">
-          No test data found for {selectedProduct.brand} {selectedProduct.name}.
+          No test data found for {productLabel(selectedProduct)}.
         </p>
       )}
     </Card>
@@ -2251,7 +2251,7 @@ function HeadToHeadMatrix({ allEntries, productsById, testsById }: {
               <th className="px-2 py-1.5 text-left font-medium text-muted-foreground min-w-[100px]">vs →</th>
               {topProducts.map(p => (
                 <th key={p.id} className="px-2 py-1.5 text-center font-medium max-w-[80px]">
-                  <div className="truncate max-w-[70px]" title={`${p.brand} ${p.name}`}>{p.name}</div>
+                  <div className="truncate max-w-[70px]" title={productLabel(p)}>{p.name}</div>
                 </th>
               ))}
             </tr>
@@ -2259,7 +2259,7 @@ function HeadToHeadMatrix({ allEntries, productsById, testsById }: {
           <tbody>
             {topProducts.map(p1 => (
               <tr key={p1.id} className="border-t border-border">
-                <td className="px-2 py-1.5 font-semibold truncate max-w-[100px]" title={`${p1.brand} ${p1.name}`}>{p1.name}</td>
+                <td className="px-2 py-1.5 font-semibold truncate max-w-[100px]" title={productLabel(p1)}>{p1.name}</td>
                 {topProducts.map(p2 => {
                   if (p1.id === p2.id) return <td key={p2.id} className="px-2 py-1.5 text-center bg-muted/30 text-muted-foreground">—</td>;
                   const cell = matrix[p1.id]?.[p2.id];
@@ -2617,7 +2617,7 @@ export function ProductCompare({
                       <td className="px-3 py-2 font-medium">
                         <span className="inline-flex items-center gap-2">
                           <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                          {s.product.brand} {s.product.name}
+                          {productLabel(s.product)}
                         </span>
                       </td>
                       <td className="text-center px-3 py-2">{s.totalTests}</td>
@@ -2666,7 +2666,7 @@ export function ProductCompare({
                       key={s.product.id}
                       type="monotone"
                       dataKey={`p_${s.product.id}`}
-                      name={`${s.product.brand} ${s.product.name}`}
+                      name={productLabel(s.product)}
                       stroke={CHART_COLORS[i % CHART_COLORS.length]}
                       strokeWidth={2}
                       dot={{ r: 3 }}
@@ -2716,14 +2716,14 @@ export function ProductCompare({
                     formatter={(value: any, name: string) => {
                       const id = parseInt(name.replace("p_", ""), 10);
                       const prod = productsById.get(id);
-                      return [value != null ? `#${value}` : "—", prod ? `${prod.brand} ${prod.name}` : name];
+                      return [value != null ? `#${value}` : "—", prod ? productLabel(prod) : name];
                     }}
                   />
                   <Legend
                     formatter={(value) => {
                       const id = parseInt(value.replace("p_", ""), 10);
                       const prod = productsById.get(id);
-                      return prod ? `${prod.brand} ${prod.name}` : value;
+                      return prod ? productLabel(prod) : value;
                     }}
                     wrapperStyle={{ fontSize: "12px" }}
                   />
@@ -2976,7 +2976,7 @@ function DurabilityAnalysis({
 
       results.push({
         productId,
-        name: `${product.brand} ${product.name}`,
+        name: productLabel(product),
         roundAvgRanks,
         count,
         trend,
@@ -3938,7 +3938,7 @@ function RacedCombinationsList({
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Produkter + applikasjon", "Products + application")}</p>
                         <p className="font-medium">
                           {u.products.map((pp, j) => (
-                            <span key={pp.product.id}>{j > 0 ? " + " : ""}{pp.product.brand} {pp.product.name}{pp.application ? ` (${pp.application})` : ""}</span>
+                            <span key={pp.product.id}>{j > 0 ? " + " : ""}{productLabel(pp.product)}{pp.application ? ` (${pp.application})` : ""}</span>
                           ))}
                         </p>
                       </div>
@@ -4134,7 +4134,7 @@ export default function Analytics() {
       const { pid } = topProducts[i];
       const data = productRanks.get(pid)!;
       const p = productsById.get(pid);
-      const name = p ? `${p.brand} ${p.name}` : `#${pid}`;
+      const name = p ? productLabel(p) : `#${pid}`;
       for (let j = 0; j < data.temps.length; j++) {
         points.push({
           snowTemp: data.temps[j],

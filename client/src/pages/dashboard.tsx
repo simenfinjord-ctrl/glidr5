@@ -123,7 +123,7 @@ type RecentResult = {
   lastResultAt: string;
   entryCount: number;
   hasResults: boolean;
-  winnerProduct: { id: number; brand: string; name: string } | null;
+  winnerProduct: { id: number; brand: string; name: string; category?: string | null } | null;
   winnerSkiNumber: number | null;
   winnerSkiId?: string | null;
   winnerGrind?: string | null;
@@ -1159,7 +1159,7 @@ export default function Dashboard() {
                         ) : item.hasResults && item.winnerProduct ? (
                           <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
                             <Trophy className="mr-1 h-2.5 w-2.5" />
-                            {item.winnerProduct.brand} {item.winnerProduct.name}
+                            {productLabel(item.winnerProduct)}
                           </Badge>
                         ) : item.hasResults ? (
                           <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">

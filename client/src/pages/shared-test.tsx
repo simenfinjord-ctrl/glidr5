@@ -164,11 +164,14 @@ export default function SharedTest() {
               </thead>
               <tbody>
                 {entries.map((entry, i) => {
+                  // Same label convention as inside the app: category as the
+                  // last part of the name, plain text.
+                  const cat = entry.category && !/structure|tool/i.test(entry.category) ? ` ${entry.category}` : "";
                   const productLabel = entry.free_text_product
                     ? entry.free_text_product
                     : entry.brand && entry.product_name
-                    ? `${entry.brand} ${entry.product_name}`
-                    : entry.product_name || entry.brand || "—";
+                    ? `${entry.brand} ${entry.product_name}${cat}`
+                    : (entry.product_name || entry.brand || "—") + (entry.product_name ? cat : "");
                   return (
                     <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/60">
                       <td className="px-4 py-2.5 font-medium text-gray-800">{entry.ski_number}</td>

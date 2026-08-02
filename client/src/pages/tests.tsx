@@ -1450,14 +1450,14 @@ export default function Tests() {
         const names: string[] = [];
         if (winner.productId) {
           const prod = productsById.get(winner.productId);
-          if (prod) names.push(`${prod.brand} ${prod.name}`);
+          if (prod) names.push(productLabel(prod));
         }
         if (winner.additionalProductIds) {
           for (const idStr of winner.additionalProductIds.split(",")) {
             const id = parseInt(idStr.trim(), 10);
             if (!isNaN(id)) {
               const p = productsById.get(id);
-              if (p) names.push(`${p.brand} ${p.name}`);
+              if (p) names.push(productLabel(p));
             }
           }
         }
@@ -2082,7 +2082,7 @@ export default function Tests() {
                             {!isBlindTester && (
                               <td className="px-4 py-3 text-xs">
                                 {winner ? (
-                                  <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
                                     <Trophy className="h-3 w-3" />
                                     {winner.productName}
                                   </span>
@@ -2110,7 +2110,7 @@ export default function Tests() {
                     const rounds = getEntryRounds(e, getDistanceLabels(tst).length);
                     switch (key) {
                       case "ski": return e.skiNumber;
-                      case "product": { const p = e.productId ? productsById.get(e.productId) : null; return p ? `${p.brand} ${p.name}` : ((e as any).freeTextProduct ?? null); }
+                      case "product": { const p = e.productId ? productsById.get(e.productId) : null; return p ? productLabel(p) : ((e as any).freeTextProduct ?? null); }
                       case "rank": return rounds[0]?.rank ?? null;
                       case "feeling": return e.feelingRank ?? null;
                       case "kick": return (e as any).kickRank ?? null;
@@ -2180,7 +2180,7 @@ export default function Tests() {
                       </div>
                       <div className="flex items-center gap-2">
                         {!hideDayDetails && winner && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/25 to-yellow-300/10 px-2.5 py-0.5 text-xs font-semibold text-amber-600 ring-1 ring-amber-300 dark:text-amber-400 dark:ring-amber-700">
                             <Trophy className="h-3 w-3" />
                             {winner.productName}
                           </span>
@@ -2225,10 +2225,10 @@ export default function Tests() {
                               // Pair each product with its parsed application
                               const appParts = entry.methodology ? entry.methodology.split("|") : [];
                               const productEntries = [
-                                product ? { id: product.id, name: `${product.brand} ${product.name}`, app: parseApplication(appParts[0]?.trim() ?? "").interpreted } : null,
+                                product ? { id: product.id, name: productLabel(product), app: parseApplication(appParts[0]?.trim() ?? "").interpreted } : null,
                                 ...additionalIds.map((aid, i) => {
                                   const p = productsById.get(aid);
-                                  return p ? { id: p.id, name: `${p.brand} ${p.name}`, app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
+                                  return p ? { id: p.id, name: productLabel(p), app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
                                 }),
                               ].filter((x): x is { id: number; name: string; app: string } => !!x);
                               // Free-text products/ski pairs have no product id but must
@@ -2375,7 +2375,7 @@ export default function Tests() {
                           {!isBlindTester && (
                             <td className="px-4 py-3 text-xs">
                               {winner ? (
-                                <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                                <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
                                   <Trophy className="h-3 w-3" />
                                   {winner.productName}
                                 </span>
@@ -2473,7 +2473,7 @@ export default function Tests() {
                             <span className="text-xs text-muted-foreground">{t.createdByName}</span>
                             {!hideDayDetails && winner && (
                               <div
-                                className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200"
+                                className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400/25 to-yellow-300/10 px-2.5 py-0.5 text-xs font-semibold text-amber-600 ring-1 ring-amber-300 dark:text-amber-400 dark:ring-amber-700"
                                 data-testid={`badge-winner-${t.id}`}
                               >
                                 <Trophy className="h-3 w-3" />

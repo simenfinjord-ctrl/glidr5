@@ -19,6 +19,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { productLabel } from "@/lib/product-label";
 import { LastEdited } from "@/components/last-edited";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -474,7 +475,7 @@ function ProductDetailInner() {
             <div className="space-y-1.5">
               {comps.map((c: any, i: number) => {
                 const comp = c.productId != null ? allProducts.find((pp) => pp.id === c.productId) : null;
-                const label = comp ? `${comp.brand} ${comp.name}` : (c.freeText || c.name || `#${c.productId}`);
+                const label = comp ? productLabel(comp) : (c.freeText || c.name || `#${c.productId}`);
                 return (
                   <div key={i} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-sm">
                     <span className="font-medium">{label}</span>
@@ -646,7 +647,7 @@ function ProductDetailInner() {
                                       for (const ap of e.additionalProducts ?? []) {
                                         all.push({
                                           id: ap.id,
-                                          label: `${ap.brand} ${ap.name}`.trim(),
+                                          label: productLabel(ap),
                                         });
                                       }
                                       if (all.length === 0) return <span>—</span>;

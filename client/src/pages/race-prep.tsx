@@ -128,7 +128,7 @@ function productNames(ids: string | null, products: Product[]): string {
   if (!ids) return "";
   return ids.split(",").map(id => {
     const p = products.find(p => p.id === parseInt(id));
-    return p ? `${p.brand} ${p.name}` : "";
+    return p ? productLabel(p) : "";
   }).filter(Boolean).join(" + ");
 }
 
@@ -205,7 +205,7 @@ function SingleProductSelect({
         onClick={() => { setOpen(true); setSearch(""); }}
         className="flex-1 min-w-0 flex items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 h-9 text-sm hover:bg-muted/40"
       >
-        <span className="truncate font-medium">{chosen.brand} {chosen.name}</span>
+        <span className="truncate font-medium">{productLabel(chosen)}</span>
         <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
       </button>
     );
@@ -979,7 +979,7 @@ function PrepDetailDialog({
     parseProductApps(appsJson, idsFallback)
       .map(({ productId, application }) => {
         const p = products.find((pp) => pp.id === productId);
-        const nm = p ? `${p.brand} ${p.name}` : "";
+        const nm = p ? productLabel(p) : "";
         if (!nm) return "";
         return application ? `${nm} (${application})` : nm;
       })

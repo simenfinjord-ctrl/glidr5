@@ -4073,7 +4073,7 @@ export async function registerRoutes(
     const productMap: Record<number, any> = {};
     for (const pid of productIds) {
       const p = await storage.getProduct(pid);
-      if (p) productMap[pid] = { id: p.id, brand: p.brand, name: p.name };
+      if (p) productMap[pid] = { id: p.id, brand: p.brand, name: p.name, category: p.category };
     }
     // Winner ski IDs for athlete race-ski tests — the dashboard shows the
     // pair's actual Ski ID, never an anonymous "Pair X".
@@ -5150,7 +5150,7 @@ export async function registerRoutes(
           [testId, u.activeTeamId || u.teamId]
         ),
         (pool as any).query(
-          `SELECT te.*, p.brand, p.name as product_name FROM test_entries te
+          `SELECT te.*, p.brand, p.name as product_name, p.category FROM test_entries te
            LEFT JOIN products p ON p.id = te.product_id
            WHERE te.test_id = $1 ORDER BY COALESCE(te.rank_0km, 999)`,
           [testId]

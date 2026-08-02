@@ -4,6 +4,7 @@ import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Trophy, Award, Plus, Trash2, Disc3 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { productLabel } from "@/lib/product-label";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -318,10 +319,10 @@ export default function SeriesDetail() {
                             ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
                             : [];
                           const allProducts = [
-                            product ? `${product.brand} ${product.name}` : null,
+                            product ? productLabel(product) : null,
                             ...additionalIds.map((aid) => {
                               const p = productsById.get(aid);
-                              return p ? `${p.brand} ${p.name}` : null;
+                              return p ? productLabel(p) : null;
                             }),
                           ].filter(Boolean);
                           const rounds = getEntryRounds(entry, distLabels.length);

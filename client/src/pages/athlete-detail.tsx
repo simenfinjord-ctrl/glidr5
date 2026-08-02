@@ -2829,17 +2829,17 @@ export default function AthleteDetail() {
                         if (appsJson) {
                           try { const a = JSON.parse(appsJson); if (Array.isArray(a)) pairs = a.filter((x: any) => x && typeof x.productId === "number"); } catch {}
                         }
-                        if (pairs.length === 0) return parseIds(idsFallback).map(p => `${p.brand} ${p.name}`).join(" + ");
+                        if (pairs.length === 0) return parseIds(idsFallback).map(p => productLabel(p)).join(" + ");
                         return pairs.map(({ productId, application }) => {
                           const p = allProducts.find(pp => pp.id === productId);
                           if (!p) return "";
-                          return application ? `${p.brand} ${p.name} (${application})` : `${p.brand} ${p.name}`;
+                          return application ? `${productLabel(p)} (${application})` : productLabel(p);
                         }).filter(Boolean).join(" + ");
                       };
                       const glide = fmtApps(entry.productApps, entry.productIds);
                       const struct = fmtApps(entry.structureApps, entry.structureIds);
                       const kickIsText = entry.kickProductIds ? entry.kickProductIds.split(",").some(s => isNaN(Number(s.trim()))) : false;
-                      const kick = kickIsText ? (entry.kickProductIds ?? "") : parseIds(entry.kickProductIds).map(p => `${p.brand} ${p.name}`).join(" + ");
+                      const kick = kickIsText ? (entry.kickProductIds ?? "") : parseIds(entry.kickProductIds).map(p => productLabel(p)).join(" + ");
                       const tette = entry.tette ?? "";
                       const kickTette = [kick, tette].filter(Boolean).join(" / ");
                       const skiDisplay = entry.discipline === "Skiathlon"

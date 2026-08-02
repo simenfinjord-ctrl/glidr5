@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { productLabel } from "@/lib/product-label";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -68,7 +69,7 @@ export function ProductCombobox({
           <span className={cn("truncate", !selected && "text-muted-foreground")}>
             {selected ? (
               <>
-                {selected.brand} {selected.name}
+                {productLabel(selected)}
                 {!isStructureTool(selected.category) && (
                   <span className="ml-1 text-muted-foreground">{selected.category}</span>
                 )}
@@ -97,7 +98,7 @@ export function ProductCombobox({
                     data-testid={`option-product-${p.id}`}
                   >
                     <span className="truncate">
-                      {p.brand} {p.name}
+                      {productLabel(p)}
                       {/* Product form (Paraffin / Liquid / Block) — part of the name while picking */}
                       {!isStructureTool(p.category) && (
                         <span className="ml-1 text-muted-foreground">{p.category}</span>

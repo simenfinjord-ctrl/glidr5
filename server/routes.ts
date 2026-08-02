@@ -12035,6 +12035,31 @@ RULES:
         if (dbProducts.length > 0) {
           const norm = (s: string) =>
             s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+
+          // Waxers write brand CODES on paper: "SWX PF85" means Swix PF85. The
+          // transcription stays literal; the code is expanded here, before
+          // matching. Confirmed codes first, then a data-driven fallback: a
+          // short all-caps token that prefix-matches exactly ONE brand in the
+          // team's own product DB expands to that brand (TOK→Toko, VAU→Vauhti)
+          // — ambiguous or unknown codes are left untouched.
+          const BRAND_CODES: Record<string, string> = {
+            swx: "Swix", mpl: "Maplus", rex: "Rex",
+          };
+          const dbBrands = Array.from(new Set(dbProducts.map((d) => d.brand))).filter(Boolean);
+          const expandBrandCode = (raw: string): string => {
+            const tokens = raw.trim().split(/\s+/);
+            if (tokens.length === 0) return raw;
+            const first = tokens[0].toLowerCase().replace(/[^a-z]/g, "");
+            if (first.length < 2 || first.length > 4) return raw;
+            let brand = BRAND_CODES[first];
+            if (!brand) {
+              const hits = dbBrands.filter((b) => b.toLowerCase().startsWith(first));
+              if (hits.length === 1) brand = hits[0];
+            }
+            if (!brand || brand.toLowerCase() === tokens[0].toLowerCase()) return raw;
+            return [brand, ...tokens.slice(1)].join(" ");
+          };
+
           const tokenize = (s: string): string[] =>
             norm(s).split(" ").filter(Boolean);
           // A token is "distinctive" if it contains a digit (e.g. wm25, pc100, r30)
@@ -12061,7 +12086,7 @@ RULES:
           for (const group of parsed) {
             if (!Array.isArray(group.products)) continue;
             group.products = group.products.map((p: any) => {
-              const scanned = `${p.brand || ""} ${p.name || ""}`.trim();
+              const scanned = expandBrandCode(`${p.brand || ""} ${p.name || ""}`.trim());
               if (!scanned) return { ...p, matched: false };
               let bestScore = 0;
               let secondScore = 0;
@@ -12078,7 +12103,14 @@ RULES:
               if (confident && bestMatch) {
                 return { brand: bestMatch.brand, name: bestMatch.name, skiNumber: p.skiNumber, matched: true };
               }
-              // No confident match — keep literal transcription, flag for "Create product"
+              // No confident match — keep the transcription (brand code expanded)
+              // so "Create product" prefills the real brand, not the paper code.
+              const parts = scanned.split(" ");
+              const knownBrand = dbBrands.find((b) => b.toLowerCase() === (parts[0] || "").toLowerCase())
+                || Object.values(BRAND_CODES).find((b) => b.toLowerCase() === (parts[0] || "").toLowerCase());
+              if (knownBrand) {
+                return { skiNumber: p.skiNumber, brand: knownBrand, name: parts.slice(1).join(" ") || p.name || "", matched: false };
+              }
               return { ...p, matched: false };
             });
           }

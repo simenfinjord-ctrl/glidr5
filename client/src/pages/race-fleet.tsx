@@ -226,7 +226,19 @@ export default function RaceFleet() {
             <form onSubmit={(e) => { e.preventDefault(); if (form.skiId.trim() && form.discipline.trim()) saveMutation.mutate(); }} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 {field("skiId", L("Ski-ID *", "Ski ID *"), "e.g. 003")}
-                {field("discipline", L("Stilart *", "Discipline *"), L("Skøyt / Klassisk", "Skate / Classic"))}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{L("Stilart *", "Discipline *")}</label>
+                  <div className="flex h-9 rounded-md border border-input p-0.5">
+                    {(["Skate", "Classic"] as const).map((d) => (
+                      <button key={d} type="button" onClick={() => set("discipline", d)}
+                        className={cn("flex-1 rounded text-sm font-medium transition-colors",
+                          form.discipline === d ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                        data-testid={`fleet-discipline-${d.toLowerCase()}`}>
+                        {d === "Skate" ? L("Skøyting", "Skate") : L("Klassisk", "Classic")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {field("serialNumber", L("Serienummer", "Serial number"))}
                 {field("brand", L("Merke", "Brand"), "Madshus")}
                 {field("construction", L("Konstruksjon", "Construction"))}

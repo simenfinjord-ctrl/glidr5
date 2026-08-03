@@ -9506,7 +9506,9 @@ export async function registerRoutes(
       const [tests, races, grinds] = await Promise.all([
         (pool as any).query(
           `SELECT te.race_ski_id AS id, COUNT(*)::int AS n, MAX(t.date) AS last,
-                  MIN(te.rank_0km) FILTER (WHERE te.rank_0km IS NOT NULL) AS best
+                  MIN(te.rank_0km) FILTER (WHERE te.rank_0km IS NOT NULL) AS best,
+                  COUNT(*) FILTER (WHERE te.rank_0km = 1)::int AS wins,
+                  ROUND(AVG(te.rank_0km) FILTER (WHERE te.rank_0km IS NOT NULL), 2) AS "avgRank"
            FROM test_entries te JOIN tests t ON t.id = te.test_id
            WHERE te.race_ski_id = ANY($1::int[]) GROUP BY te.race_ski_id`, [ids]),
         (pool as any).query(
@@ -9524,6 +9526,8 @@ export async function registerRoutes(
         row.testCount = t?.n ?? 0;
         row.lastTestDate = t?.last ?? null;
         row.bestRank = t?.best ?? null;
+        row.winCount = t?.wins ?? 0;
+        row.avgRank = t?.avgRank != null ? Number(t.avgRank) : null;
         row.raceCount = ra?.n ?? 0;
         row.lastRaceDate = ra?.date ?? null;
         row.lastRaceLocation = ra?.location ?? null;
@@ -9554,6 +9558,23 @@ export async function registerRoutes(
        req.body.isSitski ? 1 : 0, req.body.customParams || null, now, u.id, u.name,
        (req.body.fleetGroup || "").trim() || null]);
     res.json({ ok: true, id: r.rows[0]?.id });
+  });
+
+  // Test history for ONE fleet ski — date, test, rank and result per entry.
+  app.get("/api/race-fleet/:id/tests", requirePermission("raceskis", "view"), async (req, res) => {
+    if (!(await requireParaTeam(req, res))) return;
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const own = await (pool as any).query(`SELECT id FROM race_skis WHERE id = $1 AND athlete_id IS NULL AND team_id = $2`, [id, teamId]);
+    if (own.rows.length === 0) return res.status(404).json({ message: "Not found" });
+    const r = await (pool as any).query(
+      `SELECT t.id AS "testId", t.date, t.location, t.test_name AS "testName", t.test_type AS "testType",
+              t.result_unit AS "resultUnit", te.rank_0km AS "rank", te.result_0km_cm_behind AS "result", te.results
+       FROM test_entries te JOIN tests t ON t.id = te.test_id
+       WHERE te.race_ski_id = $1 AND t.team_id = $2
+       ORDER BY t.date DESC, t.id DESC`, [id, teamId]);
+    res.json(r.rows);
   });
 
   app.put("/api/race-fleet/:id", requirePermission("raceskis", "edit"), async (req, res) => {

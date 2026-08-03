@@ -662,6 +662,9 @@ export const raceSkis = pgTable("race_skis", {
   updatedAt: text("updated_at"),
   updatedById: integer("updated_by_id"),
   updatedByName: text("updated_by_name"),
+  // Fleet skis (team-owned, no athlete): the named group/series this pair
+  // belongs to — groups are tested against each other, one pair from each.
+  fleetGroup: text("fleet_group"),
 });
 
 export const insertRaceSkiSchema = createInsertSchema(raceSkis).omit({ id: true });

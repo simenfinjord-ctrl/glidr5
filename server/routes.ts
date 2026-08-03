@@ -935,6 +935,7 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_unit TEXT DEFAULT 'C';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS result_unit TEXT;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS fleet_group TEXT;
       CREATE TABLE IF NOT EXISTS scan_corrections (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -4095,6 +4096,13 @@ export async function registerRoutes(
       if (raceSkiIds.length > 0) {
         const allowedSkis = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin);
         const allowedIds = new Set(allowedSkis.map((s: any) => s.id));
+        // Team fleet skis (no athlete) are open to every raceskis-level user.
+        try {
+          const { pool: pgFl } = await import("./db");
+          const fl = await (pgFl as any).query(
+            `SELECT id FROM race_skis WHERE athlete_id IS NULL AND team_id = $1`, [getActiveTeamId(req)]);
+          for (const row of fl.rows) allowedIds.add(row.id);
+        } catch { /* additive */ }
         for (const rsId of raceSkiIds) {
           if (!allowedIds.has(rsId)) {
             return res.status(403).json({ message: "Access denied to race ski " + rsId });
@@ -4557,6 +4565,13 @@ export async function registerRoutes(
       if (raceSkiIds.length > 0) {
         const allowedSkis = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin);
         const allowedIds = new Set(allowedSkis.map((s: any) => s.id));
+        // Team fleet skis (no athlete) are open to every raceskis-level user.
+        try {
+          const { pool: pgFl } = await import("./db");
+          const fl = await (pgFl as any).query(
+            `SELECT id FROM race_skis WHERE athlete_id IS NULL AND team_id = $1`, [getActiveTeamId(req)]);
+          for (const row of fl.rows) allowedIds.add(row.id);
+        } catch { /* additive */ }
         for (const rsId of raceSkiIds) {
           if (!allowedIds.has(rsId)) {
             return res.status(403).json({ message: "Access denied to race ski " + rsId });
@@ -9384,6 +9399,18 @@ export async function registerRoutes(
       return res.json(all);
     }
     const list = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin);
+    // Team fleet skis (no athlete) are testable by anyone with raceskis
+    // access — a fleet-group test picks one pair from each group.
+    try {
+      const teamId = getActiveTeamId(req);
+      const { pool: pgF } = await import("./db");
+      const fl = await (pgF as any).query(
+        `SELECT id, ski_id AS "skiId", serial_number AS "serialNumber", brand, discipline, grind,
+                fleet_group AS "fleetGroup", NULL AS "athleteId"
+         FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 AND archived_at IS NULL`, [teamId]);
+      const have = new Set((list as any[]).map((x: any) => x.id));
+      for (const row of fl.rows) if (!have.has(row.id)) (list as any[]).push(row);
+    } catch { /* fleet skis are additive */ }
     res.json(list);
   });
 
@@ -9468,8 +9495,8 @@ export async function registerRoutes(
               grind, heights, year, length, type_of_ski AS "typeOfSki", where_received AS "whereReceived", notes,
               is_training_ski AS "isTrainingSki", is_sitski AS "isSitski", custom_params AS "customParams",
               archived_at AS "archivedAt", created_at AS "createdAt", created_by_name AS "createdByName",
-              updated_at AS "updatedAt", updated_by_name AS "updatedByName"
-       FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 ORDER BY id DESC`, [teamId]);
+              updated_at AS "updatedAt", updated_by_name AS "updatedByName", fleet_group AS "fleetGroup"
+       FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 ORDER BY fleet_group NULLS LAST, id DESC`, [teamId]);
 
     // A ski register that only lists specifications answers the wrong question.
     // Before a race what you need to know is what each pair has actually done:
@@ -9518,13 +9545,14 @@ export async function registerRoutes(
     const r = await (pool as any).query(
       `INSERT INTO race_skis (athlete_id, team_id, serial_number, ski_id, brand, discipline, construction, mold, base,
               grind, heights, year, length, type_of_ski, where_received, notes, is_training_ski, is_sitski, custom_params,
-              created_at, created_by_id, created_by_name)
-       VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id`,
+              created_at, created_by_id, created_by_name, fleet_group)
+       VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id`,
       [teamId, req.body.serialNumber || null, req.body.skiId, req.body.brand || null, req.body.discipline,
        req.body.construction || null, req.body.mold || null, req.body.base || null, req.body.grind || null,
        req.body.heights || null, req.body.year || null, req.body.length || null, req.body.typeOfSki || null,
        req.body.whereReceived || null, req.body.notes || null, req.body.isTrainingSki ? 1 : 0,
-       req.body.isSitski ? 1 : 0, req.body.customParams || null, now, u.id, u.name]);
+       req.body.isSitski ? 1 : 0, req.body.customParams || null, now, u.id, u.name,
+       (req.body.fleetGroup || "").trim() || null]);
     res.json({ ok: true, id: r.rows[0]?.id });
   });
 
@@ -9540,6 +9568,7 @@ export async function registerRoutes(
       serialNumber: "serial_number", skiId: "ski_id", brand: "brand", discipline: "discipline", construction: "construction",
       mold: "mold", base: "base", grind: "grind", heights: "heights", year: "year", length: "length",
       typeOfSki: "type_of_ski", whereReceived: "where_received", notes: "notes", customParams: "custom_params",
+      fleetGroup: "fleet_group",
     };
     const sets: string[] = []; const vals: any[] = [];
     for (const [k, col] of Object.entries(cols)) {

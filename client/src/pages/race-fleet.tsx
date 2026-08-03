@@ -33,6 +33,9 @@ type FleetSki = {
   isTrainingSki: number;
   isSitski: number;
   createdByName: string | null;
+  // Named group/series — groups are tested against each other, one pair each,
+  // to pick the series of the day.
+  fleetGroup: string | null;
   // What the pair has actually done — the reason you open this page before a race.
   testCount: number;
   lastTestDate: string | null;
@@ -55,6 +58,7 @@ function daysSince(iso: string | null): number | null {
 const EMPTY = {
   skiId: "", serialNumber: "", brand: "", discipline: "", construction: "", mold: "", base: "",
   grind: "", heights: "", year: "", length: "", typeOfSki: "", whereReceived: "", notes: "",
+  fleetGroup: "",
   isTrainingSki: false, isSitski: false,
 };
 
@@ -80,7 +84,8 @@ export default function RaceFleet() {
       skiId: s.skiId ?? "", serialNumber: s.serialNumber ?? "", brand: s.brand ?? "", discipline: s.discipline ?? "",
       construction: s.construction ?? "", mold: s.mold ?? "", base: s.base ?? "", grind: s.grind ?? "",
       heights: s.heights ?? "", year: s.year ?? "", length: s.length ?? "", typeOfSki: s.typeOfSki ?? "",
-      whereReceived: s.whereReceived ?? "", notes: s.notes ?? "", isTrainingSki: s.isTrainingSki === 1, isSitski: s.isSitski === 1,
+      whereReceived: s.whereReceived ?? "", notes: s.notes ?? "", fleetGroup: s.fleetGroup ?? "",
+      isTrainingSki: s.isTrainingSki === 1, isSitski: s.isSitski === 1,
     });
     setOpen(true);
   };
@@ -144,7 +149,22 @@ export default function RaceFleet() {
         ) : (
           <Card className="fs-card rounded-2xl overflow-hidden" data-testid="list-fleet">
             <div className="divide-y divide-border/40">
-              {skis.map((s) => (
+              {(() => {
+                // Grouped by series — the groups are what gets tested against
+                // each other, so the list reads group by group.
+                const grouped = new Map<string, FleetSki[]>();
+                for (const sk of skis) {
+                  const key = sk.fleetGroup?.trim() || "";
+                  if (!grouped.has(key)) grouped.set(key, []);
+                  grouped.get(key)!.push(sk);
+                }
+                const orderedKeys = Array.from(grouped.keys()).sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
+                return orderedKeys.flatMap((gkey) => [
+                  <div key={`hdr-${gkey}`} className="flex items-center gap-2 bg-muted/40 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {gkey || L("Uten gruppe", "No group")}
+                    <span className="font-normal normal-case">({grouped.get(gkey)!.length})</span>
+                  </div>,
+                  ...grouped.get(gkey)!.map((s) => (
                 <div key={s.id} className="flex items-start gap-3 px-4 py-3" data-testid={`row-fleet-${s.id}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -215,7 +235,9 @@ export default function RaceFleet() {
                     </div>
                   )}
                 </div>
-              ))}
+                  )),
+                ]);
+              })()}
             </div>
           </Card>
         )}
@@ -229,15 +251,24 @@ export default function RaceFleet() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">{L("Stilart *", "Discipline *")}</label>
                   <div className="flex h-9 rounded-md border border-input p-0.5">
-                    {(["Skate", "Classic"] as const).map((d) => (
+                    {(["Skating", "Classic"] as const).map((d) => (
                       <button key={d} type="button" onClick={() => set("discipline", d)}
                         className={cn("flex-1 rounded text-sm font-medium transition-colors",
                           form.discipline === d ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
                         data-testid={`fleet-discipline-${d.toLowerCase()}`}>
-                        {d === "Skate" ? L("Skøyting", "Skate") : L("Klassisk", "Classic")}
+                        {d === "Skating" ? L("Skøyting", "Skate") : L("Klassisk", "Classic")}
                       </button>
                     ))}
                   </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{L("Gruppe/serie", "Group/series")}</label>
+                  <Input value={form.fleetGroup} onChange={(e) => set("fleetGroup", e.target.value)}
+                    list="fleet-groups" placeholder={L("f.eks. Serie A", "e.g. Series A")}
+                    className="h-9 text-sm" data-testid="fleet-input-group" />
+                  <datalist id="fleet-groups">
+                    {Array.from(new Set(skis.map((x) => x.fleetGroup).filter(Boolean))).map((g) => <option key={g as string} value={g as string} />)}
+                  </datalist>
                 </div>
                 {field("serialNumber", L("Serienummer", "Serial number"))}
                 {field("brand", L("Merke", "Brand"), "Madshus")}

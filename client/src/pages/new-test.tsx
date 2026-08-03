@@ -47,7 +47,7 @@ type Athlete = {
 
 type RaceSki = {
   id: number;
-  athleteId: number;
+  athleteId: number | null;
   skiId: string;
   serialNumber: string | null;
   brand: string | null;
@@ -247,13 +247,18 @@ export default function NewTest() {
       })
       .map((ski) => {
         const athlete = athletes.find((a) => a.id === ski.athleteId);
+        // Team fleet skis carry no athlete — they are labelled by their
+        // group/series, which is exactly what a group-vs-group test compares.
+        const fleetLabel = (ski as any).fleetGroup
+          ? `Fleet · ${(ski as any).fleetGroup}`
+          : L("Lagets fleet", "Team fleet");
         return {
           id: ski.id,
           skiId: ski.skiId,
           serialNumber: ski.serialNumber,
           brand: ski.brand,
           discipline: ski.discipline,
-          athleteName: athlete?.name || "Unknown",
+          athleteName: ski.athleteId == null ? fleetLabel : (athlete?.name || "Unknown"),
           grind: ski.grind,
         };
       });

@@ -136,7 +136,7 @@ function getDistanceLabels(test: Test): string[] {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch {}
   }
-  const labels: string[] = [test.distanceLabel0km || "0 km"];
+  const labels: string[] = [test.distanceLabel0km || (test.resultUnit === "time" ? "Round 1" : "0 km")];
   if (test.distanceLabelXkm) {
     labels.push(test.distanceLabelXkm);
   }

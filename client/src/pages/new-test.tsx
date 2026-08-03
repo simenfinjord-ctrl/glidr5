@@ -944,12 +944,19 @@ export default function NewTest() {
             <div className="mb-3 flex items-center gap-2">
               <span className="text-xs font-medium text-muted-foreground">{L("Resultatenhet:", "Result unit:")}</span>
               <div className="inline-flex rounded-lg border border-border bg-background/60 p-0.5 text-xs">
-                <button type="button" onClick={() => setResultUnit("cm")}
+                <button type="button" onClick={() => {
+                    setResultUnit("cm");
+                    setDistanceLabels((prev) => prev.map((l, i) => l.trim().toLowerCase() === `round ${i + 1}` && i === 0 ? "0 km" : l));
+                  }}
                   className={cn("rounded-md px-2.5 py-1 transition-colors", resultUnit === "cm" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
                   data-testid="unit-cm">
                   cm
                 </button>
-                <button type="button" onClick={() => setResultUnit("time")}
+                <button type="button" onClick={() => {
+                    setResultUnit("time");
+                    // "0 km" is a distance name; a timed run is a round.
+                    setDistanceLabels((prev) => prev.map((l, i) => l.trim().toLowerCase() === "0 km" ? `Round ${i + 1}` : l));
+                  }}
                   className={cn("rounded-md px-2.5 py-1 transition-colors", resultUnit === "time" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
                   data-testid="unit-time">
                   {L("tid (sek)", "time (s)")}

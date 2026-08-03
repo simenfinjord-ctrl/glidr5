@@ -54,6 +54,31 @@ async function enforceTeamAreas(perms: Record<string, string>, teamId: number | 
   }
 }
 
+// Time tests are ranked on the AVERAGE across every run — the stored primary
+// rank (rank_0km) must say the same as the test view, or the winners on the
+// Tests list and in analytics would silently be round-1 winners.
+function applyAvgRanks(entries: any[]): void {
+  const avgOf = (e: any): number | null => {
+    let vals: number[] = [];
+    try {
+      const parsed = e.results ? JSON.parse(e.results) : null;
+      if (Array.isArray(parsed)) vals = parsed.map((r: any) => r?.result).filter((v: any) => v != null && !isNaN(Number(v))).map(Number);
+    } catch {}
+    if (vals.length === 0 && e.result0kmCmBehind != null) vals = [Number(e.result0kmCmBehind)];
+    if (vals.length === 0) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  };
+  const withAvg = entries.map((e) => ({ e, avg: avgOf(e) }));
+  const ranked = withAvg.filter((x) => x.avg != null).sort((a, b) => a.avg! - b.avg!);
+  let prev: number | null = null, rank = 0;
+  ranked.forEach((x, i) => {
+    if (prev == null || x.avg! > prev) rank = i + 1;
+    prev = x.avg!;
+    x.e.rank0km = rank;
+  });
+  withAvg.filter((x) => x.avg == null).forEach((x) => { x.e.rank0km = null; });
+}
+
 // Whether the team's plan includes a given feature key (e.g. "time_tests").
 async function teamHasFeature(teamId: number | undefined, feature: string): Promise<boolean> {
   if (!teamId) return false;
@@ -3993,6 +4018,7 @@ export async function registerRoutes(
       });
     } catch (_) {}
 
+    if (resultUnit === "time") applyAvgRanks(entries);
     for (const e of entries) {
       await storage.createEntry({
         testId: test.id,
@@ -4423,6 +4449,7 @@ export async function registerRoutes(
     await recordChange(req, "test", id, `Test edited: ${(existing as any).testName || existing.location} (${existing.date})`, existing, updated);
 
     if (req.body.entries) {
+      if ((existing as any).resultUnit === "time") applyAvgRanks(req.body.entries);
       await storage.deleteEntriesByTestId(id);
       const now = new Date().toISOString();
       const groupScope = req.body.groupScope || existing.groupScope;

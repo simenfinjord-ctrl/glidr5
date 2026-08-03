@@ -129,6 +129,9 @@ export function TestEntryTable({
   grindProfiles?: GrindProfile[];
   visibleGrindCols?: string[];
 }) {
+  // While a result field is focused, its raw text lives here — a controlled
+  // numeric value would swallow the trailing "7." and make decimals untypable.
+  const [resultDrafts, setResultDrafts] = useState<Record<string, string>>({});
   const { t, language } = useI18n();
   const feelingNotePlaceholder = language === "no" ? "Notat…" : "Note…";
 
@@ -645,9 +648,10 @@ export function TestEntryTable({
                         <Input
                           inputMode="decimal"
                           type="text"
-                          value={rr.result ?? ""}
+                          value={resultDrafts[`${row.id}-${roundIdx}`] ?? (rr.result ?? "")}
                           onChange={(e) => {
                             const v = e.target.value;
+                            setResultDrafts((d) => ({ ...d, [`${row.id}-${roundIdx}`]: v }));
                             const num = v === "" ? null : Number(v.replace(",", "."));
                             const next = rows.map((r) => {
                               if (r.id !== row.id) return r;
@@ -657,6 +661,7 @@ export function TestEntryTable({
                             });
                             setRows(next);
                           }}
+                          onBlur={() => setResultDrafts((d) => { const n = { ...d }; delete n[`${row.id}-${roundIdx}`]; return n; })}
                           className="h-8 w-20 bg-background pr-8 text-right font-mono tabular-nums"
                           placeholder="0"
                           data-testid={`input-result-${roundIdx}-${row.id}`}

@@ -9570,10 +9570,32 @@ export async function registerRoutes(
     if (own.rows.length === 0) return res.status(404).json({ message: "Not found" });
     const r = await (pool as any).query(
       `SELECT t.id AS "testId", t.date, t.location, t.test_name AS "testName", t.test_type AS "testType",
-              t.result_unit AS "resultUnit", te.rank_0km AS "rank", te.result_0km_cm_behind AS "result", te.results
+              t.result_unit AS "resultUnit", te.rank_0km AS "rank", te.result_0km_cm_behind AS "result", te.results,
+              w.air_temperature_c AS "airTemperatureC", w.snow_temperature_c AS "snowTemperatureC", w.snow_type AS "snowType"
        FROM test_entries te JOIN tests t ON t.id = te.test_id
+       LEFT JOIN daily_weather w ON w.id = t.weather_id
        WHERE te.race_ski_id = $1 AND t.team_id = $2
        ORDER BY t.date DESC, t.id DESC`, [id, teamId]);
+    res.json(r.rows);
+  });
+
+  // Every test row for a whole series/group, with conditions — feeds the
+  // "which conditions does this series perform in" breakdown.
+  app.get("/api/race-fleet/group-tests", requirePermission("raceskis", "view"), async (req, res) => {
+    if (!(await requireParaTeam(req, res))) return;
+    const teamId = getActiveTeamId(req);
+    const group = String(req.query.group ?? "").trim();
+    if (!group) return res.json([]);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT rs.id AS "raceSkiId", rs.ski_id AS "skiLabel", t.date, te.rank_0km AS "rank",
+              w.air_temperature_c AS "airTemperatureC", w.snow_temperature_c AS "snowTemperatureC", w.snow_type AS "snowType"
+       FROM race_skis rs
+       JOIN test_entries te ON te.race_ski_id = rs.id
+       JOIN tests t ON t.id = te.test_id AND t.team_id = $2
+       LEFT JOIN daily_weather w ON w.id = t.weather_id
+       WHERE rs.athlete_id IS NULL AND rs.team_id = $2 AND rs.fleet_group = $1
+       ORDER BY t.date DESC`, [group, teamId]);
     res.json(r.rows);
   });
 

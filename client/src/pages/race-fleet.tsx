@@ -71,7 +71,95 @@ type SkiTestRow = {
   resultUnit: string | null;
   rank: number | null;
   result: number | null;
+  airTemperatureC: number | null;
+  snowTemperatureC: number | null;
+  snowType: string | null;
 };
+
+type GroupTestRow = {
+  raceSkiId: number;
+  skiLabel: string;
+  date: string;
+  rank: number | null;
+  airTemperatureC: number | null;
+  snowTemperatureC: number | null;
+  snowType: string | null;
+};
+
+// Snow-temperature buckets — the axis waxers actually think along.
+const TEMP_BUCKETS: { label: string; test: (t: number) => boolean }[] = [
+  { label: "≥ 0°",       test: (t) => t >= 0 },
+  { label: "−1…−4°",     test: (t) => t < 0 && t >= -4 },
+  { label: "−5…−9°",     test: (t) => t < -4 && t >= -9 },
+  { label: "−10…−14°",   test: (t) => t < -9 && t >= -14 },
+  { label: "< −15°",     test: (t) => t < -14 },
+];
+
+// Average rank per snow-temp bucket and per snow type. Rank is the unit-free
+// measure, so cm tests and photocell time tests aggregate together.
+function conditionBreakdown(rows: { rank: number | null; snowTemperatureC: number | null; snowType: string | null }[]) {
+  const temp = TEMP_BUCKETS.map((b) => ({ label: b.label, n: 0, sum: 0 }));
+  const types = new Map<string, { n: number; sum: number }>();
+  for (const r of rows) {
+    if (r.rank == null) continue;
+    if (r.snowTemperatureC != null) {
+      const i = TEMP_BUCKETS.findIndex((b) => b.test(r.snowTemperatureC!));
+      if (i >= 0) { temp[i].n++; temp[i].sum += r.rank; }
+    }
+    const st = r.snowType?.trim();
+    if (st) {
+      const e = types.get(st) ?? { n: 0, sum: 0 };
+      e.n++; e.sum += r.rank;
+      types.set(st, e);
+    }
+  }
+  return {
+    temp: temp.filter((b) => b.n > 0).map((b) => ({ label: b.label, n: b.n, avg: b.sum / b.n })),
+    types: Array.from(types.entries()).map(([label, e]) => ({ label, n: e.n, avg: e.sum / e.n }))
+      .sort((a, b) => a.avg - b.avg),
+  };
+}
+
+// Compact "performs best in" rendering shared by ski and series dialogs.
+function ConditionsSection({ rows, L }: {
+  rows: { rank: number | null; snowTemperatureC: number | null; snowType: string | null }[];
+  L: (no: string, en: string) => string;
+}) {
+  const b = conditionBreakdown(rows);
+  if (b.temp.length === 0 && b.types.length === 0) {
+    return <p className="text-[11px] text-muted-foreground">{L("Ingen tester med værdata ennå — koble vær til testene for å få føreanalyse.", "No tests with weather data yet — link weather to the tests to get condition analysis.")}</p>;
+  }
+  const best = (list: { label: string; n: number; avg: number }[]) => list.length ? Math.min(...list.map((x) => x.avg)) : null;
+  const bestTemp = best(b.temp), bestType = best(b.types);
+  const row = (x: { label: string; n: number; avg: number }, isBest: boolean) => (
+    <div key={x.label} className={cn("flex items-center gap-2 rounded px-2 py-1 text-xs", isBest && "bg-amber-50 dark:bg-amber-950/20")}>
+      <span className={cn("w-24 shrink-0", isBest && "font-semibold")}>{x.label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+        {/* Lower avg rank = better = fuller bar (scaled against rank 5). */}
+        <div className={cn("h-full rounded-full", isBest ? "bg-amber-400" : "bg-primary/50")}
+          style={{ width: `${Math.max(8, Math.min(100, (1 / Math.max(1, x.avg)) * 100))}%` }} />
+      </div>
+      <span className="w-16 shrink-0 text-right tabular-nums text-muted-foreground">Ø {x.avg.toFixed(2)}</span>
+      <span className="w-10 shrink-0 text-right text-[10px] text-muted-foreground">{x.n} {L("t.", "t.")}</span>
+    </div>
+  );
+  return (
+    <div className="space-y-2">
+      {b.temp.length > 0 && (
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Snøtemperatur — snittrangering", "Snow temperature — average rank")}</p>
+          <div className="space-y-0.5">{b.temp.map((x) => row(x, x.avg === bestTemp))}</div>
+        </div>
+      )}
+      {b.types.length > 0 && (
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Snøtype — snittrangering", "Snow type — average rank")}</p>
+          <div className="space-y-0.5">{b.types.map((x) => row(x, x.avg === bestType))}</div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Same palette as the Athlete Skis garage — a colour tag is a physical strip
 // of tape on the ski, so the two registers must speak the same colours.
@@ -581,8 +669,9 @@ export default function RaceFleet() {
 
         {/* ── Per-series analytics ── */}
         <Dialog open={!!analyticsGroup} onOpenChange={(o) => !o && setAnalyticsGroup(null)}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader><DialogTitle>{analyticsGroup} — Analytics</DialogTitle></DialogHeader>
+            {analyticsGroup && <GroupConditions group={analyticsGroup} L={L} />}
             {analyticsGroup && (() => {
               const list = skis.filter((s) => (s.fleetGroup?.trim() || "") === analyticsGroup)
                 .sort((a, b) => (a.avgRank ?? 99) - (b.avgRank ?? 99) || b.winCount - a.winCount);
@@ -691,9 +780,76 @@ function SkiDetailDialog({ ski, onClose, L }: {
               </div>
             )}
           </div>
+          {tests.length > 0 && (
+            <div>
+              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {L("Presterer best i", "Performs best in")}
+              </h3>
+              <ConditionsSection rows={tests} L={L} />
+            </div>
+          )}
           <LastEdited record={ski} />
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+
+// Condition analysis for a whole series: every pair's test rows with weather,
+// aggregated to show which temperatures and snow the SERIES performs in — and
+// which pair carries it in each temperature band.
+function GroupConditions({ group, L }: { group: string; L: (no: string, en: string) => string }) {
+  const { data: rows = [] } = useQuery<GroupTestRow[]>({
+    queryKey: [`/api/race-fleet/group-tests?group=${encodeURIComponent(group)}`],
+  });
+  const bestPerBucket = useMemo(() => {
+    // Per temp bucket: the ski with the lowest average rank (min 1 entry).
+    const out: { label: string; ski: string; avg: number; n: number }[] = [];
+    for (const b of TEMP_BUCKETS) {
+      const inBucket = rows.filter((r) => r.rank != null && r.snowTemperatureC != null && b.test(r.snowTemperatureC));
+      if (inBucket.length === 0) continue;
+      const bySki = new Map<string, { n: number; sum: number }>();
+      for (const r of inBucket) {
+        const e = bySki.get(r.skiLabel) ?? { n: 0, sum: 0 };
+        e.n++; e.sum += r.rank!;
+        bySki.set(r.skiLabel, e);
+      }
+      let best: { ski: string; avg: number; n: number } | null = null;
+      for (const [ski, e] of bySki) {
+        const avg = e.sum / e.n;
+        if (!best || avg < best.avg) best = { ski, avg, n: e.n };
+      }
+      if (best) out.push({ label: b.label, ...best });
+    }
+    return out;
+  }, [rows]);
+
+  if (rows.length === 0) return null;
+  return (
+    <div className="space-y-3 border-b border-border pb-3">
+      <div>
+        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {L("Serien presterer best i", "The series performs best in")}
+        </h3>
+        <ConditionsSection rows={rows} L={L} />
+      </div>
+      {bestPerBucket.length > 0 && (
+        <div>
+          <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {L("Beste par per temperaturbånd", "Best pair per temperature band")}
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {bestPerBucket.map((b) => (
+              <span key={b.label} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px]">
+                <span className="text-muted-foreground">{b.label}:</span>
+                <span className="font-semibold">{b.ski}</span>
+                <span className="text-muted-foreground">Ø {b.avg.toFixed(2)} · {b.n} {L("t.", "t.")}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

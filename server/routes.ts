@@ -3378,6 +3378,122 @@ export async function registerRoutes(
     return res.json(rows);
   });
 
+  // ── Share products between teams ──────────────────────────────────────────
+  // A copy, not a link: the target team gets identical products (category,
+  // brand, name) with the chosen group scope — statistics and test data stay
+  // where they were made. TA-only, and only between teams where the caller
+  // holds team-admin rights on BOTH sides (a TA holds all groups by rule).
+  app.get("/api/products/share-targets", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team Admin only" });
+    const activeId = getActiveTeamId(req);
+    const { pool: pgS } = await import("./db");
+    const allTeams = await storage.listTeams();
+    let taTeamIds: Set<number>;
+    if (u.isAdmin) {
+      taTeamIds = new Set(allTeams.map((t) => t.id));
+    } else {
+      taTeamIds = new Set<number>();
+      const rawUser = req.user as any;
+      if (rawUser.isTeamAdmin === 1) taTeamIds.add(rawUser.teamId);
+      const r = await (pgS as any).query(
+        `SELECT team_id FROM user_team_permissions WHERE user_id = $1 AND is_team_admin = 1`, [u.id]);
+      for (const row of r.rows) taTeamIds.add(row.team_id);
+    }
+    const targets = [];
+    for (const t of allTeams) {
+      if (t.id === activeId || !taTeamIds.has(t.id)) continue;
+      const g = await (pgS as any).query(`SELECT id, name FROM groups WHERE team_id = $1 ORDER BY name`, [t.id]).catch(() => ({ rows: [] }));
+      targets.push({ teamId: t.id, teamName: t.name, groups: g.rows.map((x: any) => x.name) });
+    }
+    res.json({ targets });
+  });
+
+  app.post("/api/products/share-to-teams", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team Admin only" });
+    const activeId = getActiveTeamId(req);
+    const productIds: number[] = Array.isArray(req.body.productIds)
+      ? req.body.productIds.map((n: any) => parseInt(String(n))).filter((n: number) => !isNaN(n))
+      : [];
+    const targets: { teamId: number; groups: string[] }[] = Array.isArray(req.body.targets) ? req.body.targets : [];
+    if (productIds.length === 0 || targets.length === 0) {
+      return res.status(400).json({ message: "productIds and targets required" });
+    }
+    const { pool: pgS } = await import("./db");
+
+    // TA rights on every target team.
+    let taTeamIds: Set<number>;
+    if (u.isAdmin) {
+      taTeamIds = new Set((await storage.listTeams()).map((t) => t.id));
+    } else {
+      taTeamIds = new Set<number>();
+      const rawUser = req.user as any;
+      if (rawUser.isTeamAdmin === 1) taTeamIds.add(rawUser.teamId);
+      const r = await (pgS as any).query(
+        `SELECT team_id FROM user_team_permissions WHERE user_id = $1 AND is_team_admin = 1`, [u.id]);
+      for (const row of r.rows) taTeamIds.add(row.team_id);
+    }
+    for (const t of targets) {
+      if (!taTeamIds.has(t.teamId)) {
+        return res.status(403).json({ message: "You must be Team Admin on every target team" });
+      }
+    }
+
+    // Source products must belong to the caller's active team.
+    const src = await (pgS as any).query(
+      `SELECT id, category, brand, name, is_mix FROM products WHERE id = ANY($1::int[]) AND team_id = $2`,
+      [productIds, activeId]);
+    const norm = (x: string) => x.toLowerCase().replace(/\s+/g, " ").trim();
+    const now = new Date().toISOString();
+    const activeTeam = await storage.getTeam(activeId!);
+    const results: { teamId: number; created: number; skipped: number; mixesSkipped: number }[] = [];
+
+    for (const t of targets) {
+      const groupScope = (t.groups ?? []).map((g) => String(g).trim()).filter(Boolean).join(",");
+      const existing = await (pgS as any).query(
+        `SELECT brand, name FROM products WHERE team_id = $1`, [t.teamId]);
+      const have = new Set(existing.rows.map((r: any) => `${norm(r.brand ?? "")}|${norm(r.name ?? "")}`));
+      let created = 0, skipped = 0, mixesSkipped = 0;
+      for (const p of src.rows) {
+        // Mixes stay home: their recipe and serial reference the source team's
+        // own catalogue and numbering.
+        if (p.is_mix === 1) { mixesSkipped++; continue; }
+        if (have.has(`${norm(p.brand ?? "")}|${norm(p.name ?? "")}`)) { skipped++; continue; }
+        await storage.createProduct({
+          category: p.category,
+          brand: p.brand,
+          name: p.name,
+          createdAt: now,
+          createdById: u.id,
+          createdByName: u.name,
+          groupScope,
+          teamId: t.teamId,
+        });
+        have.add(`${norm(p.brand ?? "")}|${norm(p.name ?? "")}`);
+        created++;
+      }
+      // Traceability on BOTH sides — sharing between teams is never silent.
+      const teamRec = await storage.getTeam(t.teamId);
+      try {
+        await storage.createActivityLog({
+          userId: u.id, userName: u.name, action: "products_shared_out",
+          entityType: "products", entityId: activeId ?? 0,
+          details: `${created} product(s) shared to ${teamRec?.name ?? t.teamId}`,
+          createdAt: now, groupScope: "", teamId: activeId,
+        } as any);
+        await storage.createActivityLog({
+          userId: u.id, userName: u.name, action: "products_shared_in",
+          entityType: "products", entityId: t.teamId,
+          details: `${created} product(s) shared from ${activeTeam?.name ?? activeId}${groupScope ? ` (groups: ${groupScope})` : ""}`,
+          createdAt: now, groupScope: "", teamId: t.teamId,
+        } as any);
+      } catch (_) {}
+      results.push({ teamId: t.teamId, created, skipped, mixesSkipped });
+    }
+    res.json({ results });
+  });
+
   app.post("/api/products/bulk-assign-group", requirePermission("products", "edit"), async (req, res) => {
     const u = userInfo(req);
     if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });

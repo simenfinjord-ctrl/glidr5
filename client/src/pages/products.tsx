@@ -972,6 +972,45 @@ export default function Products() {
     },
   });
 
+  // ── Share selected products to other teams (TA on both sides) ────────────
+  const [shareOpen, setShareOpen] = useState(false);
+  // Per target team: checked or not + which of ITS groups the copies get.
+  const [shareSel, setShareSel] = useState<Record<number, { on: boolean; groups: Set<string> }>>({});
+  const { data: shareTargets } = useQuery<{ targets: { teamId: number; teamName: string; groups: string[] }[] }>({
+    queryKey: ["/api/products/share-targets"],
+    enabled: shareOpen,
+  });
+  const shareMutation = useMutation({
+    mutationFn: async () => {
+      const targets = Object.entries(shareSel)
+        .filter(([, v]) => v.on)
+        .map(([teamId, v]) => ({ teamId: parseInt(teamId), groups: Array.from(v.groups) }));
+      const res = await apiRequest("POST", "/api/products/share-to-teams", {
+        productIds: Array.from(selectedIds), targets,
+      });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: (data: { results: { teamId: number; created: number; skipped: number; mixesSkipped: number }[] }) => {
+      const created = data.results.reduce((a, r) => a + r.created, 0);
+      const skipped = data.results.reduce((a, r) => a + r.skipped, 0);
+      const mixes = data.results.reduce((a, r) => a + r.mixesSkipped, 0);
+      toast({
+        title: L(`Delte ${created} produkt${created !== 1 ? "er" : ""}`, `Shared ${created} product${created !== 1 ? "s" : ""}`),
+        description: [
+          skipped > 0 ? L(`${skipped} fantes allerede`, `${skipped} already existed`) : null,
+          mixes > 0 ? L(`${mixes} mixer hoppet over (oppskrifter er lagets egne)`, `${mixes} mixes skipped (recipes are team-local)`) : null,
+        ].filter(Boolean).join(" · ") || undefined,
+      });
+      setShareOpen(false);
+      setShareSel({});
+      setSelectedIds(new Set());
+    },
+    onError: (e) => {
+      toast({ title: L("Deling mislyktes", "Sharing failed"), description: e instanceof Error ? e.message : "", variant: "destructive" });
+    },
+  });
+
   const bulkRestoreMutation = useMutation({
     mutationFn: async (ids: number[]) => {
       await Promise.all(ids.map((id) => apiRequest("POST", `/api/products/${id}/restore`)));
@@ -990,6 +1029,76 @@ export default function Products() {
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
+        {/* Share to other teams: pick teams, then each team's groups. A copy —
+            identical category/brand/name — statistics stay at home. */}
+        <Dialog open={shareOpen} onOpenChange={(o) => { setShareOpen(o); if (!o) setShareSel({}); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{L(`Del ${selectedIds.size} produkt${selectedIds.size !== 1 ? "er" : ""} til andre lag`, `Share ${selectedIds.size} product${selectedIds.size !== 1 ? "s" : ""} to other teams`)}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {L("Produktene kopieres med identisk kategori og navn. Statistikk og testdata følger ikke med. Du kan bare dele til lag der du er lagadministrator.",
+                   "Products are copied with identical category and name. Statistics and test data do not follow. You can only share to teams where you are a team admin.")}
+              </p>
+              {!shareTargets ? (
+                <p className="text-sm text-muted-foreground">{L("Laster lag…", "Loading teams…")}</p>
+              ) : shareTargets.targets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {L("Du er ikke lagadministrator på noen andre lag.", "You are not a team admin on any other team.")}
+                </p>
+              ) : (
+                <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
+                  {shareTargets.targets.map((tt) => {
+                    const sel = shareSel[tt.teamId] ?? { on: false, groups: new Set<string>() };
+                    return (
+                      <div key={tt.teamId} className={cn("rounded-lg border p-2.5", sel.on ? "border-primary/50 bg-primary/5" : "border-border")}>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                          <input type="checkbox" checked={sel.on}
+                            onChange={(e) => setShareSel((prev) => ({ ...prev, [tt.teamId]: { on: e.target.checked, groups: sel.groups } }))}
+                            className="h-4 w-4 accent-green-600" data-testid={`share-team-${tt.teamId}`} />
+                          {tt.teamName}
+                        </label>
+                        {sel.on && (
+                          tt.groups.length === 0 ? (
+                            <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground">{L("Laget har ingen grupper — produktene blir synlige for alle.", "The team has no groups — the products will be visible to everyone.")}</p>
+                          ) : (
+                            <div className="mt-1.5 flex flex-wrap gap-1.5 pl-6">
+                              {tt.groups.map((g) => {
+                                const on = sel.groups.has(g);
+                                return (
+                                  <button key={g} type="button"
+                                    onClick={() => setShareSel((prev) => {
+                                      const next = new Set(sel.groups);
+                                      if (on) next.delete(g); else next.add(g);
+                                      return { ...prev, [tt.teamId]: { on: true, groups: next } };
+                                    })}
+                                    className={cn("rounded-full px-2 py-0.5 text-[11px] ring-1 transition-colors",
+                                      on ? "bg-green-500 text-white ring-green-500" : "bg-muted text-muted-foreground ring-border hover:bg-muted/70")}>
+                                    {g}
+                                  </button>
+                                );
+                              })}
+                              <span className="self-center text-[10px] text-muted-foreground">{L("(ingen valgt = synlig for alle)", "(none picked = visible to everyone)")}</span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShareOpen(false)}>{L("Avbryt", "Cancel")}</Button>
+                <Button size="sm" className="bg-green-600 text-white hover:bg-green-700"
+                  disabled={shareMutation.isPending || !Object.values(shareSel).some((v) => v.on)}
+                  onClick={() => shareMutation.mutate()} data-testid="button-confirm-share-teams">
+                  {shareMutation.isPending ? L("Deler…", "Sharing…") : L("Del produkter", "Share products")}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? L("Arkiverte produkter", "Archived Products") : viewMode === "compare" ? L("Sammenlign produkter", "Compare Products") : t("products.title")}</h1>
@@ -1638,6 +1747,11 @@ export default function Products() {
                           {L("Tilordne til gruppe", "Assign to group")}
                         </Button>
                       </>
+                    )}
+                    {isAdmin && (
+                      <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} data-testid="button-bulk-share-teams">
+                        {L("Del til lag…", "Share to team…")}
+                      </Button>
                     )}
                     <Button
                       variant="outline"

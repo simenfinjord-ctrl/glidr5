@@ -574,6 +574,46 @@ export default function CrossTeamTests() {
 // server. Ranks are unit-agnostic (cm and photocell time tests both store a
 // primary rank), so cross-team aggregation never mixes units.
 
+// Checkbox team picker: every team on by default, uncheck to exclude — the
+// same semantics as the Tests tab's team filter.
+function TeamMultiSelect({ teams, excluded, setExcluded, L }: {
+  teams: string[];
+  excluded: Set<string>;
+  setExcluded: (s: Set<string>) => void;
+  L: (no: string, en: string) => string;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="h-8 justify-between gap-1 text-xs font-normal" data-testid="engine-team-filter">
+          <span className="truncate">
+            {excluded.size === 0
+              ? L("Alle lag", "All teams")
+              : L(`${teams.length - excluded.size} av ${teams.length} lag`, `${teams.length - excluded.size} of ${teams.length} teams`)}
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        {teams.map((tn) => (
+          <DropdownMenuCheckboxItem
+            key={tn}
+            checked={!excluded.has(tn)}
+            onCheckedChange={(on) => {
+              const next = new Set(excluded);
+              if (on) next.delete(tn); else next.add(tn);
+              setExcluded(next);
+            }}
+            onSelect={(e) => e.preventDefault()}
+          >
+            {tn}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 type ProductAgg = {
   name: string;
   tests: number;
@@ -627,7 +667,7 @@ function CrossTeamAnalytics({ tests, loading, L, testHref }: {
 }) {
   const [season, setSeason] = useState("All");
   const [type, setType] = useState("all");
-  const [teamFilter, setTeamFilter] = useState("all");
+  const [excludedTeams, setExcludedTeams] = useState<Set<string>>(new Set());
 
   const seasons = useMemo(() => Array.from(new Set(tests.map((t) => seasonOf(t.date)))).filter((x) => x !== "—").sort().reverse(), [tests]);
   const teams = useMemo(() => Array.from(new Set(tests.map((t) => t.teamName))).sort(), [tests]);
@@ -635,8 +675,8 @@ function CrossTeamAnalytics({ tests, loading, L, testHref }: {
   const scoped = useMemo(() => tests.filter((t) =>
     (season === "All" || seasonOf(t.date) === season) &&
     (type === "all" || t.testType === type) &&
-    (teamFilter === "all" || t.teamName === teamFilter)
-  ), [tests, season, type, teamFilter]);
+    !excludedTeams.has(t.teamName)
+  ), [tests, season, type, excludedTeams]);
 
   const rows = useMemo(() => {
     const list = Array.from(aggregateProducts(scoped).values());
@@ -667,13 +707,7 @@ function CrossTeamAnalytics({ tests, loading, L, testHref }: {
               <SelectItem value="Structure">Structure</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={teamFilter} onValueChange={setTeamFilter}>
-            <SelectTrigger className="h-8 w-auto min-w-[110px] text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{L("Alle lag", "All teams")}</SelectItem>
-              {teams.map((tn) => <SelectItem key={tn} value={tn}>{tn}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <TeamMultiSelect teams={teams} excluded={excludedTeams} setExcluded={setExcludedTeams} L={L} />
           <span className="ml-auto text-xs text-muted-foreground">
             {L(`${scoped.length} tester · ${teams.length} lag · ${venues} steder`, `${scoped.length} tests · ${teams.length} teams · ${venues} venues`)}
           </span>
@@ -721,6 +755,68 @@ function CrossTeamAnalytics({ tests, loading, L, testHref }: {
         )}
         {rows.length > 50 && <p className="px-4 py-2 text-[11px] text-muted-foreground">{L(`Viser topp 50 av ${rows.length} produkter.`, `Showing top 50 of ${rows.length} products.`)}</p>}
       </Card>
+
+      {/* Best products per snow-temperature band — the conditions view the
+          regular Test Analytics gives, computed across the chosen teams. */}
+      <Card className="fs-card rounded-2xl overflow-hidden">
+        <div className="border-b border-border px-4 py-3">
+          <h2 className="text-sm font-semibold">{L("Beste produkter per snøtemperatur", "Best products per snow temperature")}</h2>
+          <p className="text-xs text-muted-foreground">{L("Snittrangering per temperaturbånd — minst to tester for å telle.", "Average rank per temperature band — at least two tests to count.")}</p>
+        </div>
+        {(() => {
+          const BANDS: { label: string; test: (t: number) => boolean }[] = [
+            { label: "≥ 0°", test: (t) => t >= 0 },
+            { label: "−1…−4°", test: (t) => t < 0 && t >= -4 },
+            { label: "−5…−9°", test: (t) => t < -4 && t >= -9 },
+            { label: "−10…−14°", test: (t) => t < -9 && t >= -14 },
+            { label: "< −15°", test: (t) => t < -14 },
+          ];
+          const sections = BANDS.map((b) => {
+            const inBand = scoped.filter((t) => t.weather?.snowTemperatureC != null && b.test(t.weather.snowTemperatureC!));
+            const aggs = Array.from(aggregateProducts(inBand).values())
+              .filter((a) => a.ranked >= 2)
+              .sort((x, y) => x.rankSum / x.ranked - y.rankSum / y.ranked)
+              .slice(0, 3);
+            return { label: b.label, n: inBand.length, aggs };
+          }).filter((sec) => sec.aggs.length > 0);
+          if (sections.length === 0) {
+            return <p className="p-4 text-sm text-muted-foreground">{L("For få tester med snøtemperatur i utvalget.", "Too few tests with snow temperature in this scope.")}</p>;
+          }
+          return (
+            <div className="divide-y divide-border/40">
+              {sections.map((sec) => (
+                <div key={sec.label} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+                  <span className="w-20 shrink-0 text-xs font-semibold">{sec.label}</span>
+                  <span className="w-14 shrink-0 text-[10px] text-muted-foreground">{sec.n} {L("tester", "tests")}</span>
+                  <div className="flex flex-1 flex-wrap gap-1.5">
+                    {sec.aggs.map((a, i) => (
+                      <span key={a.name} className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px]",
+                        i === 0 ? "bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900" : "bg-muted text-muted-foreground")}>
+                        <span className={cn(i === 0 && "font-semibold")}>{a.name}</span>
+                        <span className="tabular-nums">Ø {(a.rankSum / a.ranked).toFixed(2)}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </Card>
+
+      {/* Venue coverage — where the data comes from. */}
+      <Card className="fs-card rounded-2xl p-4">
+        <h2 className="mb-2 text-sm font-semibold">{L("Teststeder", "Test venues")}</h2>
+        <div className="flex flex-wrap gap-1.5">
+          {Array.from(scoped.reduce((m, t) => m.set(t.location, (m.get(t.location) ?? 0) + 1), new Map<string, number>()).entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([loc, n]) => (
+              <span key={loc} className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
+                {loc} <span className="tabular-nums">({n})</span>
+              </span>
+            ))}
+        </div>
+      </Card>
     </div>
   );
 }
@@ -731,28 +827,71 @@ function CrossTeamSuggestions({ tests, loading, L, testHref }: {
   L: (no: string, en: string) => string;
   testHref: (t: { id: number; teamId: number }) => string;
 }) {
-  const [air, setAir] = useState("");
-  const [snow, setSnow] = useState("");
-  const [tol, setTol] = useState("3");
-  const [snowType, setSnowType] = useState("");
+  // The full regular-Suggestions filter set, applied across the chosen teams.
+  const [excludedTeams, setExcludedTeams] = useState<Set<string>>(new Set());
+  const [airMin, setAirMin] = useState(""); const [airMax, setAirMax] = useState("");
+  const [snowMin, setSnowMin] = useState(""); const [snowMax, setSnowMax] = useState("");
+  const [airHumMin, setAirHumMin] = useState(""); const [airHumMax, setAirHumMax] = useState("");
+  const [snowHumMin, setSnowHumMin] = useState(""); const [snowHumMax, setSnowHumMax] = useState("");
+  const [cloudMin, setCloudMin] = useState(""); const [cloudMax, setCloudMax] = useState("");
+  const [artSnow, setArtSnow] = useState("all");
+  const [natSnow, setNatSnow] = useState("all");
+  const [snowHumType, setSnowHumType] = useState("all");
+  const [grainSize, setGrainSize] = useState("all");
+  const [trackHardness, setTrackHardness] = useState("all");
+  const [precipitation, setPrecipitation] = useState("");
+  const [wind, setWind] = useState("");
+  const [visibility, setVisibility] = useState("");
 
-  const airN = numv(air), snowN = numv(snow), tolN = numv(tol) ?? 3;
+  const teams = useMemo(() => Array.from(new Set(tests.map((t) => t.teamName))).sort(), [tests]);
+  // Dropdown options come from the data itself, so every value that exists is
+  // pickable — across teams there is no single fixed vocabulary.
+  const distinct = (get: (w: NonNullable<CrossTeamTest["weather"]>) => string | null | undefined) =>
+    Array.from(new Set(tests.map((t) => t.weather ? get(t.weather)?.trim() : null).filter(Boolean))).sort() as string[];
+  const artOptions = useMemo(() => distinct((w) => w.artificialSnow), [tests]);
+  const natOptions = useMemo(() => distinct((w) => w.naturalSnow), [tests]);
+  const humTypeOptions = useMemo(() => distinct((w) => w.snowHumidityType), [tests]);
+  const grainOptions = useMemo(() => distinct((w) => w.grainSize), [tests]);
+  const trackOptions = useMemo(() => distinct((w) => w.trackHardness), [tests]);
 
-  // Tests under similar conditions, from every team the caller can read.
+  const anyFilter = [airMin, airMax, snowMin, snowMax, airHumMin, airHumMax, snowHumMin, snowHumMax,
+    cloudMin, cloudMax, precipitation, wind, visibility].some((x) => x.trim() !== "")
+    || [artSnow, natSnow, snowHumType, grainSize, trackHardness].some((x) => x !== "all");
+
   const matching = useMemo(() => {
-    if (airN == null && snowN == null && !snowType.trim()) return [];
+    if (!anyFilter) return [];
+    const [aMin, aMax] = swap(numv(airMin), numv(airMax));
+    const [sMin, sMax] = swap(numv(snowMin), numv(snowMax));
+    const [ahMin, ahMax] = swap(numv(airHumMin), numv(airHumMax));
+    const [shMin, shMax] = swap(numv(snowHumMin), numv(snowHumMax));
+    const [cMin, cMax] = swap(numv(cloudMin), numv(cloudMax));
     return tests.filter((t) => {
+      if (excludedTeams.has(t.teamName)) return false;
       const w = t.weather;
       if (!w) return false;
-      if (airN != null && (w.airTemperatureC == null || Math.abs(w.airTemperatureC - airN) > tolN)) return false;
-      if (snowN != null && (w.snowTemperatureC == null || Math.abs(w.snowTemperatureC - snowN) > tolN)) return false;
-      if (snowType.trim()) {
-        const label = [w.snowType, w.artificialSnow, w.naturalSnow].filter(Boolean).join(" ").toLowerCase();
-        if (!label.includes(snowType.trim().toLowerCase())) return false;
-      }
+      if (aMin != null && (w.airTemperatureC == null || w.airTemperatureC < aMin)) return false;
+      if (aMax != null && (w.airTemperatureC == null || w.airTemperatureC > aMax)) return false;
+      if (sMin != null && (w.snowTemperatureC == null || w.snowTemperatureC < sMin)) return false;
+      if (sMax != null && (w.snowTemperatureC == null || w.snowTemperatureC > sMax)) return false;
+      if (ahMin != null && (w.airHumidityPct == null || w.airHumidityPct < ahMin)) return false;
+      if (ahMax != null && (w.airHumidityPct == null || w.airHumidityPct > ahMax)) return false;
+      if (shMin != null && (w.snowHumidityPct == null || w.snowHumidityPct < shMin)) return false;
+      if (shMax != null && (w.snowHumidityPct == null || w.snowHumidityPct > shMax)) return false;
+      if (cMin != null && (w.clouds == null || w.clouds < cMin)) return false;
+      if (cMax != null && (w.clouds == null || w.clouds > cMax)) return false;
+      if (artSnow !== "all" && (w.artificialSnow?.trim() ?? "") !== artSnow) return false;
+      if (natSnow !== "all" && (w.naturalSnow?.trim() ?? "") !== natSnow) return false;
+      if (snowHumType !== "all" && (w.snowHumidityType?.trim() ?? "") !== snowHumType) return false;
+      if (grainSize !== "all" && (w.grainSize?.trim() ?? "") !== grainSize) return false;
+      if (trackHardness !== "all" && (w.trackHardness?.trim() ?? "") !== trackHardness) return false;
+      if (precipitation.trim() && !(w.precipitation ?? "").toLowerCase().includes(precipitation.trim().toLowerCase())) return false;
+      if (wind.trim() && !(w.wind ?? "").toLowerCase().includes(wind.trim().toLowerCase())) return false;
+      if (visibility.trim() && !(w.visibility ?? "").toLowerCase().includes(visibility.trim().toLowerCase())) return false;
       return true;
     });
-  }, [tests, airN, snowN, tolN, snowType]);
+  }, [tests, excludedTeams, anyFilter, airMin, airMax, snowMin, snowMax, airHumMin, airHumMax,
+      snowHumMin, snowHumMax, cloudMin, cloudMax, artSnow, natSnow, snowHumType, grainSize,
+      trackHardness, precipitation, wind, visibility]);
 
   const rows = useMemo(() => {
     const list = Array.from(aggregateProducts(matching).values());
@@ -775,29 +914,73 @@ function CrossTeamSuggestions({ tests, loading, L, testHref }: {
           {L("Skriv inn dagens forhold — forslagene bygger på alle tester fra alle lagene du har tilgang til.",
              "Enter today's conditions — suggestions draw on every test from every team you can access.")}
         </p>
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">{L("Luft °C", "Air °C")}</label>
-            <Input value={air} onChange={(e) => setAir(e.target.value)} inputMode="decimal" placeholder="-4" className="h-8 w-20 text-xs" data-testid="ct-sug-air" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">{L("Snø °C", "Snow °C")}</label>
-            <Input value={snow} onChange={(e) => setSnow(e.target.value)} inputMode="decimal" placeholder="-8" className="h-8 w-20 text-xs" data-testid="ct-sug-snow" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">± {L("toleranse", "tolerance")}</label>
-            <Input value={tol} onChange={(e) => setTol(e.target.value)} inputMode="decimal" className="h-8 w-16 text-xs" />
-          </div>
-          <div className="min-w-[140px]">
-            <label className="mb-1 block text-xs text-muted-foreground">{L("Snøtype (valgfritt)", "Snow type (optional)")}</label>
-            <Input value={snowType} onChange={(e) => setSnowType(e.target.value)} placeholder={L("f.eks. omdannet", "e.g. transformed")} className="h-8 text-xs" />
-          </div>
-          <span className="pb-1.5 text-xs text-muted-foreground">
-            {airN == null && snowN == null && !snowType.trim()
-              ? L("Fyll inn minst ett felt.", "Fill in at least one field.")
-              : L(`${matching.length} tester matcher`, `${matching.length} matching tests`)}
-          </span>
-        </div>
+        {(() => {
+          const range = (label: string, lo: string, setLo: (v: string) => void, hi: string, setHi: (v: string) => void) => (
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+              <div className="flex items-center gap-1">
+                <Input value={lo} onChange={(e) => setLo(e.target.value)} inputMode="decimal" placeholder="Min" className="h-8 w-16 text-xs" />
+                <span className="text-muted-foreground">–</span>
+                <Input value={hi} onChange={(e) => setHi(e.target.value)} inputMode="decimal" placeholder="Max" className="h-8 w-16 text-xs" />
+              </div>
+            </div>
+          );
+          const sel = (label: string, val: string, setVal: (v: string) => void, options: string[]) => (
+            <div className="min-w-[130px]">
+              <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+              <Select value={val} onValueChange={setVal}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">— {L("Alle", "Any")} —</SelectItem>
+                  {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+          const txt = (label: string, val: string, setVal: (v: string) => void, ph: string) => (
+            <div className="min-w-[120px]">
+              <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+              <Input value={val} onChange={(e) => setVal(e.target.value)} placeholder={ph} className="h-8 text-xs" />
+            </div>
+          );
+          return (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">{L("Lag", "Teams")}</label>
+                  <TeamMultiSelect teams={teams} excluded={excludedTeams} setExcluded={setExcludedTeams} L={L} />
+                </div>
+                <span className="pb-1.5 text-xs text-muted-foreground">
+                  {!anyFilter
+                    ? L("Fyll inn minst ett filter under.", "Fill in at least one filter below.")
+                    : L(`${matching.length} tester matcher`, `${matching.length} matching tests`)}
+                </span>
+              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Temperatur og fuktighet", "Temperature & humidity")}</p>
+              <div className="flex flex-wrap gap-3">
+                {range(L("Luft (°C)", "Air temp (°C)"), airMin, setAirMin, airMax, setAirMax)}
+                {range(L("Snø (°C)", "Snow temp (°C)"), snowMin, setSnowMin, snowMax, setSnowMax)}
+                {range(L("Luftfukt (%)", "Air humidity (%)"), airHumMin, setAirHumMin, airHumMax, setAirHumMax)}
+                {range(L("Snøfukt (%)", "Snow humidity (%)"), snowHumMin, setSnowHumMin, snowHumMax, setSnowHumMax)}
+                {range(L("Skydekke (%)", "Cloud cover (%)"), cloudMin, setCloudMin, cloudMax, setCloudMax)}
+              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Snøtype", "Snow type")}</p>
+              <div className="flex flex-wrap gap-3">
+                {sel(L("Kunstsnø", "Artificial snow"), artSnow, setArtSnow, artOptions)}
+                {sel(L("Naturlig snø", "Natural snow"), natSnow, setNatSnow, natOptions)}
+                {sel(L("Fuktighetstype", "Snow humidity type"), snowHumType, setSnowHumType, humTypeOptions)}
+                {sel(L("Kornstørrelse", "Grain size"), grainSize, setGrainSize, grainOptions)}
+              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Snø og spor", "Snow & track")}</p>
+              <div className="flex flex-wrap gap-3">
+                {sel(L("Sporhardhet", "Track hardness"), trackHardness, setTrackHardness, trackOptions)}
+                {txt(L("Nedbør", "Precipitation"), precipitation, setPrecipitation, L("f.eks. lett snø", "e.g. Light snow"))}
+                {txt(L("Vind", "Wind"), wind, setWind, "e.g. Light NW")}
+                {txt(L("Sikt", "Visibility"), visibility, setVisibility, "e.g. Good")}
+              </div>
+            </div>
+          );
+        })()}
       </Card>
 
       {rows.length > 0 && (

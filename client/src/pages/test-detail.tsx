@@ -91,6 +91,9 @@ type RaceSki = {
   id: number;
   serialNumber: string | null;
   skiId: string;
+  athleteId?: number | null;
+  fleetGroup?: string | null;
+  grind?: string | null;
 };
 
 type Product = {
@@ -834,8 +837,10 @@ export default function TestDetail() {
         if (entry.raceSkiId) {
           const rs = raceSkiById.get(entry.raceSkiId);
           if (rs) {
-            // Show the Ski-ID (#14) — fall back to serial only if Ski-ID is missing.
-            labels[entry.skiNumber] = rs.skiId || rs.serialNumber || String(entry.skiNumber);
+            // Show the Ski-ID (#14) — fleet skis carry their series in
+            // parentheses, since a group test is series against series.
+            const base = rs.skiId || rs.serialNumber || String(entry.skiNumber);
+            labels[entry.skiNumber] = (rs as any).fleetGroup ? `${base} (${(rs as any).fleetGroup})` : base;
           }
         } else if ((entry as any).freeTextProduct) {
           // Free-text (borrowed) ski — not in the garage, shown by its label.
@@ -1255,7 +1260,10 @@ export default function TestDetail() {
   })();
 
   return (
-    <AppShell activeNav={isRaceSkiTest ? "/raceskis" : undefined}>
+    <AppShell activeNav={isRaceSkiTest
+      ? (entries.some((e) => { const rs = e.raceSkiId ? raceSkiByIdSort.get(e.raceSkiId) : null; return rs && (rs as any).athleteId == null; })
+          ? "/race-fleet" : "/raceskis")
+      : undefined}>
       <div className="flex flex-col gap-5">
         <div>
           <div className="flex items-center justify-between">

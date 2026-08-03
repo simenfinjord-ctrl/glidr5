@@ -77,6 +77,7 @@ type FleetTestRow = {
   pairLabels: string[];
   pairGroups: (string | null)[];
   bestRank: number | null;
+  entries: { skiLabel: string; group: string | null; grind: string | null; rank: number | null; result: number | null }[];
 };
 
 type SkiTestRow = {
@@ -981,6 +982,12 @@ function FleetTestsTab({ L }: { L: (no: string, en: string) => string }) {
   const { data: rows = [], isLoading } = useQuery<FleetTestRow[]>({ queryKey: ["/api/race-fleet/all-tests"] });
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const toggleExpanded = (id: number) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const types = useMemo(() => Array.from(new Set(rows.map((r) => r.testType))).sort(), [rows]);
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -1024,16 +1031,18 @@ function FleetTestsTab({ L }: { L: (no: string, en: string) => string }) {
             : L("Ingen tester matcher filtrene.", "No tests match the filters.")}
         </Card>
       ) : (
-        <Card className="fs-card rounded-2xl overflow-hidden">
-          <div className="divide-y divide-border/40">
-            {filtered.map((r) => {
-              // Winner among the fleet pairs: first label (sorted by rank server-side).
-              const winner = r.bestRank != null ? r.pairLabels?.[0] : null;
-              const winnerGroup = r.bestRank != null ? r.pairGroups?.[0] : null;
-              return (
-                <AppLink key={r.testId} href={`/tests/${r.testId}`}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-muted/20"
-                  testId={`fleet-test-${r.testId}`}>
+        /* Expandable test cards — the same reading pattern as Athlete Skis. */
+        <div className="flex flex-col gap-2">
+          {filtered.map((r) => {
+            const winner = r.bestRank != null ? r.pairLabels?.[0] : null;
+            const winnerGroup = r.bestRank != null ? r.pairGroups?.[0] : null;
+            const isOpen = expanded.has(r.testId);
+            return (
+              <Card key={r.testId} className="fs-card rounded-2xl overflow-hidden">
+                <button type="button" onClick={() => toggleExpanded(r.testId)}
+                  className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left transition-colors hover:bg-muted/20"
+                  data-testid={`fleet-test-${r.testId}`}>
+                  <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", !isOpen && "-rotate-90")} />
                   <span className="w-20 shrink-0 text-xs text-muted-foreground">{r.date}</span>
                   <span className="min-w-[140px] flex-1 truncate text-sm font-medium">{r.testName || r.location}</span>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{r.testType}</span>
@@ -1050,11 +1059,42 @@ function FleetTestsTab({ L }: { L: (no: string, en: string) => string }) {
                       {winner}{winnerGroup ? ` · ${winnerGroup}` : ""}
                     </span>
                   )}
-                </AppLink>
-              );
-            })}
-          </div>
-        </Card>
+                </button>
+                {isOpen && (
+                  <div className="border-t border-border/60 px-4 py-2">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                          <th className="pb-1.5 pr-3">{L("Ski-ID (serie)", "Ski ID (series)")}</th>
+                          <th className="pb-1.5 pr-3">{L("Slip", "Grind")}</th>
+                          <th className="pb-1.5 pr-3 text-right">{r.resultUnit === "time" ? L("Tid (s)", "Time (s)") : "cm"}</th>
+                          <th className="pb-1.5 text-right">{L("Rang", "Rank")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/30">
+                        {(r.entries ?? []).map((e, i) => (
+                          <tr key={i} className={cn(e.rank === 1 && "bg-amber-50/50 dark:bg-amber-950/10")}>
+                            <td className="py-1.5 pr-3 text-xs font-semibold">
+                              {e.skiLabel}{e.group ? <span className="font-normal text-muted-foreground"> ({e.group})</span> : null}
+                            </td>
+                            <td className="py-1.5 pr-3 text-xs text-muted-foreground">{e.grind || "—"}</td>
+                            <td className="py-1.5 pr-3 text-right font-mono text-xs">{e.result ?? "—"}</td>
+                            <td className={cn("py-1.5 text-right text-xs font-semibold tabular-nums", e.rank === 1 && "text-amber-600 dark:text-amber-400")}>{e.rank ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="mt-1.5 flex justify-end">
+                      <AppLink href={`/tests/${r.testId}`} className="text-xs font-medium text-primary hover:underline">
+                        {L("Åpne testen →", "Open the test →")}
+                      </AppLink>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );

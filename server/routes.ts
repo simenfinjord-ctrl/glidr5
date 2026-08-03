@@ -9590,7 +9590,11 @@ export async function registerRoutes(
               COUNT(*)::int AS "fleetEntryCount",
               array_agg(rs.ski_id ORDER BY te.rank_0km NULLS LAST) AS "pairLabels",
               array_agg(rs.fleet_group ORDER BY te.rank_0km NULLS LAST) AS "pairGroups",
-              MIN(te.rank_0km) AS "bestRank"
+              MIN(te.rank_0km) AS "bestRank",
+              json_agg(json_build_object(
+                'skiLabel', rs.ski_id, 'group', rs.fleet_group, 'grind', rs.grind,
+                'rank', te.rank_0km, 'result', te.result_0km_cm_behind
+              ) ORDER BY te.rank_0km NULLS LAST) AS "entries"
        FROM tests t
        JOIN test_entries te ON te.test_id = t.id
        JOIN race_skis rs ON rs.id = te.race_ski_id AND rs.athlete_id IS NULL AND rs.team_id = $1

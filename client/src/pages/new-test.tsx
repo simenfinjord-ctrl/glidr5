@@ -419,7 +419,7 @@ export default function NewTest() {
   });
 
   return (
-    <AppShell activeNav={testSkiSource === "raceskis" ? "/raceskis" : undefined}>
+    <AppShell activeNav={testSkiSource === "raceskis" ? (fleetMode ? "/race-fleet" : "/raceskis") : undefined}>
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -528,7 +528,12 @@ export default function NewTest() {
                   distanceLabel0km: distanceLabels[0] || null,
                   distanceLabelXkm: distanceLabels[1] || null,
                   distanceLabels: JSON.stringify(distanceLabels),
-                  entries: rows.map((r) => ({
+                  // Race-ski tests: only the pairs actually tested — a row
+                  // with no ski, no free text and no results is scaffolding,
+                  // not a result, and must not be saved.
+                  entries: rows.filter((r) => testSkiSource !== "raceskis"
+                    || r.raceSkiId || r.freeTextProduct
+                    || r.roundResults.some((rr) => rr.result != null)).map((r) => ({
                     skiNumber: r.skiNumber,
                     productId: testSkiSource === "raceskis" ? null : (r.freeTextProduct ? null : r.productId),
                     freeTextProduct: r.freeTextProduct || null,

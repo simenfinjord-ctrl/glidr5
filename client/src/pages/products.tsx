@@ -1311,7 +1311,6 @@ export default function Products() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="px-4 py-2.5 font-medium">{L("Kategori", "Category")}</th>
                         <th className="px-4 py-2.5 font-medium">{L("Produkt", "Product")}</th>
                         <th className="px-4 py-2.5 font-medium">{L("Arkivert", "Archived")}</th>
                         <th className="px-4 py-2.5 font-medium text-right">{L("Handlinger", "Actions")}</th>
@@ -1321,13 +1320,13 @@ export default function Products() {
                       {filteredArchived.map((p) => (
                         <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-2.5">
-                            <span className="text-xs text-muted-foreground">{p.category}</span>
-                            {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
-                              {p.brand} {p.name}
-                            </AppLink>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
+                                {p.brand} {p.name}{p.category ? <span className="font-normal text-muted-foreground"> {p.category}</span> : null}
+                              </AppLink>
+                              {(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}
+                              {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}
+                            </div>
                           </td>
                           <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                             {p.archivedAt ? new Date(p.archivedAt).toLocaleDateString() : "—"}
@@ -1683,7 +1682,6 @@ export default function Products() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="px-4 py-2.5 font-medium">{L("Kategori", "Category")}</th>
                         <th className="px-4 py-2.5 font-medium">{L("Produkt", "Product")}</th>
                         <th className="px-4 py-2.5 font-medium">{L("Grupper", "Groups")}</th>
                         <th className="px-4 py-2.5 font-medium">{L("Lagt til", "Added")}</th>
@@ -1696,12 +1694,13 @@ export default function Products() {
                         return (
                           <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                             <td className="px-4 py-2.5">
-                              {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}<span className="text-xs text-muted-foreground whitespace-nowrap">{p.category}</span>
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
-                                {p.brand} {p.name}
-                              </AppLink>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
+                                  {p.brand} {p.name}{p.category ? <span className="font-normal text-muted-foreground"> {p.category}</span> : null}
+                                </AppLink>
+                                {(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}
+                                {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}
+                              </div>
                               <div className="text-[11px] text-muted-foreground">{p.createdByName}</div>
                             </td>
                             <td className="px-4 py-2.5">

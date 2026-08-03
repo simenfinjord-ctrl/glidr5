@@ -931,18 +931,24 @@ function PrepDetailDialog({
 
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
 
+  // Loaded up front (not just for the add dialog): the endpoint returns only
+  // the athletes THIS user has access to, which is exactly the edit right the
+  // ski field needs below.
   const { data: athletes = [] } = useQuery<Athlete[]>({
     queryKey: ["/api/athletes"],
-    enabled: addAthletesOpen,
+    enabled: open,
   });
+  const accessibleAthleteIds = useMemo(() => new Set(athletes.map((a) => a.id)), [athletes]);
 
   const alreadyAddedIds = useMemo(() => new Set(entries.map((e) => e.athleteId)), [entries]);
   const L = (no: string, en: string) => lang === "en" ? en : no;
 
   function canEditEntry(entry: RacePrepEntry): boolean {
-    // Admins can always edit. Otherwise: only the assigned waxer for this entry can set Ski-ID.
-    // If waxerId is null (not yet claimed), any raceskis-level user may fill it in (they become the waxer on save).
-    return isAdmin || entry.waxerId === null || entry.waxerId === userId;
+    // Admins always. An unclaimed entry (no waxer yet) may be filled by anyone
+    // — they become the waxer on save. And the athlete's own waxers may always
+    // set or change the pair, from here exactly as from the athlete page; the
+    // server enforces the same athlete-access rule.
+    return isAdmin || entry.waxerId === null || entry.waxerId === userId || accessibleAthleteIds.has(entry.athleteId);
   }
 
   async function removeEntry(entryId: number) {

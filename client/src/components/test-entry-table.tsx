@@ -108,6 +108,7 @@ export function TestEntryTable({
   setRows,
   distanceLabels,
   onDistanceLabelsChange,
+  resultUnit = "cm",
   testSkiSource = "series",
   raceSkis = [],
   skiLabels,
@@ -121,6 +122,8 @@ export function TestEntryTable({
   distanceLabels: string[];
   onDistanceLabelsChange: (labels: string[]) => void;
   testSkiSource?: "series" | "raceskis";
+  // 'time' = photocell seconds (lower wins, same as cm behind).
+  resultUnit?: "cm" | "time";
   raceSkis?: RaceSkiOption[];
   skiLabels?: Record<number, string>;
   grindProfiles?: GrindProfile[];
@@ -262,7 +265,7 @@ export function TestEntryTable({
                       placeholder={t("tests.roundLabel", { n: roundIdx + 1 })}
                       data-testid={`input-distance-label-${roundIdx}`}
                     />
-                    <span className="normal-case text-muted-foreground/60">(cm)</span>
+                    <span className="normal-case text-muted-foreground/60">{resultUnit === "time" ? "(s)" : "(cm)"}</span>
                     {distanceLabels.length > 1 && (
                       <button
                         type="button"
@@ -636,7 +639,7 @@ export function TestEntryTable({
                 )}
                 {row.roundResults.map((rr, roundIdx) => (
                   <>
-                    <td key={`res-${roundIdx}`} className="px-3 py-2" data-label={(distanceLabels[roundIdx] || (language === "no" ? "Resultat" : "Result")) + " (cm)"}>
+                    <td key={`res-${roundIdx}`} className="px-3 py-2" data-label={(distanceLabels[roundIdx] || (language === "no" ? "Resultat" : "Result")) + (resultUnit === "time" ? " (s)" : " (cm)")}>
                       <div className="relative">
                         {/* type=text + inputMode keeps the numeric keyboard but kills the browser spinner */}
                         <Input
@@ -658,7 +661,7 @@ export function TestEntryTable({
                           placeholder="0"
                           data-testid={`input-result-${roundIdx}-${row.id}`}
                         />
-                        <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[10px] text-muted-foreground/60">cm</span>
+                        <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[10px] text-muted-foreground/60">{resultUnit === "time" ? "s" : "cm"}</span>
                       </div>
                     </td>
                     <td key={`rank-${roundIdx}`} className="px-2 py-2 text-center" data-label="Rank">{rankBadge(rr.rank)}</td>

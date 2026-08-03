@@ -61,7 +61,7 @@ export const TEAM_FEATURES = [
   "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
   // Team features
   "blind_tester", "activity_logging", "column_visibility",
-  "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind", "para_team",
+  "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind", "para_team", "time_tests",
   // Enterprise
   "multi_team", "bulk_export", "custom_groups",
 ] as const;
@@ -97,6 +97,7 @@ export const FEATURE_LABELS: Record<TeamFeature, string> = {
   athlete_management: "Athlete Profiles & Access Control",
   us_grind: "US-Grind tagging",
   para_team: "Para team",
+  time_tests: "Time tests (photocells)",
   multi_team: "Multi-team Support",
   bulk_export: "Bulk Data Export",
   custom_groups: "Custom Group Structures",
@@ -117,7 +118,7 @@ export const FEATURE_CATEGORIES: { label: string; features: readonly TeamFeature
   },
   {
     label: "Team Features",
-    features: ["blind_tester", "activity_logging", "column_visibility", "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind", "para_team"],
+    features: ["blind_tester", "activity_logging", "column_visibility", "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind", "para_team", "time_tests"],
   },
   {
     label: "Enterprise",
@@ -419,6 +420,8 @@ export const tests = pgTable("tests", {
   weatherId: integer("weather_id"),
   testType: text("test_type").notNull(),
   testSkiSource: text("test_ski_source").notNull().default("series"),
+  // 'cm' (default) or 'time' — photocell speed tests store seconds per round.
+  resultUnit: text("result_unit"),
   seriesId: integer("series_id"),
   athleteId: integer("athlete_id"),
   notes: text("notes"),

@@ -201,6 +201,8 @@ export default function NewTest() {
 
   const [rows, setRows] = useState<EntryRow[]>(() => makeRows(8, 1));
   const [distanceLabels, setDistanceLabels] = useState<string[]>(["0 km"]);
+  // Photocell speed tests (team feature): results are seconds, not cm behind.
+  const [resultUnit, setResultUnit] = useState<"cm" | "time">("cm");
 
   const defaultLocation = "";
 
@@ -503,6 +505,7 @@ export default function NewTest() {
                   : autoWeather?.id);
                 const effectiveGroup = values.testType === "Grind" ? (userGroups[0] || "Grinding") : values.groupScope;
                 saveMutation.mutate({
+                  resultUnit,
                   date: values.date,
                   startTime: values.startTime || null,
                   location: values.location,
@@ -937,8 +940,31 @@ export default function NewTest() {
               {L("Rangeres automatisk", "Ranked automatically")}
             </span>
           </div>
+          {can("time_tests") && watchTestType === "Glide" && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">{L("Resultatenhet:", "Result unit:")}</span>
+              <div className="inline-flex rounded-lg border border-border bg-background/60 p-0.5 text-xs">
+                <button type="button" onClick={() => setResultUnit("cm")}
+                  className={cn("rounded-md px-2.5 py-1 transition-colors", resultUnit === "cm" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  data-testid="unit-cm">
+                  cm
+                </button>
+                <button type="button" onClick={() => setResultUnit("time")}
+                  className={cn("rounded-md px-2.5 py-1 transition-colors", resultUnit === "time" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  data-testid="unit-time">
+                  {L("tid (sek)", "time (s)")}
+                </button>
+              </div>
+              {resultUnit === "time" && (
+                <span className="text-[11px] text-muted-foreground">
+                  {L("Fotocelletider — laveste tid vinner, rangering per runde som vanlig.", "Photocell times — lowest time wins, ranked per round as usual.")}
+                </span>
+              )}
+            </div>
+          )}
           <TestEntryTable
             testType={watchTestType}
+            resultUnit={resultUnit}
             products={products}
             rows={rows}
             setRows={setRows}

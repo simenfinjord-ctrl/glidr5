@@ -49,6 +49,7 @@ type Test = {
   testName: string | null;
   weatherId: number | null;
   testType: string;
+  resultUnit?: string | null;
   seriesId: number;
   notes: string | null;
   distanceLabel0km: string | null;
@@ -911,6 +912,31 @@ export default function TestDetail() {
     return getEntryRounds(entry, distLabels.length)[i]?.rank ?? diffRanks.perRound[i]?.get(entry.id) ?? null;
   }
 
+  // ── Photocell time tests: seconds instead of cm. Ranked by AVERAGE across
+  // rounds by default, with diff-from-winner, diff-from-median and an optional
+  // relativized 0–1 scale (winner 0, slowest 1).
+  const isTimeTest = test?.resultUnit === "time";
+  useEffect(() => {
+    if (isTimeTest) setRankRound("avg");
+  }, [isTimeTest]);
+  const [relativize, setRelativize] = useState(false);
+  const timeStats = useMemo(() => {
+    if (!isTimeTest) return null;
+    const avgs = entries
+      .map((e) => diffRanks.avgById.get(e.id))
+      .filter((v): v is number => v != null);
+    if (avgs.length === 0) return null;
+    const min = Math.min(...avgs);
+    const max = Math.max(...avgs);
+    const sorted = [...avgs].sort((a, b) => a - b);
+    const median = sorted.length % 2 === 1
+      ? sorted[(sorted.length - 1) / 2]
+      : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+    return { min, max, median };
+  }, [isTimeTest, entries, diffRanks]);
+  const fmtS = (v: number) => v.toFixed(3);
+  const fmtDiff = (v: number) => (v === 0 ? "0.000" : (v > 0 ? "+" : "") + v.toFixed(3));
+
   // ── Sortable results (#16) — remembered per waxer across tests ───────────────
   const [testSort, setTestSort] = useState<string>(() => {
     try { return localStorage.getItem("glidr-raceski-test-sort") || "skiNumber|asc"; } catch { return "skiNumber|asc"; }
@@ -1693,6 +1719,18 @@ export default function TestDetail() {
               </div>
               <h2 className="text-base font-semibold">{t("common.results")}</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{sortedEntries.length} {t("testDetail.entries")}</span>
+              {isTimeTest && (
+                <button
+                  type="button"
+                  onClick={() => setRelativize((v) => !v)}
+                  className={cn("ml-1 rounded-lg border px-2 py-0.5 text-[11px] transition-colors",
+                    relativize ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/60 text-muted-foreground hover:text-foreground")}
+                  title={L("Vis tidene på en 0–1-skala: vinner 0, tregest 1", "Show times on a 0–1 scale: winner 0, slowest 1")}
+                  data-testid="toggle-relativize"
+                >
+                  {L("Relativiser", "Relativize")}
+                </button>
+              )}
               {rankBothAvailable && (
                 <div className="ml-1 inline-flex rounded-lg border border-border bg-background/60 p-0.5 text-[11px]">
                   <button
@@ -1802,9 +1840,17 @@ export default function TestDetail() {
                     ))}
                     {distLabels.map((label, i) => (
                       <th key={i} className="pb-3 pr-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort(`diff${i}`)}>
-                        {(label?.trim() || `Round ${i + 1}`)} ({t("tests.cmBehind")}){testSortArrow(`diff${i}`)}
+                        {(label?.trim() || `Round ${i + 1}`)} ({isTimeTest ? "s" : t("tests.cmBehind")}){testSortArrow(`diff${i}`)}
                       </th>
                     ))}
+                    {isTimeTest && (
+                      <>
+                        <th className="pb-3 pr-3">{L("Snitt (s)", "Avg (s)")}</th>
+                        <th className="pb-3 pr-3">± {L("vinner", "winner")}</th>
+                        <th className="pb-3 pr-3">± median</th>
+                        {relativize && <th className="pb-3 pr-3">Rel</th>}
+                      </>
+                    )}
                     <th className="pb-3 pr-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("rank")}>
                       {distLabels.length > 1 ? (
                         /* With several rounds the header itself picks the rank
@@ -1908,6 +1954,25 @@ export default function TestDetail() {
                             {rr.result ?? "—"}
                           </td>
                         ))}
+                        {isTimeTest && (() => {
+                          const avg = diffRanks.avgById.get(entry.id) ?? null;
+                          if (avg == null || !timeStats) {
+                            return <><td className="py-3 pr-3 font-mono text-sm">—</td><td className="py-3 pr-3">—</td><td className="py-3 pr-3">—</td>{relativize && <td className="py-3 pr-3">—</td>}</>;
+                          }
+                          const rel = timeStats.max > timeStats.min ? (avg - timeStats.min) / (timeStats.max - timeStats.min) : 0;
+                          return (
+                            <>
+                              <td className="py-3 pr-3 font-mono text-sm font-semibold" data-label={L("Snitt", "Avg")}>{fmtS(avg)}</td>
+                              <td className={cn("py-3 pr-3 font-mono text-sm", avg === timeStats.min ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground")} data-label={"± " + L("vinner", "winner")}>
+                                {fmtDiff(avg - timeStats.min)}
+                              </td>
+                              <td className="py-3 pr-3 font-mono text-sm text-muted-foreground" data-label="± median">{fmtDiff(avg - timeStats.median)}</td>
+                              {relativize && (
+                                <td className="py-3 pr-3 font-mono text-sm" data-label="Rel">{rel.toFixed(3)}</td>
+                              )}
+                            </>
+                          );
+                        })()}
                         <td className="py-3 pr-3" data-label={t("common.rank")}>
                           <div className="flex items-center gap-2">
                             <div className="flex flex-col items-center gap-0.5">

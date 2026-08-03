@@ -54,6 +54,15 @@ async function enforceTeamAreas(perms: Record<string, string>, teamId: number | 
   }
 }
 
+// Whether the team's plan includes a given feature key (e.g. "time_tests").
+async function teamHasFeature(teamId: number | undefined, feature: string): Promise<boolean> {
+  if (!teamId) return false;
+  try {
+    const team = await storage.getTeam(teamId);
+    return !!team?.enabledAreas && JSON.parse(team.enabledAreas as string).includes(feature);
+  } catch { return false; }
+}
+
 // A Team Admin administers the team, so they hold edit rights everywhere the
 // team actually has — anything less and they cannot do the job they were just
 // given. Areas the team has not bought stay "none".
@@ -900,6 +909,7 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS date_format TEXT DEFAULT 'european';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_unit TEXT DEFAULT 'C';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
+      ALTER TABLE tests ADD COLUMN IF NOT EXISTS result_unit TEXT;
       CREATE TABLE IF NOT EXISTS scan_corrections (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -3948,7 +3958,12 @@ export async function registerRoutes(
       }
     }
 
+    // Photocell speed tests store seconds instead of cm — only for teams with
+    // the time_tests feature; everyone else silently stays on cm.
+    const resultUnit = req.body.resultUnit === "time" && (await teamHasFeature(teamId, "time_tests")) ? "time" : "cm";
+
     const test = await storage.createTest({
+      resultUnit,
       date: req.body.date,
       location: req.body.location.trim(),
       testName: req.body.testName?.trim() || null,

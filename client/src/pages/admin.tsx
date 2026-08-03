@@ -1441,7 +1441,7 @@ function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: numbe
                       {s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleString() : "—"}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {expires.toLocaleString()} ({hoursLeft}h)
+                      {expires.toLocaleString()} ({hoursLeft >= 48 ? `${Math.round(hoursLeft / 24)}d` : `${hoursLeft}h`})
                     </td>
                     <td className="px-3 py-2 text-center">
                       <Button

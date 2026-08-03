@@ -46,6 +46,7 @@ import {
   Clock,
   Flag,
   Snowflake,
+  Sparkles,
 } from "lucide-react";
 import { useOffline } from "@/lib/offline-context";
 import { AppShell } from "@/components/app-shell";
@@ -832,9 +833,9 @@ export default function AthleteDetail() {
     try { localStorage.setItem("glidr-raceski-test-columns", JSON.stringify(activeTestColumns)); } catch {}
   }, [activeTestColumns]);
 
-  const [pageTab, setPageTab] = useState<"garage" | "tests" | "races">(() => {
+  const [pageTab, setPageTab] = useState<"garage" | "tests" | "races" | "analytics" | "suggestions">(() => {
     const tab = new URLSearchParams(search).get("tab");
-    return tab === "tests" || tab === "races" ? tab : "garage";
+    return tab === "tests" || tab === "races" || tab === "analytics" || tab === "suggestions" ? tab : "garage";
   });
   const [testsExpanded, setTestsExpanded] = useState(true);
   const [testViewMode, setTestViewMode] = useState<"card" | "list">("card");
@@ -1070,6 +1071,10 @@ export default function AthleteDetail() {
   const { data: raceHistory = [] } = useQuery<AthleteRaceHistory[]>({
     queryKey: [`/api/athletes/${athleteId}/race-history`],
     enabled: !!athleteId,
+    // Ski pairs set by the TA on the Race Prep page must show here at once —
+    // this list is the athlete's mirror of that page, never a snapshot.
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: weatherList = [] } = useQuery<{ id: number; date: string; location: string; snowTemperatureC: number | null; airTemperatureC: number | null; snowHumidityPct: number | null; airHumidityPct: number | null; snowHumidityType: string | null; trackHardness: string | null }[]>({
@@ -2418,7 +2423,7 @@ export default function AthleteDetail() {
                   variant="outline"
                   size="sm"
                   data-testid="button-athlete-analytics"
-                  onClick={() => navigate(`/raceskis/${athleteId}?view=analytics`)}
+                  onClick={() => setPageTab("analytics")}
                 >
                   <BarChart2 className="mr-1.5 h-3.5 w-3.5" />
                   Analytics
@@ -2568,6 +2573,28 @@ export default function AthleteDetail() {
                 {raceHistory.length}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setPageTab("analytics")}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              pageTab === "analytics" ? "border-transparent" : "border-transparent text-muted-foreground hover:text-foreground/80"
+            }`}
+            style={pageTab === "analytics" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
+            data-testid="tab-athlete-analytics"
+          >
+            <BarChart2 className="h-4 w-4" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setPageTab("suggestions")}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              pageTab === "suggestions" ? "border-transparent" : "border-transparent text-muted-foreground hover:text-foreground/80"
+            }`}
+            style={pageTab === "suggestions" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
+            data-testid="tab-athlete-suggestions"
+          >
+            <Sparkles className="h-4 w-4" />
+            {language === "no" ? "Forslag" : "Suggestions"}
           </button>
         </div>
 
@@ -2842,9 +2869,9 @@ export default function AthleteDetail() {
                       const kick = kickIsText ? (entry.kickProductIds ?? "") : parseIds(entry.kickProductIds).map(p => productLabel(p)).join(" + ");
                       const tette = entry.tette ?? "";
                       const kickTette = [kick, tette].filter(Boolean).join(" / ");
-                      const skiDisplay = entry.discipline === "Skiathlon"
-                        ? [entry.skiIdClassic && `CL: ${entry.skiIdClassic}`, entry.skiIdSkating && `SK: ${entry.skiIdSkating}`].filter(Boolean).join(" · ")
-                        : (entry.skiId ?? "—");
+                      const canEditSkiRow = !!athleteId && !isAthletePortal && !shareViewReadOnly;
+                      const rowLang: "no" | "en" = language === "no" ? "no" : "en";
+                      const onRowSkiSaved = () => queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/race-history`] });
                       return (
                         <tr key={entry.entryId} className={cn("border-b border-border last:border-0", i % 2 === 0 ? "bg-background" : "bg-muted/20")}>
                           <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{fmtDate(entry.date)}</td>
@@ -2854,7 +2881,20 @@ export default function AthleteDetail() {
                               {DISCIPLINE_LABEL_DETAIL[entry.discipline]?.en ?? entry.discipline}
                             </span>
                           </td>
-                          <td className="px-3 py-2 font-mono font-semibold">{skiDisplay}</td>
+                          <td className="px-3 py-2 font-mono font-semibold">
+                            {/* Same editable field as the card view — the personal
+                                waxer changes the pair right here too. */}
+                            {entry.discipline === "Skiathlon" ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-bold uppercase text-sky-500">CL</span>
+                                <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="classic" discipline={entry.discipline} entry={entry} canEdit={canEditSkiRow} onSaved={onRowSkiSaved} lang={rowLang} />
+                                <span className="text-[9px] font-bold uppercase text-emerald-500">SK</span>
+                                <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="skating" discipline={entry.discipline} entry={entry} canEdit={canEditSkiRow} onSaved={onRowSkiSaved} lang={rowLang} />
+                              </div>
+                            ) : (
+                              <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="single" discipline={entry.discipline} entry={entry} canEdit={canEditSkiRow} onSaved={onRowSkiSaved} lang={rowLang} />
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-muted-foreground max-w-[160px] truncate">{glide || "—"}</td>
                           <td className="px-3 py-2 text-muted-foreground max-w-[120px] truncate">{struct || "—"}</td>
                           <td className="px-3 py-2 text-muted-foreground max-w-[120px] truncate">{kickTette || "—"}</td>
@@ -3469,15 +3509,33 @@ export default function AthleteDetail() {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Smart Ski Suggestions */}
-        <SkiSuggestionsSection
-          athleteId={athleteId!}
-          skis={skis}
-          raceSkiTests={raceSkiTests}
-          raceHistory={raceHistory}
-        />
         </>
         )} {/* end garage tab */}
+
+        {/* ── Suggestions tab ─────────────────────────────────────────────── */}
+        {pageTab === "suggestions" && (
+          <div className="pt-1" data-testid="section-athlete-suggestions">
+            <SkiSuggestionsSection
+              athleteId={athleteId!}
+              skis={skis}
+              raceSkiTests={raceSkiTests}
+              raceHistory={raceHistory}
+              defaultOpen
+            />
+          </div>
+        )}
+
+        {/* ── Analytics tab ───────────────────────────────────────────────── */}
+        {pageTab === "analytics" && (
+          <div className="pt-1" data-testid="section-athlete-analytics">
+            <AthleteAnalyticsView
+              skis={skis}
+              raceSkiTests={raceSkiTests}
+              compareSkiIds={compareSkiIds}
+              setCompareSkiIds={setCompareSkiIds}
+            />
+          </div>
+        )}
 
         {/* ── Tests tab ────────────────────────────────────────────────────── */}
         {pageTab === "tests" && (
@@ -5332,15 +5390,17 @@ function SkiSuggestionsSection({
   skis,
   raceSkiTests,
   raceHistory,
+  defaultOpen,
 }: {
   athleteId: number;
   skis: RaceSki[];
   raceSkiTests: RaceSkiTest[];
   raceHistory: AthleteRaceHistory[];
+  defaultOpen?: boolean;
 }) {
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!defaultOpen);
   const [discipline, setDiscipline] = useState<"Classic" | "Skating">("Classic");
 
   // Weather filter state

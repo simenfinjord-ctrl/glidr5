@@ -53,14 +53,20 @@ export function RaceSkiCombobox({
   value,
   onChange,
   testId,
+  fleetIds,
 }: {
   raceSkis: RaceSkiOption[];
   value: number | undefined;
   onChange: (id: number | undefined) => void;
   testId: string;
+  // Fleet-first mode (group tests): only fleet skis are listed until the user
+  // searches — then the whole team is searchable by ski-ID for a reference
+  // pair from an athlete's garage.
+  fleetIds?: Set<number>;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
 
   const selected = useMemo(
     () => raceSkis.find((s) => s.id === value),
@@ -87,11 +93,18 @@ export function RaceSkiCombobox({
           <CommandInput
             data-testid={`${testId}-search`}
             placeholder={t("raceski.searchPlaceholder")}
+            value={q}
+            onValueChange={setQ}
           />
           <CommandList>
             <CommandEmpty>No matching skis.</CommandEmpty>
-            <CommandGroup heading="Race Skis">
-              {raceSkis.map((ski) => {
+            {fleetIds && !q.trim() && (
+              <div className="px-3 py-1.5 text-[10px] text-muted-foreground">
+                Race fleet — search to reach the whole team's skis.
+              </div>
+            )}
+            <CommandGroup heading={fleetIds ? "Race fleet" : "Race Skis"}>
+              {(fleetIds && !q.trim() ? raceSkis.filter((ski) => fleetIds.has(ski.id)) : raceSkis).map((ski) => {
                 const isSelected = ski.id === value;
                 return (
                   <CommandItem

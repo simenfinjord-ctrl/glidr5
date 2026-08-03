@@ -9519,9 +9519,19 @@ export async function registerRoutes(
            FROM test_entries te JOIN tests t ON t.id = te.test_id
            WHERE te.race_ski_id = ANY($1::int[]) GROUP BY te.race_ski_id`, [ids]),
         (pool as any).query(
-          `SELECT DISTINCT ON (ski_id) ski_id AS id, date, location, result,
-                  COUNT(*) OVER (PARTITION BY ski_id)::int AS n
-           FROM ski_race_usages WHERE ski_id = ANY($1::int[]) ORDER BY ski_id, date DESC`, [ids]),
+          `WITH combined AS (
+             SELECT u.ski_id AS id, u.date, u.location, u.result
+             FROM ski_race_usages u WHERE u.ski_id = ANY($1::int[])
+             UNION ALL
+             SELECT rs.id, rp.date, rp.location, NULL AS result
+             FROM race_prep_entries rpe
+             JOIN race_preps rp ON rp.id = rpe.race_prep_id AND rp.team_id = $2
+             JOIN race_skis rs ON rs.id = ANY($1::int[])
+              AND rs.ski_id IN (rpe.ski_id, rpe.ski_id_classic, rpe.ski_id_skating)
+           )
+           SELECT DISTINCT ON (id) id, date, location, result,
+                  COUNT(*) OVER (PARTITION BY id)::int AS n
+           FROM combined ORDER BY id, date DESC`, [ids, teamId]),
         (pool as any).query(
           `SELECT DISTINCT ON (race_ski_id) race_ski_id AS id, date, grind_type AS "grindType"
            FROM race_ski_regrinds WHERE race_ski_id = ANY($1::int[]) ORDER BY race_ski_id, date DESC`, [ids]),

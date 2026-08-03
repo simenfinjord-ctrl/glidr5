@@ -407,7 +407,7 @@ export default function RaceFleet() {
           </div>
           <div className="flex flex-wrap gap-2">
             {canEdit && (
-              <AppLink href="/tests/new?source=raceskis&type=Classic">
+              <AppLink href="/tests/new?source=raceskis&type=Classic&fleet=1">
                 <Button variant="outline" data-testid="button-new-group-test">
                   <FlaskConical className="mr-2 h-4 w-4" />{L("Ny gruppetest", "New group test")}
                 </Button>

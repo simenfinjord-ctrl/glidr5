@@ -127,6 +127,8 @@ export default function NewTest() {
   const today = new Date().toISOString().slice(0, 10);
 
   const initialSource = urlParams.get("source") === "raceskis" ? "raceskis" : "series";
+  // Group tests from Race fleets: the ski picker defaults to fleet skis only.
+  const fleetMode = urlParams.get("fleet") === "1";
   const [testSkiSource, setTestSkiSource] = useState<"series" | "raceskis">(initialSource as any);
   // Race-ski tests are only created from the Athlete Skis page (?source=raceskis or
   // when duplicating a race-ski test). The general New test page is Testfleets-only.
@@ -945,7 +947,7 @@ export default function NewTest() {
               {L("Rangeres automatisk", "Ranked automatically")}
             </span>
           </div>
-          {can("time_tests") && watchTestType === "Glide" && (
+          {can("time_tests") && (watchTestType === "Glide" || isRaceSkiFlow) && (
             <div className="mb-3 flex items-center gap-2">
               <span className="text-xs font-medium text-muted-foreground">{L("Resultatenhet:", "Result unit:")}</span>
               <div className="inline-flex rounded-lg border border-border bg-background/60 p-0.5 text-xs">
@@ -984,6 +986,7 @@ export default function NewTest() {
             onDistanceLabelsChange={setDistanceLabels}
             testSkiSource={testSkiSource}
             raceSkis={raceSkiOptions}
+            raceSkiFleetIds={fleetMode ? new Set(allRaceSkis.filter((sk) => sk.athleteId == null).map((sk) => sk.id)) : undefined}
             skiLabels={seriesPairLabels}
             grindProfiles={grindProfiles}
             visibleGrindCols={visibleGrindCols}

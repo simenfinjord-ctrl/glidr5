@@ -111,6 +111,7 @@ export function TestEntryTable({
   resultUnit = "cm",
   testSkiSource = "series",
   raceSkis = [],
+  raceSkiFleetIds,
   skiLabels,
   grindProfiles = [],
   visibleGrindCols = [],
@@ -125,6 +126,7 @@ export function TestEntryTable({
   // 'time' = photocell seconds (lower wins, same as cm behind).
   resultUnit?: "cm" | "time";
   raceSkis?: RaceSkiOption[];
+  raceSkiFleetIds?: Set<number>;
   skiLabels?: Record<number, string>;
   grindProfiles?: GrindProfile[];
   visibleGrindCols?: string[];
@@ -405,6 +407,7 @@ export function TestEntryTable({
                   {isRaceSki ? (
                     <div className="flex flex-col gap-1 min-w-[180px]">
                       <RaceSkiCombobox
+                        fleetIds={raceSkiFleetIds}
                         raceSkis={raceSkis}
                         value={row.freeTextProduct ? undefined : row.raceSkiId}
                         onChange={(val) => {

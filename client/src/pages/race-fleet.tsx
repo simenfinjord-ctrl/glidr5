@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -269,6 +270,23 @@ export default function RaceFleet() {
                   <datalist id="fleet-groups">
                     {Array.from(new Set(skis.map((x) => x.fleetGroup).filter(Boolean))).map((g) => <option key={g as string} value={g as string} />)}
                   </datalist>
+                  {(() => {
+                    const existing = Array.from(new Set(skis.map((x) => x.fleetGroup?.trim()).filter(Boolean))) as string[];
+                    const q = form.fleetGroup.trim().toLowerCase();
+                    const shown = existing.filter((g) => g.toLowerCase() !== q && (!q || g.toLowerCase().includes(q)));
+                    if (shown.length === 0) return null;
+                    return (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {shown.slice(0, 8).map((g) => (
+                          <button key={g} type="button" onClick={() => set("fleetGroup", g)}
+                            className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                            data-testid={`fleet-group-suggest-${g}`}>
+                            {g}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {field("serialNumber", L("Serienummer", "Serial number"))}
                 {field("brand", L("Merke", "Brand"), "Madshus")}
@@ -279,7 +297,21 @@ export default function RaceFleet() {
                 {field("heights", L("Høyder", "Heights"))}
                 {field("year", "Year")}
                 {field("length", L("Lengde", "Length"))}
-                {field("typeOfSki", L("Type ski", "Type of ski"), L("Klister/Cover, Zero", "Klister/Cover, Zero"))}
+                {form.discipline === "Classic" && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">{L("Skitype", "Type of ski")}</label>
+                    <Select value={form.typeOfSki || "__none__"} onValueChange={(v) => set("typeOfSki", v === "__none__" ? "" : v)}>
+                      <SelectTrigger className="h-9 text-sm" data-testid="fleet-select-ski-type"><SelectValue placeholder={L("Ingen", "None")} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
+                        <SelectItem value="Hard Wax">Hard Wax</SelectItem>
+                        <SelectItem value="Klister/Cover">Klister/Cover</SelectItem>
+                        <SelectItem value="Klister">Klister</SelectItem>
+                        <SelectItem value="Zero">Zero</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
               {field("whereReceived", L("Hvor mottatt", "Where received"))}
               <div>

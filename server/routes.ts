@@ -4101,7 +4101,7 @@ export async function registerRoutes(
     if (testSkiSource === "raceskis") {
       const raceSkiIds = entries.map((e: any) => e.raceSkiId).filter(Boolean);
       if (raceSkiIds.length > 0) {
-        const allowedSkis = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin);
+        const allowedSkis = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin, getActiveTeamId(req));
         const allowedIds = new Set(allowedSkis.map((s: any) => s.id));
         // Team fleet skis (no athlete) are open to every raceskis-level user.
         try {
@@ -4570,7 +4570,7 @@ export async function registerRoutes(
     if (req.body.entries && testSkiSource === "raceskis") {
       const raceSkiIds = req.body.entries.map((e: any) => e.raceSkiId).filter(Boolean);
       if (raceSkiIds.length > 0) {
-        const allowedSkis = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin);
+        const allowedSkis = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin, getActiveTeamId(req));
         const allowedIds = new Set(allowedSkis.map((s: any) => s.id));
         // Team fleet skis (no athlete) are open to every raceskis-level user.
         try {
@@ -9396,7 +9396,7 @@ export async function registerRoutes(
     const u = userInfo(req);
     const includeArchived = req.query.includeArchived === "true";
     if (includeArchived) {
-      const athleteList = await storage.listAthletes(u.id, u.isScopeAdmin);
+      const athleteList = await storage.listAthletes(u.id, u.isScopeAdmin, getActiveTeamId(req));
       if (athleteList.length === 0) return res.json([]);
       const all: any[] = [];
       for (const ath of athleteList) {
@@ -9405,7 +9405,7 @@ export async function registerRoutes(
       }
       return res.json(all);
     }
-    const list = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin);
+    const list = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin, getActiveTeamId(req));
     // Team fleet skis (no athlete) are testable by anyone with raceskis
     // access — a fleet-group test picks one pair from each group.
     try {
@@ -9811,7 +9811,7 @@ export async function registerRoutes(
     );
     let rows = result.rows;
     if (!u.isScopeAdmin) {
-      const accessible = new Set((await storage.listAthletes(u.id, false)).map((a: any) => a.id));
+      const accessible = new Set((await storage.listAthletes(u.id, false, teamId)).map((a: any) => a.id));
       rows = rows.filter((r: any) => accessible.has(r.athleteId));
     }
     res.json(rows);

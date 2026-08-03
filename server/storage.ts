@@ -131,7 +131,7 @@ export interface IStorage {
   createRaceSki(s: InsertRaceSki): Promise<RaceSki>;
   updateRaceSki(id: number, data: Partial<InsertRaceSki>): Promise<RaceSki | undefined>;
   deleteRaceSki(id: number): Promise<boolean>;
-  listAllRaceSkisForUser(userId: number, isAdmin: boolean): Promise<RaceSki[]>;
+  listAllRaceSkisForUser(userId: number, isAdmin: boolean, teamId?: number): Promise<RaceSki[]>;
 
   listRaceSkiRegrinds(raceSkiId: number): Promise<RaceSkiRegrind[]>;
   createRaceSkiRegrind(r: InsertRaceSkiRegrind): Promise<RaceSkiRegrind>;
@@ -791,8 +791,10 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async listAllRaceSkisForUser(userId: number, isAdmin: boolean): Promise<RaceSki[]> {
-    const athleteList = await this.listAthletes(userId, isAdmin);
+  async listAllRaceSkisForUser(userId: number, isAdmin: boolean, teamId?: number): Promise<RaceSki[]> {
+    // Team-scoped: a multi-team admin must never see (or test with) another
+    // team's athlete skis from this one.
+    const athleteList = await this.listAthletes(userId, isAdmin, teamId);
     if (athleteList.length === 0) return [];
     const athleteIds = athleteList.map((a) => a.id);
     return db.select().from(raceSkis).where(and(inArray(raceSkis.athleteId, athleteIds), isNull(raceSkis.archivedAt))).orderBy(sql`${raceSkis.skiId} asc`);

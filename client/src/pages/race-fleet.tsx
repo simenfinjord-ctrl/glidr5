@@ -405,11 +405,20 @@ export default function RaceFleet() {
               {L("Lagets konkurranseski i serier — test seriene mot hverandre og velg dagens serie.", "Your team's competition skis in series — test the series against each other and pick the series of the day.")}
             </p>
           </div>
-          {canEdit && (
-            <Button onClick={openAdd} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600" data-testid="button-add-fleet-ski">
-              <Plus className="mr-2 h-4 w-4" />{L("Legg til ski", "Add ski")}
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {canEdit && (
+              <AppLink href="/tests/new?source=raceskis&type=Classic">
+                <Button variant="outline" data-testid="button-new-group-test">
+                  <FlaskConical className="mr-2 h-4 w-4" />{L("Ny gruppetest", "New group test")}
+                </Button>
+              </AppLink>
+            )}
+            {canEdit && (
+              <Button onClick={openAdd} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600" data-testid="button-add-fleet-ski">
+                <Plus className="mr-2 h-4 w-4" />{L("Legg til ski", "Add ski")}
+              </Button>
+            )}
+          </div>
         </div>
 
         {forbidden ? (
@@ -726,9 +735,49 @@ function SkiDetailDialog({ ski, onClose, L }: {
   onClose: () => void;
   L: (no: string, en: string) => string;
 }) {
+  const { toast } = useToast();
   const { data: tests = [], isLoading } = useQuery<SkiTestRow[]>({
     queryKey: [`/api/race-fleet/${ski?.id}/tests`],
     enabled: !!ski,
+  });
+  // Quick logging straight from the register — no trip via Race Prep needed.
+  const [logMode, setLogMode] = useState<"none" | "race" | "regrind">("none");
+  const today = new Date().toISOString().slice(0, 10);
+  const [raceForm, setRaceForm] = useState({ date: today, location: "", result: "", notes: "" });
+  const [grindForm, setGrindForm] = useState({ date: today, grindType: "", stone: "", pattern: "" });
+  const logRace = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/race-skis/${ski!.id}/usages`, {
+        date: raceForm.date, location: raceForm.location || null,
+        discipline: ski!.discipline, result: raceForm.result || null, notes: raceForm.notes || null,
+      });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/race-fleet"] });
+      toast({ title: L("Rennbruk registrert", "Race usage logged") });
+      setLogMode("none");
+      setRaceForm({ date: today, location: "", result: "", notes: "" });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke registrere", "Could not log"), description: e?.message, variant: "destructive" }),
+  });
+  const logRegrind = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/race-skis/${ski!.id}/regrinds`, {
+        date: grindForm.date, grindType: grindForm.grindType,
+        stone: grindForm.stone || null, pattern: grindForm.pattern || null,
+      });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/race-fleet"] });
+      toast({ title: L("Sliping registrert", "Regrind logged") });
+      setLogMode("none");
+      setGrindForm({ date: today, grindType: "", stone: "", pattern: "" });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke registrere", "Could not log"), description: e?.message, variant: "destructive" }),
   });
   if (!ski) return null;
   return (
@@ -780,6 +829,44 @@ function SkiDetailDialog({ ski, onClose, L }: {
               </div>
             )}
           </div>
+          {/* Quick logging: race usage and regrind, from right here */}
+          <div className="rounded-lg border border-dashed border-border p-2.5">
+            <div className="flex flex-wrap gap-2">
+              <Button variant={logMode === "race" ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                onClick={() => setLogMode(logMode === "race" ? "none" : "race")} data-testid="button-log-race">
+                <Trophy className="mr-1.5 h-3.5 w-3.5" />{L("Registrer rennbruk", "Log race usage")}
+              </Button>
+              <Button variant={logMode === "regrind" ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                onClick={() => setLogMode(logMode === "regrind" ? "none" : "regrind")} data-testid="button-log-regrind">
+                <Wrench className="mr-1.5 h-3.5 w-3.5" />{L("Registrer sliping", "Log regrind")}
+              </Button>
+            </div>
+            {logMode === "race" && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Input type="date" value={raceForm.date} onChange={(e) => setRaceForm((f) => ({ ...f, date: e.target.value }))} className="h-8 text-xs" />
+                <Input value={raceForm.location} onChange={(e) => setRaceForm((f) => ({ ...f, location: e.target.value }))} placeholder={L("Sted", "Location")} className="h-8 text-xs" />
+                <Input value={raceForm.result} onChange={(e) => setRaceForm((f) => ({ ...f, result: e.target.value }))} placeholder={L("Resultat (valgfritt)", "Result (optional)")} className="h-8 text-xs" />
+                <Input value={raceForm.notes} onChange={(e) => setRaceForm((f) => ({ ...f, notes: e.target.value }))} placeholder={L("Notat", "Note")} className="h-8 text-xs" />
+                <Button size="sm" className="col-span-2 h-8 bg-green-600 text-white hover:bg-green-700"
+                  disabled={logRace.isPending || !raceForm.date} onClick={() => logRace.mutate()} data-testid="button-save-race-usage">
+                  {logRace.isPending ? L("Lagrer…", "Saving…") : L("Lagre rennbruk", "Save race usage")}
+                </Button>
+              </div>
+            )}
+            {logMode === "regrind" && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Input type="date" value={grindForm.date} onChange={(e) => setGrindForm((f) => ({ ...f, date: e.target.value }))} className="h-8 text-xs" />
+                <Input value={grindForm.grindType} onChange={(e) => setGrindForm((f) => ({ ...f, grindType: e.target.value }))} placeholder={L("Slip (f.eks. SF1) *", "Grind (e.g. SF1) *")} className="h-8 text-xs" />
+                <Input value={grindForm.stone} onChange={(e) => setGrindForm((f) => ({ ...f, stone: e.target.value }))} placeholder={L("Stein (valgfritt)", "Stone (optional)")} className="h-8 text-xs" />
+                <Input value={grindForm.pattern} onChange={(e) => setGrindForm((f) => ({ ...f, pattern: e.target.value }))} placeholder={L("Mønster (valgfritt)", "Pattern (optional)")} className="h-8 text-xs" />
+                <Button size="sm" className="col-span-2 h-8 bg-green-600 text-white hover:bg-green-700"
+                  disabled={logRegrind.isPending || !grindForm.date || !grindForm.grindType.trim()} onClick={() => logRegrind.mutate()} data-testid="button-save-regrind">
+                  {logRegrind.isPending ? L("Lagrer…", "Saving…") : L("Lagre sliping", "Save regrind")}
+                </Button>
+              </div>
+            )}
+          </div>
+
           {tests.length > 0 && (
             <div>
               <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

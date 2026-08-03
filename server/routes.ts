@@ -79,6 +79,13 @@ function applyAvgRanks(entries: any[]): void {
   withAvg.filter((x) => x.avg == null).forEach((x) => { x.e.rank0km = null; });
 }
 
+// Access to a race ski: athlete skis follow athlete access; team fleet skis
+// (athleteId null) are open to any raceskis-level user on the owning team.
+async function canTouchRaceSki(ski: any, req: Request, u: { id: number; isScopeAdmin: boolean }): Promise<boolean> {
+  if (ski.athleteId == null) return ski.teamId === getActiveTeamId(req);
+  return storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+}
+
 // Whether the team's plan includes a given feature key (e.g. "time_tests").
 async function teamHasFeature(teamId: number | undefined, feature: string): Promise<boolean> {
   if (!teamId) return false;
@@ -9645,7 +9652,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const ski = await storage.getRaceSki(id);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const data: any = {};
     if (req.body.serialNumber !== undefined) data.serialNumber = req.body.serialNumber;
@@ -9685,7 +9692,7 @@ export async function registerRoutes(
     const skiId = parseInt(req.params.id);
     const ski = await storage.getRaceSki(skiId);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
@@ -9704,7 +9711,7 @@ export async function registerRoutes(
     const skiId = parseInt(req.params.id);
     const ski = await storage.getRaceSki(skiId);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const { date, location, discipline, weatherId, manualWeather, result: raceResult, notes } = req.body;
     // #18: date is optional. The column is NOT NULL, so store "" when omitted.
@@ -9725,7 +9732,7 @@ export async function registerRoutes(
     const usageId = parseInt(req.params.usageId);
     const ski = await storage.getRaceSki(skiId);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     await (pool as any).query(`DELETE FROM ski_race_usages WHERE id = $1 AND ski_id = $2 AND team_id = $3`, [usageId, skiId, getActiveTeamId(req)]);
@@ -9740,7 +9747,7 @@ export async function registerRoutes(
     const usageId = parseInt(req.params.usageId);
     const ski = await storage.getRaceSki(skiId);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     await (pool as any).query(
@@ -10481,7 +10488,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const ski = await storage.getRaceSki(id);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const updated = await storage.archiveRaceSki(id);
     res.json(updated);
@@ -10492,7 +10499,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const ski = await storage.getRaceSki(id);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const updated = await storage.restoreRaceSki(id);
     res.json(updated);
@@ -10503,7 +10510,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const ski = await storage.getRaceSki(id);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     if (!ski.archivedAt) {
       return res.status(400).json({ message: "Ski must be archived before permanent deletion" });
@@ -10535,7 +10542,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const ski = await storage.getRaceSki(id);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const list = await storage.listRaceSkiRegrinds(id);
     res.json(list);
@@ -10546,7 +10553,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const ski = await storage.getRaceSki(id);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const now = new Date().toISOString();
     const regrind = await storage.createRaceSkiRegrind({
@@ -10571,7 +10578,7 @@ export async function registerRoutes(
     if (!regrind) return res.status(404).json({ message: "Not found" });
     const ski = await storage.getRaceSki(regrind.raceSkiId);
     if (!ski) return res.status(404).json({ message: "Not found" });
-    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     await storage.deleteRaceSkiRegrind(id);
     await syncSkiGrindToLatestRegrind(regrind.raceSkiId);

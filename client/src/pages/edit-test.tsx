@@ -417,13 +417,18 @@ export default function EditTest() {
       })
       .map((ski) => {
         const athlete = athletes.find((a) => a.id === ski.athleteId);
+        // Fleet skis have no athlete — label them by their series, same as
+        // the New test picker.
+        const fleetLabel = (ski as any).fleetGroup
+          ? `Fleet · ${(ski as any).fleetGroup}`
+          : L("Lagets fleet", "Team fleet");
         return {
           id: ski.id,
           skiId: ski.skiId,
           serialNumber: ski.serialNumber,
           brand: ski.brand,
           discipline: ski.discipline,
-          athleteName: athlete?.name || "Unknown",
+          athleteName: (ski as any).athleteId == null ? fleetLabel : (athlete?.name || "Unknown"),
           grind: ski.grind,
         };
       });

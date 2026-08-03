@@ -4097,8 +4097,13 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Classic/Skating/Double Poling are only for race ski tests" });
     }
 
-    const entries = req.body.entries || [];
+    let entries = req.body.entries || [];
     if (testSkiSource === "raceskis") {
+      // Scaffold rows (no ski, no free text, no data) are never results —
+      // enforced here so no stale client can save them.
+      entries = entries.filter((e: any) => e.raceSkiId || e.freeTextProduct
+        || e.result0kmCmBehind != null || e.feelingRank != null
+        || (Array.isArray(e.results) && e.results.some((r: any) => r?.result != null)));
       const raceSkiIds = entries.map((e: any) => e.raceSkiId).filter(Boolean);
       if (raceSkiIds.length > 0) {
         const allowedSkis = await storage.listAllRaceSkisForUser(u.id, u.isScopeAdmin, getActiveTeamId(req));
@@ -4602,6 +4607,11 @@ export async function registerRoutes(
       }
     }
     if (req.body.entries) {
+      if ((existing as any).testSkiSource === "raceskis") {
+        req.body.entries = req.body.entries.filter((e: any) => e.raceSkiId || e.freeTextProduct
+          || e.result0kmCmBehind != null || e.feelingRank != null
+          || (Array.isArray(e.results) && e.results.some((r: any) => r?.result != null)));
+      }
       if (effectiveUnit === "time") applyAvgRanks(req.body.entries);
       await storage.deleteEntriesByTestId(id);
       const now = new Date().toISOString();

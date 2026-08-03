@@ -984,7 +984,14 @@ export default function TestDetail() {
   }
   const sortedEntries = useMemo(() => {
     const [key, dir] = testSort.split("|");
-    const arr = [...entries].sort((a, b) => {
+    // Race-ski tests: scaffold rows saved by older clients (no ski, no data)
+    // are noise, not results — hide them here so old tests read right too.
+    const base = isRaceSkiTest
+      ? entries.filter((e) => (e as any).raceSkiId || (e as any).freeTextProduct
+          || e.result0kmCmBehind != null || e.rank0km != null || e.feelingRank != null
+          || getEntryRounds(e, distLabels.length).some((r) => r.result != null))
+      : entries;
+    const arr = [...base].sort((a, b) => {
       const av = testSortVal(a, key), bv = testSortVal(b, key);
       let cmp: number;
       if (typeof av === "number" && typeof bv === "number") cmp = av - bv;

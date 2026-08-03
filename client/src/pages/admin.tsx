@@ -7711,6 +7711,16 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
             <h3 className="text-sm font-medium text-foreground mb-1">{L("PDF-eksport", "PDF Export")}</h3>
             <p className="text-xs text-muted-foreground mb-2">{L("Eksporter alle appdata som et omfattende PDF-dokument.", "Export all app data as a comprehensive PDF document.")}</p>
             {/* Area selection for the JSON download — all checked = everything */}
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-[11px] font-medium text-muted-foreground">{L("Områder i JSON-nedlastingen — trykk for å velge bort:", "Areas in the JSON download — click to deselect:")}</span>
+              {DATA_AREAS.some((a) => !exportSelections[a.key]) && (
+                <button type="button" data-testid="export-areas-select-all"
+                  onClick={() => setExportSelections(Object.fromEntries(DATA_AREAS.map((a) => [a.key, true])))}
+                  className="text-[11px] text-primary underline underline-offset-2">
+                  {L("Velg alle", "Select all")}
+                </button>
+              )}
+            </div>
             <div className="mb-3 flex flex-wrap gap-1.5" data-testid="export-area-selection">
               {DATA_AREAS.map((a) => (
                 <button
@@ -7756,7 +7766,12 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
                 }
               }}>
                 <Download className="mr-2 h-3.5 w-3.5" />
-                {L("Last ned JSON (komplett)", "Download JSON (complete)")}
+                {(() => {
+                  const n = DATA_AREAS.filter((a) => exportSelections[a.key]).length;
+                  return n === DATA_AREAS.length
+                    ? L("Last ned JSON (komplett)", "Download JSON (complete)")
+                    : L(`Last ned JSON (${n} av ${DATA_AREAS.length} områder)`, `Download JSON (${n} of ${DATA_AREAS.length} areas)`);
+                })()}
               </Button>
             </div>
           </div>

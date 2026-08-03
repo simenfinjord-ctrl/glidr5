@@ -1470,7 +1470,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   // SIDEBAR layout (new design)
   // ══════════════════════════════════════════════════
   return (
-    <div className="min-h-screen flex flex-col bg-[#f4f4f6] dark:bg-zinc-950">
+    <div className="h-screen overflow-hidden flex flex-col bg-[#f4f4f6] dark:bg-zinc-950" style={{ height: "100dvh" }}>
       {nationTheme && (
         <div
           className="w-full shrink-0 z-50"
@@ -1483,7 +1483,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
       {/* ── Desktop Sidebar (lg+) ── */}
       <aside
         style={{ width: sidebarCollapsed ? "52px" : `${sidebarWidth}px`, paddingTop: "env(safe-area-inset-top)" }}
-        className="hidden xl:flex flex-col relative shrink-0 h-screen sticky top-0 bg-card dark:bg-zinc-900 border-r border-border overflow-hidden"
+        className="hidden xl:flex flex-col relative shrink-0 h-full bg-card dark:bg-zinc-900 border-r border-border overflow-hidden"
       >
         <SidebarContent />
         {/* Drag-to-resize handle */}

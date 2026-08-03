@@ -220,7 +220,9 @@ export default function RaceFleet() {
   const canEdit = can("raceskis", "edit");
 
   // Register (the garage) or the tests run with it — like the Athlete Skis tabs.
-  const [pageTab, setPageTab] = useState<"register" | "tests">("register");
+  const [pageTab, setPageTab] = useState<"register" | "tests">(() => {
+    try { return new URLSearchParams(window.location.search).get("tab") === "tests" ? "tests" : "register"; } catch { return "register"; }
+  });
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
@@ -1047,10 +1049,16 @@ function FleetTestsTab({ L }: { L: (no: string, en: string) => string }) {
                   <span className="min-w-[140px] flex-1 truncate text-sm font-medium">{r.testName || r.location}</span>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{r.testType}</span>
                   {r.resultUnit === "time" && <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] text-sky-700 dark:bg-sky-950/30 dark:text-sky-300">{L("tid", "time")}</span>}
-                  {(r.snowTemperatureC != null || r.snowType) && (
+                  {(r.airTemperatureC != null || r.snowTemperatureC != null || r.snowType) ? (
                     <span className="text-[11px] text-muted-foreground">
-                      {r.snowTemperatureC != null ? `${L("Snø", "Snow")} ${r.snowTemperatureC}°` : ""}{r.snowTemperatureC != null && r.snowType ? " · " : ""}{r.snowType ?? ""}
+                      {[
+                        r.airTemperatureC != null ? `${L("Luft", "Air")} ${r.airTemperatureC}°` : null,
+                        r.snowTemperatureC != null ? `${L("Snø", "Snow")} ${r.snowTemperatureC}°` : null,
+                        r.snowType ?? null,
+                      ].filter(Boolean).join(" · ")}
                     </span>
+                  ) : (
+                    <span className="text-[11px] italic text-muted-foreground/60">{L("Uten værdata", "No weather data")}</span>
                   )}
                   <span className="text-[11px] text-muted-foreground">{r.fleetEntryCount} {L("par", "pairs")}</span>
                   {winner && (

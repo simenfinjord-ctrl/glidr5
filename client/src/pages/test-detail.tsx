@@ -1275,19 +1275,27 @@ export default function TestDetail() {
         <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <AppLink
-                href={isGrind ? "/grinding" : (isRaceSkiTest && (test as any).athleteId) ? `/raceskis/${(test as any).athleteId}?tab=tests` : "/tests"}
-                testId="link-back-tests"
-              >
-                <Button variant="ghost" size="sm" data-testid="button-back-tests">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  {isGrind
-                    ? `${t("testDetail.back")} — ${t("grinding.title")}`
-                    : (isRaceSkiTest && (test as any).athleteId)
-                    ? L("Tilbake til utøver", "Back to athlete")
-                    : t("testDetail.backToTests")}
-                </Button>
-              </AppLink>
+              {(() => {
+                // A race-ski test WITHOUT an athlete is a fleet test — it came
+                // from Race fleets and goes back there, straight to Tests.
+                const isFleetTest = isRaceSkiTest && !(test as any).athleteId;
+                const backHref = isGrind ? "/grinding"
+                  : isFleetTest ? "/race-fleet?tab=tests"
+                  : (isRaceSkiTest && (test as any).athleteId) ? `/raceskis/${(test as any).athleteId}?tab=tests`
+                  : "/tests";
+                const backLabel = isGrind ? `${t("testDetail.back")} — ${t("grinding.title")}`
+                  : isFleetTest ? L("Tilbake til Race fleets", "Back to Race fleets")
+                  : (isRaceSkiTest && (test as any).athleteId) ? L("Tilbake til utøver", "Back to athlete")
+                  : t("testDetail.backToTests");
+                return (
+                  <AppLink href={backHref} testId="link-back-tests">
+                    <Button variant="ghost" size="sm" data-testid="button-back-tests">
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      {backLabel}
+                    </Button>
+                  </AppLink>
+                );
+              })()}
               {allTests.length > 0 && (
                 <div className="flex items-center gap-1 ml-1">
                   <Button

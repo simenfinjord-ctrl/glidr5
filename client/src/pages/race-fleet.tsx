@@ -62,6 +62,23 @@ type FleetSki = {
   lastGrindType: string | null;
 };
 
+type FleetTestRow = {
+  testId: number;
+  date: string;
+  location: string;
+  testName: string | null;
+  testType: string;
+  resultUnit: string | null;
+  createdByName: string | null;
+  airTemperatureC: number | null;
+  snowTemperatureC: number | null;
+  snowType: string | null;
+  fleetEntryCount: number;
+  pairLabels: string[];
+  pairGroups: (string | null)[];
+  bestRank: number | null;
+};
+
 type SkiTestRow = {
   testId: number;
   date: string;
@@ -201,6 +218,8 @@ export default function RaceFleet() {
   const { can } = useAuth();
   const canEdit = can("raceskis", "edit");
 
+  // Register (the garage) or the tests run with it — like the Athlete Skis tabs.
+  const [pageTab, setPageTab] = useState<"register" | "tests">("register");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
@@ -421,7 +440,21 @@ export default function RaceFleet() {
           </div>
         </div>
 
-        {forbidden ? (
+        {/* Register | Tests — the Athlete Skis tab pattern */}
+        <div className="flex gap-1 border-b border-border">
+          {([["register", L("Register", "Register")], ["tests", L("Tester", "Tests")]] as const).map(([key, label]) => (
+            <button key={key} onClick={() => setPageTab(key)}
+              className={cn("border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                pageTab === key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}
+              data-testid={`fleet-tab-${key}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {pageTab === "tests" && !forbidden && <FleetTestsTab L={L} />}
+
+        {pageTab === "tests" ? null : forbidden ? (
           <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="fleet-forbidden">
             {L("Race fleets er ikke aktivert for dette laget. En Super Admin må slå på «Para team».", "Race fleets is not enabled for this team. A Super Admin must turn on 'Para team'.")}
           </Card>
@@ -936,6 +969,92 @@ function GroupConditions({ group, L }: { group: string; L: (no: string, en: stri
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+
+// Every test run with fleet skis — the Race fleets equivalent of the Athlete
+// Skis Tests tab. Rows link straight into the test.
+function FleetTestsTab({ L }: { L: (no: string, en: string) => string }) {
+  const { data: rows = [], isLoading } = useQuery<FleetTestRow[]>({ queryKey: ["/api/race-fleet/all-tests"] });
+  const [q, setQ] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const types = useMemo(() => Array.from(new Set(rows.map((r) => r.testType))).sort(), [rows]);
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (typeFilter !== "all" && r.testType !== typeFilter) return false;
+      if (needle) {
+        const hay = [r.testName, r.location, r.snowType, r.createdByName,
+          ...(r.pairLabels ?? []), ...((r.pairGroups ?? []).filter(Boolean) as string[])].filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [rows, q, typeFilter]);
+
+  if (isLoading) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Laster…", "Loading…")}</Card>;
+  return (
+    <div className="flex flex-col gap-3">
+      <Card className="fs-card rounded-2xl p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[180px] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder={L("Søk navn, sted, par, serie…", "Search name, location, pair, series…")}
+              className="h-9 pl-8 text-sm" data-testid="fleet-tests-search" />
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="h-9 w-auto min-w-[110px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{L("Alle typer", "All types")}</SelectItem>
+              {types.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground">{filtered.length}/{rows.length}</span>
+        </div>
+      </Card>
+
+      {filtered.length === 0 ? (
+        <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">
+          {rows.length === 0
+            ? L("Ingen tester med fleet-ski ennå — start en gruppetest fra Register-fanen.", "No tests with fleet skis yet — start a group test from the Register tab.")
+            : L("Ingen tester matcher filtrene.", "No tests match the filters.")}
+        </Card>
+      ) : (
+        <Card className="fs-card rounded-2xl overflow-hidden">
+          <div className="divide-y divide-border/40">
+            {filtered.map((r) => {
+              // Winner among the fleet pairs: first label (sorted by rank server-side).
+              const winner = r.bestRank != null ? r.pairLabels?.[0] : null;
+              const winnerGroup = r.bestRank != null ? r.pairGroups?.[0] : null;
+              return (
+                <AppLink key={r.testId} href={`/tests/${r.testId}`}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-muted/20"
+                  testId={`fleet-test-${r.testId}`}>
+                  <span className="w-20 shrink-0 text-xs text-muted-foreground">{r.date}</span>
+                  <span className="min-w-[140px] flex-1 truncate text-sm font-medium">{r.testName || r.location}</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{r.testType}</span>
+                  {r.resultUnit === "time" && <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] text-sky-700 dark:bg-sky-950/30 dark:text-sky-300">{L("tid", "time")}</span>}
+                  {(r.snowTemperatureC != null || r.snowType) && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {r.snowTemperatureC != null ? `${L("Snø", "Snow")} ${r.snowTemperatureC}°` : ""}{r.snowTemperatureC != null && r.snowType ? " · " : ""}{r.snowType ?? ""}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-muted-foreground">{r.fleetEntryCount} {L("par", "pairs")}</span>
+                  {winner && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/25 to-yellow-300/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600 ring-1 ring-amber-300 dark:text-amber-400 dark:ring-amber-700">
+                      <Trophy className="h-3 w-3" />
+                      {winner}{winnerGroup ? ` · ${winnerGroup}` : ""}
+                    </span>
+                  )}
+                </AppLink>
+              );
+            })}
+          </div>
+        </Card>
       )}
     </div>
   );

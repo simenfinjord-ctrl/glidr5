@@ -9577,6 +9577,30 @@ export async function registerRoutes(
     res.json({ ok: true, id: r.rows[0]?.id });
   });
 
+  // Every test involving the team's fleet skis — one row per test, with the
+  // participating pairs and the best-placed fleet pair.
+  app.get("/api/race-fleet/all-tests", requirePermission("raceskis", "view"), async (req, res) => {
+    if (!(await requireParaTeam(req, res))) return;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT t.id AS "testId", t.date, t.location, t.test_name AS "testName", t.test_type AS "testType",
+              t.result_unit AS "resultUnit", t.created_by_name AS "createdByName",
+              w.air_temperature_c AS "airTemperatureC", w.snow_temperature_c AS "snowTemperatureC", w.snow_type AS "snowType",
+              COUNT(*)::int AS "fleetEntryCount",
+              array_agg(rs.ski_id ORDER BY te.rank_0km NULLS LAST) AS "pairLabels",
+              array_agg(rs.fleet_group ORDER BY te.rank_0km NULLS LAST) AS "pairGroups",
+              MIN(te.rank_0km) AS "bestRank"
+       FROM tests t
+       JOIN test_entries te ON te.test_id = t.id
+       JOIN race_skis rs ON rs.id = te.race_ski_id AND rs.athlete_id IS NULL AND rs.team_id = $1
+       LEFT JOIN daily_weather w ON w.id = t.weather_id
+       WHERE t.team_id = $1
+       GROUP BY t.id, w.air_temperature_c, w.snow_temperature_c, w.snow_type
+       ORDER BY t.date DESC, t.id DESC`, [teamId]);
+    res.json(r.rows);
+  });
+
   // Test history for ONE fleet ski — date, test, rank and result per entry.
   app.get("/api/race-fleet/:id/tests", requirePermission("raceskis", "view"), async (req, res) => {
     if (!(await requireParaTeam(req, res))) return;

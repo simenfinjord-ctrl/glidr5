@@ -266,12 +266,39 @@ function SeriesForm({
           />
         </div>
 
+        {!initial && (
+          <div className="space-y-1.5 rounded-lg border border-dashed border-border p-3">
+            <label className="text-sm font-medium leading-none">{L("Lim inn ski-ID-er", "Paste ski IDs")}</label>
+            <p className="text-xs text-muted-foreground">
+              {L("Én per linje eller adskilt med komma — f.eks. limt rett fra en Excel-kolonne. Antall par og etiketter fylles ut automatisk.",
+                 "One per line or comma-separated — e.g. pasted straight from an Excel column. Pair count and labels fill in automatically.")}
+            </p>
+            <textarea
+              rows={3}
+              placeholder={"C09\nS32\nC31\n…"}
+              onChange={(e) => {
+                const ids = e.target.value
+                  .split(/[\n,;\t]+/)
+                  .map((x) => x.trim())
+                  .filter(Boolean);
+                if (ids.length === 0) return;
+                form.setValue("numberOfSkis", ids.length);
+                const labels: Record<string, string> = {};
+                ids.forEach((id, i) => { labels[String(i + 1)] = id; });
+                setPairLabels(labels);
+              }}
+              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm font-mono"
+              data-testid="textarea-paste-ski-ids"
+            />
+          </div>
+        )}
+
         {Number(watchNumberOfSkis) > 0 && (
           <div className="space-y-2">
             <label className="text-sm font-medium leading-none">{t("testskis.pairLabels")}</label>
             <p className="text-xs text-muted-foreground">{t("testskis.pairLabelsDesc")}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {Array.from({ length: Math.min(Number(watchNumberOfSkis) || 0, 32) }).map((_, i) => {
+              {Array.from({ length: Math.min(Number(watchNumberOfSkis) || 0, 120) }).map((_, i) => {
                 const pairNum = i + 1;
                 return (
                   <div key={pairNum} className="flex items-center gap-1.5">

@@ -822,10 +822,17 @@ export default function TestDetail() {
   const isRaceSkiTest = test?.testSkiSource === "raceskis";
   const athleteId = test?.athleteId;
 
-  const { data: raceSkisData = [] } = useQuery<RaceSki[]>({
+  // Athlete tests read the athlete's garage; fleet tests have NO athlete, so
+  // their skis come from the team-wide list (which includes fleet skis).
+  const { data: teamRaceSkis = [] } = useQuery<RaceSki[]>({
+    queryKey: ["/api/race-skis/all"],
+    enabled: isRaceSkiTest && !athleteId,
+  });
+  const { data: athleteRaceSkis = [] } = useQuery<RaceSki[]>({
     queryKey: [`/api/athletes/${athleteId}/skis?includeArchived=true`],
     enabled: isRaceSkiTest && !!athleteId,
   });
+  const raceSkisData = athleteId ? athleteRaceSkis : teamRaceSkis;
   const raceSkiByIdSort = useMemo(() => new Map(raceSkisData.map((rs) => [rs.id, rs])), [raceSkisData]);
 
   const skiLabels = useMemo(() => {

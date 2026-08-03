@@ -4590,8 +4590,19 @@ export async function registerRoutes(
     const updated = await storage.updateTest(id, testData);
     await recordChange(req, "test", id, `Test edited: ${(existing as any).testName || existing.location} (${existing.date})`, existing, updated);
 
+    // Unit may be edited (feature-gated); ranks follow the EFFECTIVE unit.
+    let effectiveUnit = (existing as any).resultUnit ?? "cm";
+    if (req.body.resultUnit === "time" || req.body.resultUnit === "cm") {
+      if (req.body.resultUnit === "time" && !(await teamHasFeature(getActiveTeamId(req), "time_tests"))) {
+        // silently keep the stored unit for teams without the feature
+      } else {
+        effectiveUnit = req.body.resultUnit;
+        await (await import("./db")).pool.query(
+          `UPDATE tests SET result_unit = $1 WHERE id = $2`, [effectiveUnit, id]).catch(() => {});
+      }
+    }
     if (req.body.entries) {
-      if ((existing as any).resultUnit === "time") applyAvgRanks(req.body.entries);
+      if (effectiveUnit === "time") applyAvgRanks(req.body.entries);
       await storage.deleteEntriesByTestId(id);
       const now = new Date().toISOString();
       const groupScope = req.body.groupScope || existing.groupScope;

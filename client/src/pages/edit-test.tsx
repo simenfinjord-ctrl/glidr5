@@ -224,6 +224,12 @@ export default function EditTest() {
   }, [user, groups]);
 
   const [rows, setRows] = useState<EntryRow[]>([]);
+  // Result unit is editable here too (feature-gated server-side): a test
+  // accidentally created in cm can be flipped to photocell time and back.
+  const [resultUnit, setResultUnit] = useState<"cm" | "time">("cm");
+  useEffect(() => {
+    if ((test as any)?.resultUnit === "time") setResultUnit("time");
+  }, [(test as any)?.resultUnit]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>(
     () => test ? parseDistanceLabels(test) : ["0 km"]
   );
@@ -588,6 +594,7 @@ export default function EditTest() {
                   distanceLabel0km: distanceLabels[0] || null,
                   distanceLabelXkm: distanceLabels[1] || null,
                   distanceLabels: JSON.stringify(distanceLabels),
+                  resultUnit,
                 };
                 if (entriesLoaded) {
                   payload.entries = rows.map((r) => ({
@@ -992,8 +999,22 @@ export default function EditTest() {
               {L("Rangeres automatisk", "Ranked automatically")}
             </span>
           </div>
+          {can("time_tests") && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">{L("Resultatenhet:", "Result unit:")}</span>
+              <div className="inline-flex rounded-lg border border-border bg-background/60 p-0.5 text-xs">
+                <button type="button" onClick={() => setResultUnit("cm")}
+                  className={cn("rounded-md px-2.5 py-1 transition-colors", resultUnit === "cm" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  data-testid="edit-unit-cm">cm</button>
+                <button type="button" onClick={() => setResultUnit("time")}
+                  className={cn("rounded-md px-2.5 py-1 transition-colors", resultUnit === "time" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  data-testid="edit-unit-time">{L("tid (sek)", "time (s)")}</button>
+              </div>
+            </div>
+          )}
           <TestEntryTable
             testType={watchTestType}
+            resultUnit={resultUnit}
             products={products}
             rows={rows}
             setRows={setRows}

@@ -391,6 +391,14 @@ export default function Dashboard() {
   const attnVisible = (attention?.items ?? []).filter((it) => !(it.key in attnDismissed) || it.count > attnDismissed[it.key]);
   const attnHiddenCount = (attention?.items.length ?? 0) - attnVisible.length;
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+  // The season runs 1 May – 30 April; the "Tests this season" card must count
+  // exactly that, not everything ever logged.
+  const seasonTests = useMemo(() => {
+    const now = new Date();
+    const startYear = now.getMonth() >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+    const seasonStart = `${startYear}-05-01`;
+    return tests.filter((t) => t.date >= seasonStart);
+  }, [tests]);
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: watchQueue = [] } = useQuery<WatchQueueItem[]>({
@@ -952,12 +960,12 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
               label={t("dashboard.statsTests")}
-              value={tests.length}
+              value={seasonTests.length}
               icon={ListChecks}
               iconColor="text-emerald-600"
               delta={todayTests.length > 0 ? `${todayTests.length} today` : undefined}
               barColor="bg-green-500"
-              barPct={Math.min(100, (tests.length / Math.max(tests.length, 50)) * 100)}
+              barPct={Math.min(100, (seasonTests.length / Math.max(seasonTests.length, 50)) * 100)}
             />
             <StatCard
               label={t("dashboard.statsProducts")}

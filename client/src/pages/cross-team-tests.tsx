@@ -81,10 +81,13 @@ export default function CrossTeamTests() {
   });
   const setView = (m: "cards" | "list") => { setViewMode(m); try { localStorage.setItem("glidr-allteams-view", m); } catch {} };
   const [showAll, setShowAll] = useState(false);
+  // Tests list, or the cross-team engines built on the same data.
+  const [tab, setTab] = useState<"tests" | "analytics" | "suggestions">("tests");
 
-  // "Show all" pulls the same tests but with full result rows resolved server-side.
+  // "Show all" and both engines need the full result rows resolved server-side.
+  const needEntries = showAll || tab !== "tests";
   const { data: tests = [], isLoading, error } = useQuery<CrossTeamTest[]>({
-    queryKey: [`/api/tests/cross-team${showAll ? "?withEntries=1" : ""}`],
+    queryKey: [`/api/tests/cross-team${needEntries ? "?withEntries=1" : ""}`],
     queryFn: getQueryFn({ on401: "returnNull" }) as any,
     retry: false,
   });
@@ -328,6 +331,35 @@ export default function CrossTeamTests() {
           </div>
         </div>
 
+        {/* Tabs: the list, and the two engines running on every accessible team */}
+        <div className="flex gap-1 border-b border-border">
+          {([
+            ["tests", L("Tester", "Tests")],
+            ["analytics", "Analytics"],
+            ["suggestions", L("Forslag", "Suggestions")],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={cn(
+                "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                tab === key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+              data-testid={`crossteam-tab-${key}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "analytics" && (
+          <CrossTeamAnalytics tests={tests} loading={isLoading} L={L} testHref={testHref} />
+        )}
+        {tab === "suggestions" && (
+          <CrossTeamSuggestions tests={tests} loading={isLoading} L={L} testHref={testHref} />
+        )}
+
+        {tab === "tests" && (<>
         {/* Filters */}
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex flex-col gap-3">
@@ -530,7 +562,293 @@ export default function CrossTeamTests() {
             </div>
           </Card>
         )}
+        </>)}
       </div>
     </AppShell>
+  );
+}
+
+// ── Shared engine plumbing ───────────────────────────────────────────────────
+// Both engines run on the SAME dataset the list shows: every test the caller
+// may read, from every team they belong to — per-team access resolved on the
+// server. Ranks are unit-agnostic (cm and photocell time tests both store a
+// primary rank), so cross-team aggregation never mixes units.
+
+type ProductAgg = {
+  name: string;
+  tests: number;
+  wins: number;
+  podiums: number;
+  rankSum: number;
+  ranked: number;
+  teams: Set<string>;
+  lastDate: string | null;
+};
+
+function aggregateProducts(tests: CrossTeamTest[]): Map<string, ProductAgg> {
+  const map = new Map<string, ProductAgg>();
+  for (const t of tests) {
+    for (const e of t.entries ?? []) {
+      const rank = e.rounds?.[0]?.rank ?? null;
+      for (const name of e.productNames ?? []) {
+        const key = name.toLowerCase();
+        let agg = map.get(key);
+        if (!agg) {
+          agg = { name, tests: 0, wins: 0, podiums: 0, rankSum: 0, ranked: 0, teams: new Set(), lastDate: null };
+          map.set(key, agg);
+        }
+        agg.tests++;
+        agg.teams.add(t.teamName);
+        if (t.date && (!agg.lastDate || t.date > agg.lastDate)) agg.lastDate = t.date;
+        if (rank != null) {
+          agg.ranked++;
+          agg.rankSum += rank;
+          if (rank === 1) agg.wins++;
+          if (rank <= 3) agg.podiums++;
+        }
+      }
+    }
+  }
+  return map;
+}
+
+function seasonOf(date: string | null): string {
+  if (!date) return "—";
+  const d = new Date(date);
+  const y = d.getMonth() >= 4 ? d.getFullYear() : d.getFullYear() - 1;
+  return `${y}/${String(y + 1).slice(2)}`;
+}
+
+function CrossTeamAnalytics({ tests, loading, L, testHref }: {
+  tests: CrossTeamTest[];
+  loading: boolean;
+  L: (no: string, en: string) => string;
+  testHref: (t: { id: number; teamId: number }) => string;
+}) {
+  const [season, setSeason] = useState("All");
+  const [type, setType] = useState("all");
+  const [teamFilter, setTeamFilter] = useState("all");
+
+  const seasons = useMemo(() => Array.from(new Set(tests.map((t) => seasonOf(t.date)))).filter((x) => x !== "—").sort().reverse(), [tests]);
+  const teams = useMemo(() => Array.from(new Set(tests.map((t) => t.teamName))).sort(), [tests]);
+
+  const scoped = useMemo(() => tests.filter((t) =>
+    (season === "All" || seasonOf(t.date) === season) &&
+    (type === "all" || t.testType === type) &&
+    (teamFilter === "all" || t.teamName === teamFilter)
+  ), [tests, season, type, teamFilter]);
+
+  const rows = useMemo(() => {
+    const list = Array.from(aggregateProducts(scoped).values());
+    list.sort((a, b) => b.wins - a.wins || (a.ranked ? a.rankSum / a.ranked : 99) - (b.ranked ? b.rankSum / b.ranked : 99) || b.tests - a.tests);
+    return list;
+  }, [scoped]);
+
+  const venues = useMemo(() => new Set(scoped.map((t) => t.location)).size, [scoped]);
+
+  if (loading) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Laster…", "Loading…")}</Card>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card className="fs-card rounded-2xl p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={season} onValueChange={setSeason}>
+            <SelectTrigger className="h-8 w-auto min-w-[110px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">{L("Alle sesonger", "All seasons")}</SelectItem>
+              {seasons.map((se) => <SelectItem key={se} value={se}>{se}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="h-8 w-auto min-w-[100px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{L("Alle typer", "All types")}</SelectItem>
+              <SelectItem value="Glide">Glide</SelectItem>
+              <SelectItem value="Structure">Structure</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={teamFilter} onValueChange={setTeamFilter}>
+            <SelectTrigger className="h-8 w-auto min-w-[110px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{L("Alle lag", "All teams")}</SelectItem>
+              {teams.map((tn) => <SelectItem key={tn} value={tn}>{tn}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {L(`${scoped.length} tester · ${teams.length} lag · ${venues} steder`, `${scoped.length} tests · ${teams.length} teams · ${venues} venues`)}
+          </span>
+        </div>
+      </Card>
+
+      <Card className="fs-card rounded-2xl overflow-hidden">
+        <div className="border-b border-border px-4 py-3">
+          <h2 className="text-sm font-semibold">{L("Produkter på tvers av lagene", "Products across the teams")}</h2>
+          <p className="text-xs text-muted-foreground">{L("Rangeringsbasert — seire, pallplasser og snittrangering fra alle tilgjengelige tester.", "Rank-based — wins, podiums and average rank from every accessible test.")}</p>
+        </div>
+        {rows.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">{L("Ingen resultater i utvalget.", "No results in this scope.")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2.5 font-medium">#</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Produkt", "Product")}</th>
+                  <th className="px-3 py-2.5 font-medium text-right">{L("Tester", "Tests")}</th>
+                  <th className="px-3 py-2.5 font-medium text-right">{L("Seire", "Wins")}</th>
+                  <th className="px-3 py-2.5 font-medium text-right">{L("Pall", "Podium")}</th>
+                  <th className="px-3 py-2.5 font-medium text-right">{L("Snittrang", "Avg rank")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Lag", "Teams")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Sist testet", "Last tested")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {rows.slice(0, 50).map((r, i) => (
+                  <tr key={r.name} className={cn(i === 0 && "bg-amber-50/50 dark:bg-amber-950/10")}>
+                    <td className="px-3 py-2 text-xs tabular-nums text-muted-foreground">{i + 1}</td>
+                    <td className="px-3 py-2 text-xs font-medium">{r.name}</td>
+                    <td className="px-3 py-2 text-xs text-right tabular-nums">{r.tests}</td>
+                    <td className={cn("px-3 py-2 text-xs text-right tabular-nums", r.wins > 0 && "font-semibold text-amber-600 dark:text-amber-400")}>{r.wins}</td>
+                    <td className="px-3 py-2 text-xs text-right tabular-nums">{r.podiums}</td>
+                    <td className="px-3 py-2 text-xs text-right tabular-nums">{r.ranked ? (r.rankSum / r.ranked).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-[11px] text-muted-foreground">{Array.from(r.teams).join(", ")}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{r.lastDate ? new Date(r.lastDate).toLocaleDateString() : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {rows.length > 50 && <p className="px-4 py-2 text-[11px] text-muted-foreground">{L(`Viser topp 50 av ${rows.length} produkter.`, `Showing top 50 of ${rows.length} products.`)}</p>}
+      </Card>
+    </div>
+  );
+}
+
+function CrossTeamSuggestions({ tests, loading, L, testHref }: {
+  tests: CrossTeamTest[];
+  loading: boolean;
+  L: (no: string, en: string) => string;
+  testHref: (t: { id: number; teamId: number }) => string;
+}) {
+  const [air, setAir] = useState("");
+  const [snow, setSnow] = useState("");
+  const [tol, setTol] = useState("3");
+  const [snowType, setSnowType] = useState("");
+
+  const airN = numv(air), snowN = numv(snow), tolN = numv(tol) ?? 3;
+
+  // Tests under similar conditions, from every team the caller can read.
+  const matching = useMemo(() => {
+    if (airN == null && snowN == null && !snowType.trim()) return [];
+    return tests.filter((t) => {
+      const w = t.weather;
+      if (!w) return false;
+      if (airN != null && (w.airTemperatureC == null || Math.abs(w.airTemperatureC - airN) > tolN)) return false;
+      if (snowN != null && (w.snowTemperatureC == null || Math.abs(w.snowTemperatureC - snowN) > tolN)) return false;
+      if (snowType.trim()) {
+        const label = [w.snowType, w.artificialSnow, w.naturalSnow].filter(Boolean).join(" ").toLowerCase();
+        if (!label.includes(snowType.trim().toLowerCase())) return false;
+      }
+      return true;
+    });
+  }, [tests, airN, snowN, tolN, snowType]);
+
+  const rows = useMemo(() => {
+    const list = Array.from(aggregateProducts(matching).values());
+    // Suggestion order: win rate first (with enough evidence), then avg rank.
+    list.sort((a, b) => {
+      const wa = a.ranked ? a.wins / a.ranked : 0;
+      const wb = b.ranked ? b.wins / b.ranked : 0;
+      return wb - wa || (a.ranked ? a.rankSum / a.ranked : 99) - (b.ranked ? b.rankSum / b.ranked : 99);
+    });
+    return list;
+  }, [matching]);
+
+  if (loading) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Laster…", "Loading…")}</Card>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card className="fs-card rounded-2xl p-4">
+        <h2 className="text-sm font-semibold">{L("Hva har vunnet under lignende forhold?", "What has won in similar conditions?")}</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          {L("Skriv inn dagens forhold — forslagene bygger på alle tester fra alle lagene du har tilgang til.",
+             "Enter today's conditions — suggestions draw on every test from every team you can access.")}
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">{L("Luft °C", "Air °C")}</label>
+            <Input value={air} onChange={(e) => setAir(e.target.value)} inputMode="decimal" placeholder="-4" className="h-8 w-20 text-xs" data-testid="ct-sug-air" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">{L("Snø °C", "Snow °C")}</label>
+            <Input value={snow} onChange={(e) => setSnow(e.target.value)} inputMode="decimal" placeholder="-8" className="h-8 w-20 text-xs" data-testid="ct-sug-snow" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">± {L("toleranse", "tolerance")}</label>
+            <Input value={tol} onChange={(e) => setTol(e.target.value)} inputMode="decimal" className="h-8 w-16 text-xs" />
+          </div>
+          <div className="min-w-[140px]">
+            <label className="mb-1 block text-xs text-muted-foreground">{L("Snøtype (valgfritt)", "Snow type (optional)")}</label>
+            <Input value={snowType} onChange={(e) => setSnowType(e.target.value)} placeholder={L("f.eks. omdannet", "e.g. transformed")} className="h-8 text-xs" />
+          </div>
+          <span className="pb-1.5 text-xs text-muted-foreground">
+            {airN == null && snowN == null && !snowType.trim()
+              ? L("Fyll inn minst ett felt.", "Fill in at least one field.")
+              : L(`${matching.length} tester matcher`, `${matching.length} matching tests`)}
+          </span>
+        </div>
+      </Card>
+
+      {rows.length > 0 && (
+        <Card className="fs-card rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2.5 font-medium">#</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Produkt", "Product")}</th>
+                  <th className="px-3 py-2.5 font-medium text-right">{L("Seiersrate", "Win rate")}</th>
+                  <th className="px-3 py-2.5 font-medium text-right">{L("Snittrang", "Avg rank")}</th>
+                  <th className="px-3 py-2.5 font-medium text-right">{L("Tester", "Tests")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Lag", "Teams")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Sist", "Last")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {rows.slice(0, 20).map((r, i) => (
+                  <tr key={r.name} className={cn(i === 0 && "bg-amber-50/50 dark:bg-amber-950/10")}>
+                    <td className="px-3 py-2 text-xs tabular-nums text-muted-foreground">{i + 1}</td>
+                    <td className="px-3 py-2 text-xs font-medium">{r.name}</td>
+                    <td className={cn("px-3 py-2 text-xs text-right tabular-nums", i === 0 && "font-semibold text-amber-600 dark:text-amber-400")}>
+                      {r.ranked ? `${Math.round((r.wins / r.ranked) * 100)}%` : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-right tabular-nums">{r.ranked ? (r.rankSum / r.ranked).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-xs text-right tabular-nums">{r.tests}</td>
+                    <td className="px-3 py-2 text-[11px] text-muted-foreground">{Array.from(r.teams).join(", ")}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{r.lastDate ? new Date(r.lastDate).toLocaleDateString() : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {matching.length > 0 && (
+        <Card className="fs-card rounded-2xl p-4">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Testene bak forslagene", "The tests behind the suggestions")}</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {matching.slice(0, 12).map((t) => (
+              <AppLink key={`${t.teamId}-${t.id}`} href={testHref(t)}
+                className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-muted/70 hover:text-foreground">
+                {t.teamName} · {t.location} · {t.date ? new Date(t.date).toLocaleDateString() : ""}
+              </AppLink>
+            ))}
+            {matching.length > 12 && <span className="px-1 py-1 text-[11px] text-muted-foreground">+{matching.length - 12}</span>}
+          </div>
+        </Card>
+      )}
+    </div>
   );
 }

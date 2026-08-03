@@ -3851,8 +3851,12 @@ export async function registerRoutes(
       let productName = new Map<number, string>();
       let entriesByTest = new Map<number, any[]>();
       if (withEntries) {
-        const pr = await (p as any).query(`SELECT id, brand, name FROM products WHERE team_id = $1`, [tid]).catch(() => ({ rows: [] }));
-        productName = new Map<number, string>(pr.rows.map((r: any) => [r.id, `${r.brand ?? ""} ${r.name ?? ""}`.trim()]));
+        const pr = await (p as any).query(`SELECT id, brand, name, category FROM products WHERE team_id = $1`, [tid]).catch(() => ({ rows: [] }));
+        // Same label convention as everywhere: category as the tail of the name.
+        productName = new Map<number, string>(pr.rows.map((r: any) => {
+          const cat = r.category && !/structure|tool/i.test(r.category) ? ` ${r.category}` : "";
+          return [r.id, `${r.brand ?? ""} ${r.name ?? ""}`.trim() + cat];
+        }));
         const ids = visible.map((t: any) => t.id);
         const er = await (p as any).query(`SELECT * FROM test_entries WHERE test_id = ANY($1::int[]) ORDER BY ski_number ASC`, [ids]).catch(() => ({ rows: [] }));
         for (const e of er.rows) {

@@ -183,6 +183,43 @@ type TestEntry = {
   createdAt: string;
 };
 
+// The test previews must show the same numbers as inside the test: the
+// AVERAGE across all runs, ranked by that average — never just run 1.
+function entryAvgResult(e: TestEntry): number | null {
+  try {
+    if (e.results) {
+      const arr = JSON.parse(e.results);
+      if (Array.isArray(arr)) {
+        const vals = arr
+          .map((r: any) => (r && r.result != null ? Number(r.result) : NaN))
+          .filter((v: number) => !Number.isNaN(v));
+        if (vals.length > 0) return vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
+      }
+    }
+  } catch {}
+  return e.result0kmCmBehind ?? null;
+}
+// Dense ranks (1,1,3…) over the entries' average results — lowest wins.
+function avgRankMap(entries: TestEntry[]): Map<number, number> {
+  const scored = entries
+    .map((e) => ({ id: e.id, v: entryAvgResult(e) }))
+    .filter((x): x is { id: number; v: number } => x.v != null)
+    .sort((a, b) => a.v - b.v);
+  const map = new Map<number, number>();
+  let prev: number | null = null;
+  let rank = 0;
+  scored.forEach((sc, i) => {
+    if (prev === null || sc.v !== prev) rank = i + 1;
+    map.set(sc.id, rank);
+    prev = sc.v;
+  });
+  return map;
+}
+function fmtAvgResult(v: number | null): string {
+  if (v == null) return "—";
+  return String(Math.round(v * 1000) / 1000);
+}
+
 type RaceSkiTestRow = {
   id: string;
   raceSkiId: number;
@@ -2152,8 +2189,8 @@ export default function AthleteDetail() {
                 ski?.skiId ?? `#${e.skiNumber}`,
                 ski?.brand ?? null,
                 ski?.grind ?? null,
-                e.result0kmCmBehind != null ? `${e.result0kmCmBehind} cm` : null,
-                e.rank0km ?? null,
+                entryAvgResult(e) != null ? fmtAvgResult(entryAvgResult(e)) : null,
+                avgRankMap(entries).get(e.id) ?? null,
                 e.feelingRank ?? null,
                 e.methodology ?? null,
               ];
@@ -7370,10 +7407,11 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] 
     return tests.map((test) => {
       const entries = allEntries.filter((e) => e.testId === test.id && e.raceSkiId && skiIds.has(e.raceSkiId));
       const skiCount = entries.length;
-      const topEntry = entries.find((e) => e.rank0km === 1) ?? entries.reduce<(typeof entries)[0] | null>((best, e) => {
+      const ranks = avgRankMap(entries);
+      const topEntry = entries.reduce<(typeof entries)[0] | null>((best, e) => {
         if (!best) return e;
-        const bRank = best.rank0km ?? Infinity;
-        const eRank = e.rank0km ?? Infinity;
+        const bRank = ranks.get(best.id) ?? Infinity;
+        const eRank = ranks.get(e.id) ?? Infinity;
         return eRank < bRank ? e : best;
       }, null);
       const topSki = topEntry?.raceSkiId ? raceSkiById.get(topEntry.raceSkiId) : undefined;
@@ -7576,10 +7614,11 @@ function RaceSkiTestCard({
   }, [entries, skiIds]);
 
   const raceSkiById = useMemo(() => new Map(allSkis.map((s) => [s.id, s])), [allSkis]);
+  const avgRanks = useMemo(() => avgRankMap(relevantEntries), [relevantEntries]);
 
   // Reorder state
   const hasNoResults = relevantEntries.length > 0 &&
-    relevantEntries.every((e) => e.result0kmCmBehind === null && e.feelingRank === null);
+    relevantEntries.every((e) => entryAvgResult(e) === null && e.feelingRank === null);
   const [reorderMode, setReorderMode] = useState(false);
   const [orderedEntries, setOrderedEntries] = useState<TestEntry[]>([]);
   const [savingOrder, setSavingOrder] = useState(false);
@@ -7607,8 +7646,8 @@ function RaceSkiTestCard({
       case "grind": return ski?.grind ?? null;
       case "heights": return (ski as any)?.heights ?? null;
       case "year": return (ski as any)?.year ?? null;
-      case "result": return entry.result0kmCmBehind ?? null;
-      case "rank": return entry.rank0km ?? null;
+      case "result": return entryAvgResult(entry);
+      case "rank": return avgRanks.get(entry.id) ?? null;
       case "feeling": return entry.feelingRank ?? null;
       case "feelingNote": return (entry as any).feelingNote ?? null;
       case "kickSolution": return (entry as any).kickSolution ?? null;
@@ -7702,8 +7741,8 @@ function RaceSkiTestCard({
         ski?.skiId ?? `#${e.skiNumber}`,
         ski?.brand ?? null,
         ski?.grind ?? null,
-        e.result0kmCmBehind != null ? `${e.result0kmCmBehind} cm` : null,
-        e.rank0km != null ? (e.rank0km === 1 ? `🥇 #${e.rank0km}` : `#${e.rank0km}`) : null,
+        entryAvgResult(e) != null ? fmtAvgResult(entryAvgResult(e)) : null,
+        (() => { const r = avgRanks.get(e.id); return r != null ? (r === 1 ? `🥇 #${r}` : `#${r}`) : null; })(),
         e.feelingRank ?? null,
       ];
     });
@@ -7968,21 +8007,24 @@ function RaceSkiTestCard({
                       <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.year ?? "—"}</td>
                     )}
                     {activeTestColumns.includes("result") && (
-                      <td className="px-3 py-1.5">{entry.result0kmCmBehind ?? "—"}</td>
+                      <td className="px-3 py-1.5">{fmtAvgResult(entryAvgResult(entry))}</td>
                     )}
-                    {activeTestColumns.includes("rank") && (
+                    {activeTestColumns.includes("rank") && (() => {
+                      const r = avgRanks.get(entry.id) ?? null;
+                      return (
                       <td className="px-3 py-1.5">
                         <span className={cn(
                           "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                          entry.rank0km === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
-                          entry.rank0km === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
-                          entry.rank0km === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
+                          r === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
+                          r === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
+                          r === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
                           "bg-muted/70 text-foreground"
                         )}>
-                          {entry.rank0km ?? "—"}
+                          {r ?? "—"}
                         </span>
                       </td>
-                    )}
+                      );
+                    })()}
                     {activeTestColumns.includes("feeling") && (
                       <td className="px-3 py-1.5">{entry.feelingRank ?? "—"}</td>
                     )}

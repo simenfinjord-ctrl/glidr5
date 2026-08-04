@@ -861,6 +861,8 @@ export default function AthleteDetail() {
   });
   const [selectedSkiIds, setSelectedSkiIds] = useState<Set<number>>(new Set());
   const [skiSearchQuery, setSkiSearchQuery] = useState("");
+  // Fleet test form: quick series filter above the ski buttons.
+  const [testSkiSeriesFilter, setTestSkiSeriesFilter] = useState<string>("all");
   const [testRows, setTestRows] = useState<RaceSkiTestRow[]>([]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>([""]);
 
@@ -2292,6 +2294,7 @@ export default function AthleteDetail() {
     setDistanceLabels([""]);
     setSelectedSkiIds(new Set());
     setSkiSearchQuery("");
+    setTestSkiSeriesFilter("all");
     setTestRows([]);
     setShowTestForm(true);
   }
@@ -4190,9 +4193,37 @@ export default function AthleteDetail() {
                     <label className="mb-2 block text-sm font-medium">{L("Velg ski for denne testen", "Select skis for this test")}</label>
                     {(() => {
                       const raceTestTypes = ["Classic", "Skating", "Double Poling"];
-                      const disciplineFiltered = raceTestTypes.includes(testForm.testType)
+                      let disciplineFiltered = raceTestTypes.includes(testForm.testType)
                         ? skis.filter((s) => s.discipline === testForm.testType)
                         : skis;
+                      // Series chips: pick a series to see only its pairs.
+                      const seriesNames = isFleetAthlete
+                        ? (Array.from(new Set(disciplineFiltered.map((sk) => (sk as any).fleetGroup?.trim()).filter(Boolean))) as string[])
+                            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                        : [];
+                      const seriesChips = seriesNames.length > 0 && (
+                        <div className="mb-2 flex flex-wrap gap-1.5">
+                          {["all", ...seriesNames].map((g) => (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => setTestSkiSeriesFilter(g)}
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                                testSkiSeriesFilter === g
+                                  ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
+                                  : "border-border bg-background/50 text-muted-foreground hover:border-indigo-300",
+                              )}
+                              data-testid={`filter-test-series-${g}`}
+                            >
+                              {g === "all" ? L("Alle serier", "All series") : g}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                      if (testSkiSeriesFilter !== "all" && seriesNames.includes(testSkiSeriesFilter)) {
+                        disciplineFiltered = disciplineFiltered.filter((sk) => ((sk as any).fleetGroup?.trim() || "") === testSkiSeriesFilter);
+                      }
                       const q = skiSearchQuery.toLowerCase().trim();
                       const filteredSkis = q
                         ? disciplineFiltered.filter((s) =>
@@ -4201,12 +4232,21 @@ export default function AthleteDetail() {
                               .some((field) => field!.toLowerCase().includes(q))
                           )
                         : disciplineFiltered;
+                      if (disciplineFiltered.length === 0 && seriesNames.length > 0) {
+                        return (
+                          <>
+                            {seriesChips}
+                            <p className="text-sm text-muted-foreground">{L("Ingen par i denne serien for valgt testtype.", "No pairs in this series for the selected test type.")}</p>
+                          </>
+                        );
+                      }
                       return disciplineFiltered.length === 0 ? (
                       <p className="text-sm text-muted-foreground" data-testid="text-no-skis-for-test">
                         No {raceTestTypes.includes(testForm.testType) ? `${testForm.testType} ` : ""}skis available. {skis.length > 0 ? "Try a different test type or add skis with the right discipline." : "Add skis to this athlete first."}
                       </p>
                     ) : (
                       <>
+                        {seriesChips}
                         <div className="relative mb-2">
                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                           <Input
@@ -4245,6 +4285,7 @@ export default function AthleteDetail() {
                                   )}
                                 </div>
                                 <span className="font-semibold">{ski.skiId}</span>
+                                {(ski as any).fleetGroup && <span className="rounded-full bg-sky-100 dark:bg-sky-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-sky-700 dark:text-sky-300">{(ski as any).fleetGroup}</span>}
                                 {ski.serialNumber && <span className="text-xs text-muted-foreground">#{ski.serialNumber}</span>}
                                 {ski.brand && <span className="text-xs text-muted-foreground">{ski.brand}</span>}
                                 {ski.grind && <span className="text-xs text-muted-foreground">· {ski.grind}</span>}

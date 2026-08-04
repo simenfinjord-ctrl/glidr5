@@ -9496,12 +9496,31 @@ export async function registerRoutes(
     // #24: attach how many times each pair has been raced (race-use + race prep).
     try {
       const { pool } = await import("./db");
+      const ownerAth = await storage.getAthlete(athleteId);
+      const isFleetAth = (ownerAth as any)?.isFleet === 1;
       const [usageRes, prepRes] = await Promise.all([
         (pool as any).query(`SELECT ski_id, COUNT(*)::int AS c FROM ski_race_usages WHERE athlete_id = $1 GROUP BY ski_id`, [athleteId]),
-        (pool as any).query(`SELECT ski_id, ski_id_classic, ski_id_skating FROM race_prep_entries WHERE athlete_id = $1`, [athleteId]),
+        (pool as any).query(
+          `SELECT rpe.ski_id, rpe.ski_id_classic, rpe.ski_id_skating,
+                  rpe.athlete_id, rpe.borrowed_athlete_id, rpe.borrowed_athlete_id_classic, rpe.borrowed_athlete_id_skating
+           FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
+           WHERE rp.team_id = $2 AND ($3 OR rpe.athlete_id = $1 OR rpe.borrowed_athlete_id = $1
+                  OR rpe.borrowed_athlete_id_classic = $1 OR rpe.borrowed_athlete_id_skating = $1)`,
+          [athleteId, getActiveTeamId(req), isFleetAth]),
       ]);
       const usageBySkiId = new Map<number, number>(usageRes.rows.map((r: any) => [r.ski_id, r.c]));
-      const prepLabels = prepRes.rows.flatMap((r: any) => [r.ski_id, r.ski_id_classic, r.ski_id_skating].filter(Boolean).map((s: string) => String(s).trim().toLowerCase()));
+      // A slot's label counts for this garage when this athlete owns the pair:
+      // it is their own entry, they lent it out (borrowed_*), or the garage is
+      // the team fleet (fleet labels are unique, so match by label alone).
+      const prepLabels: string[] = [];
+      for (const r of prepRes.rows) {
+        const singleOwner = r.borrowed_athlete_id ?? r.athlete_id;
+        const classicOwner = r.borrowed_athlete_id_classic ?? r.borrowed_athlete_id ?? r.athlete_id;
+        const skatingOwner = r.borrowed_athlete_id_skating ?? r.athlete_id;
+        if (r.ski_id && (isFleetAth || singleOwner === athleteId)) prepLabels.push(String(r.ski_id).trim().toLowerCase());
+        if (r.ski_id_classic && (isFleetAth || classicOwner === athleteId)) prepLabels.push(String(r.ski_id_classic).trim().toLowerCase());
+        if (r.ski_id_skating && (isFleetAth || skatingOwner === athleteId)) prepLabels.push(String(r.ski_id_skating).trim().toLowerCase());
+      }
       const prepCount = (ski: any) => {
         const keys = [ski.skiId, ski.serialNumber].filter(Boolean).map((s: string) => String(s).trim().toLowerCase());
         return prepLabels.filter((l: string) => keys.includes(l)).length;
@@ -10694,7 +10713,10 @@ export async function registerRoutes(
          rp.weather_id AS "weatherId",
          rp.start_time AS "startTime",
          rpe.athlete_rating AS "athleteRating",
-         rpe.athlete_comment AS "athleteComment"
+         rpe.athlete_comment AS "athleteComment",
+         rpe.borrowed_athlete_id AS "borrowedAthleteId",
+         rpe.borrowed_athlete_id_classic AS "borrowedAthleteIdClassic",
+         rpe.borrowed_athlete_id_skating AS "borrowedAthleteIdSkating"
        FROM race_prep_entries rpe
        JOIN race_preps rp ON rpe.race_prep_id = rp.id
        WHERE rpe.athlete_id = $1 AND rp.team_id = $2

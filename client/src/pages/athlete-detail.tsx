@@ -309,14 +309,16 @@ function RacePrepSkiIdField({
   athleteId: number;
   slot: "single" | "classic" | "skating";
   discipline: string;
-  entry: { skiId: string | null; skiIdClassic: string | null; skiIdSkating: string | null; entryNotes: string | null };
+  entry: { skiId: string | null; skiIdClassic: string | null; skiIdSkating: string | null; entryNotes: string | null; borrowedAthleteId?: number | null; borrowedAthleteIdClassic?: number | null; borrowedAthleteIdSkating?: number | null };
   canEdit: boolean;
   onSaved: () => void;
   lang: "no" | "en";
 }) {
   const L = (no: string, en: string) => (lang === "en" ? en : no);
   const { toast } = useToast();
-  const current = slot === "classic" ? (entry.skiIdClassic ?? entry.skiId) : slot === "skating" ? entry.skiIdSkating : entry.skiId;
+  const current = slot === "classic" ? (entry.skiIdClassic ?? entry.skiId)
+    : slot === "skating" ? entry.skiIdSkating
+    : (entry.skiId ?? entry.skiIdClassic ?? entry.skiIdSkating);
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(current ?? "");
   const [saving, setSaving] = useState(false);
@@ -338,7 +340,7 @@ function RacePrepSkiIdField({
   const athleteNameById = useMemo(() => new Map(allAthletes.map((a) => [a.id, a.name])), [allAthletes]);
   // Only suggest skis matching this slot's discipline. For a single-discipline
   // race the slot is "single" → filter by the race's own discipline.
-  const discFilter = slot === "classic" ? "Classic" : slot === "skating" ? "Skating" : discipline;
+  const discFilter = slot === "classic" ? "Classic" : slot === "skating" ? "Skating" : (discipline === "Mix" ? "" : discipline);
   const suggestions = useMemo(() => {
     let base = discFilter ? skis.filter(s => s.discipline === discFilter) : skis;
     if (val.trim()) base = base.filter(s => s.skiId.toLowerCase().includes(val.toLowerCase()) || (s.serialNumber ?? "").toLowerCase().includes(val.toLowerCase()));
@@ -350,6 +352,22 @@ function RacePrepSkiIdField({
     return base.slice(0, 6);
   }, [allSkis, athleteId, discFilter, val]);
   const display = optimistic !== undefined ? optimistic : current;
+  // Borrowed pair (incl. from the team fleet): badge it with the owner's name.
+  const borrowedOwnerId = slot === "classic" ? (entry.borrowedAthleteIdClassic ?? entry.borrowedAthleteId)
+    : slot === "skating" ? entry.borrowedAthleteIdSkating
+    : (entry.borrowedAthleteId ?? entry.borrowedAthleteIdClassic ?? entry.borrowedAthleteIdSkating);
+  const { data: ownerAthletes = [] } = useQuery<{ id: number; name: string; isFleet?: number }[]>({
+    queryKey: ["/api/athletes?includeArchived=1&includeFleet=1&includeProfiles=1"],
+    enabled: borrowedOwnerId != null,
+  });
+  const borrowedOwner = borrowedOwnerId != null ? ownerAthletes.find((a) => a.id === borrowedOwnerId) : undefined;
+  const borrowedBadge = borrowedOwnerId != null && display ? (
+    <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 align-middle whitespace-nowrap"
+      title={L("Lånt fra en annen garasje", "Borrowed from another garage")}>
+      <Users className="h-2.5 w-2.5" />
+      {L("Lånt", "Borrowed")}{borrowedOwner ? ` · ${(borrowedOwner as any).isFleet === 1 ? L("Race fleets", "Race fleets") : borrowedOwner.name}` : ""}
+    </span>
+  ) : null;
 
   async function save(v?: string) {
     const final = (v ?? val).trim();
@@ -385,7 +403,7 @@ function RacePrepSkiIdField({
         )}
         title={canEdit ? L("Klikk for å legge inn skipar", "Click to enter ski pair") : undefined}
       >
-        {display || <span className="text-muted-foreground text-sm font-normal">{canEdit ? L("+ Legg inn", "+ Enter") : "—"}</span>}
+        {display ? <>{display}{borrowedBadge}</> : <span className="text-muted-foreground text-sm font-normal">{canEdit ? L("+ Legg inn", "+ Enter") : "—"}</span>}
       </button>
     );
   }

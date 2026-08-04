@@ -154,17 +154,19 @@ const EMPTY_FORM = {
 };
 
 // Values stored in DB as English; labels shown per language
-const DISCIPLINES = ["Classic", "Skating", "Skiathlon"];
+const DISCIPLINES = ["Classic", "Skating", "Skiathlon", "Mix"];
 const DISCIPLINE_LABEL: Record<string, { no: string; en: string }> = {
   Classic:   { no: "Klassisk",  en: "Classic" },
   Skating:   { no: "Skøyting",  en: "Skating" },
   Skiathlon: { no: "Skiathlon", en: "Skiathlon" },
+  Mix:       { no: "Mix",       en: "Mix" },
 };
 
 const DISCIPLINE_COLORS: Record<string, string> = {
   Classic:   "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800",
   Skating:   "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
   Skiathlon: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 ring-violet-200 dark:ring-violet-800",
+  Mix:       "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-800",
 };
 
 // fmtDate delegates to the global formatter which respects the user's

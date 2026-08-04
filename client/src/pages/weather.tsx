@@ -1,4 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
+import { DateField, TimeField } from "@/components/date-time-field";
 import { useState, useMemo } from "react";
 import { fmtT } from "@/lib/temperature";
 import { fmtDate, cn } from "@/lib/utils";
@@ -176,8 +177,8 @@ function WeatherForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      date: initial?.date ?? today,
-      time: initial?.time ?? "09:30",
+      date: initial?.date ?? "",
+      time: initial?.time ?? "00:00",
       location: initial?.location ?? "",
       snowTemperatureC: initial?.snowTemperatureC ?? 0,
       airTemperatureC: initial?.airTemperatureC ?? 0,
@@ -305,7 +306,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.date")}</FormLabel>
                   <FormControl>
-                    <Input {...field} type="date" data-testid="input-weather-date" />
+                    <DateField value={field.value ?? ""} onChange={field.onChange} testId="input-weather-date" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -318,7 +319,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.time")}</FormLabel>
                   <FormControl>
-                    <Input {...field} type="time" data-testid="input-weather-time" />
+                    <TimeField value={field.value ?? ""} onChange={field.onChange} testId="input-weather-time" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

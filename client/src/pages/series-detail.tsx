@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { DateField } from "@/components/date-time-field";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -118,7 +119,7 @@ function SeriesRegrindHistory({ seriesId, currentGrind }: { seriesId: number; cu
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const emptyForm = { date: new Date().toISOString().slice(0, 10), grindType: "", stone: "", pattern: "", notes: "" };
+  const emptyForm = { date: "", grindType: "", stone: "", pattern: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
   const { data: regrinds = [] } = useQuery<SeriesRegrind[]>({
     queryKey: [`/api/series/${seriesId}/regrinds`],
@@ -159,7 +160,7 @@ function SeriesRegrindHistory({ seriesId, currentGrind }: { seriesId: number; cu
             <DialogHeader><DialogTitle>{L("Legg til slip", "Add regrind")}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="mb-1 block text-xs font-medium">{L("Dato", "Date")}</label><Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} /></div>
+                <div><label className="mb-1 block text-xs font-medium">{L("Dato", "Date")}</label><DateField value={form.date} onChange={(v) => setForm((f) => ({ ...f, date: v }))} testId="input-series-regrind-date" /></div>
                 <div><label className="mb-1 block text-xs font-medium">{L("Slip", "Grind")}</label><Input value={form.grindType} onChange={(e) => setForm((f) => ({ ...f, grindType: e.target.value }))} placeholder="R3" /></div>
                 <div><label className="mb-1 block text-xs font-medium">{L("Stein/verktøy", "Stone/Tool")}</label><Input value={form.stone} onChange={(e) => setForm((f) => ({ ...f, stone: e.target.value }))} /></div>
                 <div><label className="mb-1 block text-xs font-medium">{L("Mønster", "Pattern")}</label><Input value={form.pattern} onChange={(e) => setForm((f) => ({ ...f, pattern: e.target.value }))} /></div>

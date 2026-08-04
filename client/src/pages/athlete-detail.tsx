@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { LastEdited } from "@/components/last-edited";
+import { DateField, TimeField } from "@/components/date-time-field";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useRoute, useLocation, useSearch } from "wouter";
 import {
@@ -908,7 +909,7 @@ export default function AthleteDetail() {
   }
   const [showTestForm, setShowTestForm] = useState(false);
   const [testForm, setTestForm] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: "",
     location: "",
     testType: "Classic" as "Classic" | "Skating" | "Double Poling" | "Mix",
     notes: "",
@@ -1118,7 +1119,7 @@ export default function AthleteDetail() {
   };
 
   const [regrindForm, setRegrindForm] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: "",
     grindType: "",
     stone: "",
     pattern: "",
@@ -1873,7 +1874,7 @@ export default function AthleteDetail() {
       }
       toast({ title: (data as any)?.queued ? "Test queued (offline)" : "Test saved" });
       setShowTestForm(false);
-      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic" as any, notes: "", weatherId: undefined, noWeather: false, resultUnit: "cm" });
+      setTestForm({ date: "", location: "", testType: "Classic" as any, notes: "", weatherId: undefined, noWeather: false, resultUnit: "cm" });
       setSelectedSkiIds(new Set());
       setDistanceLabels([""]);
       setTestRows([]);
@@ -1888,7 +1889,7 @@ export default function AthleteDetail() {
   }
 
   function resetRegrindForm() {
-    setRegrindForm({ date: new Date().toISOString().split("T")[0], grindType: "", stone: "", pattern: "", notes: "" });
+    setRegrindForm({ date: "", grindType: "", stone: "", pattern: "", notes: "" });
   }
 
   function openEditSki(ski: RaceSki) {
@@ -2364,7 +2365,7 @@ export default function AthleteDetail() {
   }
 
   function openNewTest() {
-    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic", notes: "", weatherId: undefined, noWeather: false, resultUnit: "cm" });
+    setTestForm({ date: "", location: "", testType: "Classic", notes: "", weatherId: undefined, noWeather: false, resultUnit: "cm" });
     setDistanceLabels([""]);
     setSelectedSkiIds(new Set());
     setSkiSearchQuery("");
@@ -4188,12 +4189,11 @@ export default function AthleteDetail() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                     <div>
                       <label className="mb-1 block text-sm font-medium">Date *</label>
-                      <Input
-                        type="date"
+                      <DateField
                         value={testForm.date}
-                        onChange={(e) => setTestForm((f) => ({ ...f, date: e.target.value }))}
+                        onChange={(v) => setTestForm((f) => ({ ...f, date: v }))}
                         required
-                        data-testid="input-test-date"
+                        testId="input-test-date"
                       />
                     </div>
                     <div>
@@ -5219,12 +5219,11 @@ export default function AthleteDetail() {
           <form onSubmit={handleRegrindSubmit} className="space-y-3">
             <div>
               <label className="mb-1 block text-sm font-medium">Date *</label>
-              <Input
-                type="date"
+              <DateField
                 value={regrindForm.date}
-                onChange={(e) => setRegrindForm((f) => ({ ...f, date: e.target.value }))}
+                onChange={(v) => setRegrindForm((f) => ({ ...f, date: v }))}
                 required
-                data-testid="input-regrind-date"
+                testId="input-regrind-date"
               />
             </div>
             <div>
@@ -6330,7 +6329,7 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const [usageOpen, setUsageOpen] = useState(false);
   const [usageForm, setUsageForm] = useState({
-    date: new Date().toISOString().slice(0, 10), location: "", discipline: ski.discipline,
+    date: "", location: "", discipline: ski.discipline,
     weatherMode: "link" as "link" | "manual", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "",
     usedByAthleteId: "", waxNotes: "",
   });
@@ -6468,7 +6467,7 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-xs font-medium">{L("Dato (valgfritt)", "Date (optional)")}</label>
-                <Input type="date" value={usageForm.date} onChange={(e) => setUsageForm((f) => ({ ...f, date: e.target.value, weatherId: "" }))} />
+                <DateField value={usageForm.date} onChange={(v) => setUsageForm((f) => ({ ...f, date: v, weatherId: "" }))} testId="input-usage-date" />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium">{L("Stilart", "Discipline")}</label>
@@ -8417,7 +8416,7 @@ function RaceCalendarSection({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium">{L("Dato *", "Date *")}</label>
-                  <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} data-testid="input-race-date" />
+                  <DateField value={form.date} onChange={(v) => setForm((f) => ({ ...f, date: v }))} testId="input-race-date" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium">{L("Rennnavn *", "Race name *")}</label>

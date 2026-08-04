@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { fmtT } from "@/lib/temperature";
+import { DateField, TimeField } from "@/components/date-time-field";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -211,7 +212,7 @@ export default function NewTest() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: today,
+      date: "",
       startTime: "",
       testType: initialType,
       seriesId: "",
@@ -673,11 +674,7 @@ export default function NewTest() {
                       <FormItem>
                         <FormLabel>{t("newTest.date")}</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            type="date"
-                            data-testid="input-test-date"
-                          />
+                          <DateField value={field.value ?? ""} onChange={field.onChange} testId="input-test-date" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -693,11 +690,7 @@ export default function NewTest() {
                       <FormItem>
                         <FormLabel>{t("newTest.time")}</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            type="time"
-                            data-testid="input-test-start-time"
-                          />
+                          <TimeField value={field.value ?? ""} onChange={field.onChange} testId="input-test-start-time" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

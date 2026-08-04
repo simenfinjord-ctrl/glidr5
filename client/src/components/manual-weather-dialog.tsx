@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { DateField, TimeField } from "@/components/date-time-field";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -110,8 +111,8 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaults }: Prop
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      date: defaults?.date ?? todayStr,
-      time: defaults?.time ?? timeStr,
+      date: defaults?.date ?? "",
+      time: defaults?.time ?? "00:00",
       location: defaults?.location ?? "",
       ...blankValues,
     },
@@ -123,8 +124,8 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaults }: Prop
   useEffect(() => {
     if (open) {
       form.reset({
-        date: defaults?.date ?? todayStr,
-        time: defaults?.time ?? timeStr,
+        date: defaults?.date ?? "",
+        time: defaults?.time ?? "00:00",
         location: defaults?.location ?? "",
         ...blankValues,
       });
@@ -188,14 +189,14 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaults }: Prop
               <FormField control={form.control} name="date" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t("weather.date")}</FormLabel>
-                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <FormControl><DateField value={field.value ?? ""} onChange={field.onChange} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="time" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t("weather.time")}</FormLabel>
-                  <FormControl><Input type="time" {...field} /></FormControl>
+                  <FormControl><TimeField value={field.value ?? ""} onChange={field.onChange} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

@@ -1,4 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
+import { DateField, TimeField } from "@/components/date-time-field";
 import { useState, useMemo, useRef } from "react";
 import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
@@ -1469,11 +1470,11 @@ function PrepFormDialog({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Dato", "Date")} *</label>
-            <Input type="date" value={form.date} onChange={(e) => f("date", e.target.value)} />
+            <DateField value={form.date} onChange={(v) => f("date", v)} testId="input-prep-date" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Starttid", "Start time")} *</label>
-            <Input type="time" value={form.startTime} onChange={(e) => f("startTime", e.target.value)} />
+            <TimeField value={form.startTime} onChange={(v) => f("startTime", v)} testId="input-prep-start-time" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Lokasjon", "Location")} *</label>

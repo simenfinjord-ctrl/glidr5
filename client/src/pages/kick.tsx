@@ -1,4 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
+import { DateField } from "@/components/date-time-field";
 // #9: Kick — a dedicated page (under Athlete skis) for classic kick testing.
 // An overview of kick test skis (brand / grind / heights / type), kick tests
 // (date, weather, location, test persons, per-ski binder + kick solution +
@@ -268,7 +269,7 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
   const { toast } = useToast();
   const skiById = useMemo(() => new Map(skis.map((s) => [s.id, s])), [skis]);
 
-  const [date, setDate] = useState(editing?.date ?? new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(editing?.date ?? "");
   const [location, setLocation] = useState(editing?.location ?? "");
   const [weatherId, setWeatherId] = useState<number | null>(editing?.weatherId ?? null);
   const [noWeather, setNoWeather] = useState(editing ? editing.noWeather === 1 : false);
@@ -321,7 +322,7 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium">{L("Dato", "Date")}</label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <DateField value={date} onChange={setDate} testId="input-kick-date" />
             </div>
             <div>
               <label className="text-sm font-medium">{L("Lokasjon", "Location")}</label>
@@ -433,7 +434,7 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>{L("Avbryt", "Cancel")}</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending || !date}>{save.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}</Button>
         </DialogFooter>
       </DialogContent>
       <ManualWeatherDialog

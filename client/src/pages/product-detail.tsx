@@ -682,8 +682,10 @@ function ProductDetailInner() {
                                   {/* Round results */}
                                   {rounds.map((r, i) => (
                                     <td key={i} className="py-1.5 pr-3">
-                                      <div className="flex items-center gap-1">
-                                        <span className="tabular-nums">{r.result ?? "—"}</span>
+                                      {/* Fixed-width, right-aligned result so the rank
+                                          badges line up as their own straight column. */}
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="tabular-nums inline-block min-w-12 text-right">{r.result ?? "—"}</span>
                                         {r.rank != null && <RankBadge rank={r.rank} />}
                                       </div>
                                     </td>

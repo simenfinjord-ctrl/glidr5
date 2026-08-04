@@ -313,7 +313,8 @@ export default function SkiDetail() {
                             <thead>
                               <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                                 <th className="px-3 py-1.5">{L("Ski", "Ski")}</th>
-                                <th className="px-3 py-1.5">{isTime ? L("Snitt (s) / rang", "Avg (s) / rank") : L("Snitt (cm) / rang", "Avg (cm) / rank")}</th>
+                                <th className="px-3 py-1.5 text-right">{isTime ? L("Snitt (s)", "Avg (s)") : L("Snitt (cm)", "Avg (cm)")}</th>
+                                <th className="px-3 py-1.5">{L("Rang", "Rank")}</th>
                                 <th className="px-3 py-1.5">{L("Følelse", "Feel")}</th>
                               </tr>
                             </thead>
@@ -327,17 +328,17 @@ export default function SkiDetail() {
                                       {e.skiLabel ?? `#${e.skiNumber}`}
                                       {e.fleetGroup && <span className="ml-1.5 rounded-full bg-sky-100 dark:bg-sky-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-sky-700 dark:text-sky-300">{e.fleetGroup}</span>}
                                     </td>
-                                    <td className="px-3 py-1.5 whitespace-nowrap">
-                                      {fmtAvg(avgResult(e))}
-                                      {r != null && (
+                                    <td className="px-3 py-1.5 whitespace-nowrap text-right tabular-nums">{fmtAvg(avgResult(e))}</td>
+                                    <td className="px-3 py-1.5">
+                                      {r != null ? (
                                         <span className={cn(
-                                          "ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                                          "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                                           r === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"
                                             : r === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300"
                                             : r === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600"
                                             : "bg-muted/70 text-foreground"
                                         )}>{r}</span>
-                                      )}
+                                      ) : "—"}
                                     </td>
                                     <td className="px-3 py-1.5 text-muted-foreground">{e.feelingRank ?? "—"}</td>
                                   </tr>

@@ -8738,7 +8738,8 @@ export async function registerRoutes(
     if (!includeArchived) list = list.filter((a: any) => !a.archived);
     // Profile-only athletes live in Race fleets' "My athletes" — rosters and
     // pickers elsewhere don't see them unless they opt in.
-    if (req.query.includeProfiles !== "1") list = list.filter((a: any) => (a as any).isProfileOnly !== 1);
+    const profilesVisible = req.query.includeProfiles === "1" && (await teamHasFeature(teamId, "para_team"));
+    if (!profilesVisible) list = list.filter((a: any) => (a as any).isProfileOnly !== 1);
     // Transferred athletes stay visible to the OLD team through the 14-day
     // grace window, flagged so the UI can badge them and offer revoke.
     if (teamId) {
@@ -8810,7 +8811,7 @@ export async function registerRoutes(
       bindingPosition: req.body.bindingPosition || null,
       skiServicePreferences: req.body.skiServicePreferences || null,
       sportClass: req.body.sportClass || null,
-      isProfileOnly: req.body.isProfileOnly ? 1 : 0,
+      isProfileOnly: req.body.isProfileOnly && (await teamHasFeature(teamId, "para_team")) ? 1 : 0,
       mainWaxerId,
       mainWaxerName,
       createdAt: now,
@@ -9587,6 +9588,9 @@ export async function registerRoutes(
     const u = userInfo(req);
     const athleteId = parseInt(req.params.id);
     const teamId = getActiveTeamId(req);
+    if (!(await teamHasFeature(teamId, "para_team"))) {
+      return res.status(403).json({ message: "Race fleet is not enabled for this team" });
+    }
     if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, teamId))) {
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -9947,13 +9951,14 @@ export async function registerRoutes(
     const { date, location, discipline, weatherId, manualWeather, result: raceResult, notes, usedByAthleteId, waxNotes } = req.body;
     // #18: date is optional. The column is NOT NULL, so store "" when omitted.
     const { pool } = await import("./db");
-    const usedBy = usedByAthleteId != null && usedByAthleteId !== "" ? parseInt(String(usedByAthleteId)) : null;
+    const paraOn = await teamHasFeature(getActiveTeamId(req), "para_team");
+    const usedBy = paraOn && usedByAthleteId != null && usedByAthleteId !== "" ? parseInt(String(usedByAthleteId)) : null;
     const inserted = await (pool as any).query(
       `INSERT INTO ski_race_usages (ski_id, athlete_id, team_id, date, location, discipline, weather_id, manual_weather, result, notes, used_by_athlete_id, wax_notes, created_by_id, created_by_name, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
       [skiId, ski.athleteId, getActiveTeamId(req), date || "", location || null, discipline || null,
        weatherId || null, manualWeather ? (typeof manualWeather === "string" ? manualWeather : JSON.stringify(manualWeather)) : null,
-       raceResult || null, notes || null, usedBy && !isNaN(usedBy) ? usedBy : null, waxNotes || null, u.id, u.name, new Date().toISOString()]
+       raceResult || null, notes || null, usedBy && !isNaN(usedBy) ? usedBy : null, paraOn ? waxNotes || null : null, u.id, u.name, new Date().toISOString()]
     );
     res.json({ id: inserted.rows[0].id });
   });

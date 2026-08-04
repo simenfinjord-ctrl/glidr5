@@ -2658,7 +2658,7 @@ export default function AthleteDetail() {
               </span>
             )}
           </button>
-          {isFleetAthlete && (
+          {isFleetAthlete && sportClassEnabled && (
             <button
               onClick={() => setPageTab("athletes")}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
@@ -2712,7 +2712,7 @@ export default function AthleteDetail() {
         </div>
 
         {/* ── Race History tab ─────────────────────────────────────────────── */}
-        {pageTab === "athletes" && isFleetAthlete && (
+        {pageTab === "athletes" && isFleetAthlete && sportClassEnabled && (
           <MyAthletesSection weatherList={weather} canEdit={!isAthletePortal && can("raceskis", "edit")} />
         )}
         {pageTab === "races" && raceHistory.length === 0 && (
@@ -6206,11 +6206,14 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
     usedByAthleteId: "", waxNotes: "",
   });
   const [usedBySearch, setUsedBySearch] = useState("");
+  const { user: usageUser } = useAuth();
+  // The used-by/wax-notes linking is part of the SA-gated para fleet feature.
+  const paraEnabled = !!usageUser?.teamEnabledAreas?.includes("para_team");
   const { data: usages = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
   // Who raced the pair — regular athletes and My-athletes profiles alike.
   const { data: teamPeople = [] } = useQuery<{ id: number; name: string; sportClass?: string | null }[]>({
     queryKey: ["/api/athletes?includeProfiles=1"],
-    enabled: usageOpen,
+    enabled: usageOpen && paraEnabled,
   });
   const { data: prepFeedback = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/prep-feedback`] });
   const usageWeatherOptions = useMemo(() => weatherList.filter((w) => w.date === usageForm.date), [weatherList, usageForm.date]);
@@ -6380,6 +6383,7 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                 </div>
               )}
             </div>
+            {paraEnabled && (
             <div>
               <label className="mb-1 block text-xs font-medium">{L("Brukt av (utøver)", "Used by (athlete)")}</label>
               {usageForm.usedByAthleteId ? (
@@ -6413,10 +6417,13 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                 </>
               )}
             </div>
+            )}
+            {paraEnabled && (
             <div>
               <label className="mb-1 block text-xs font-medium">{L("Wax-notes (dagens smøring)", "Wax notes (today's wax)")}</label>
               <Input value={usageForm.waxNotes} onChange={(e) => setUsageForm((f) => ({ ...f, waxNotes: e.target.value }))} placeholder={L("f.eks. HF8 + topping…", "e.g. HF8 + topping…")} data-testid="input-usage-wax-notes" />
             </div>
+            )}
             <div>
               <label className="mb-1 block text-xs font-medium">{L("Kommentar", "Comment")}</label>
               <Input value={usageForm.notes} onChange={(e) => setUsageForm((f) => ({ ...f, notes: e.target.value }))} placeholder={L("Valgfri kommentar…", "Optional comment…")} />

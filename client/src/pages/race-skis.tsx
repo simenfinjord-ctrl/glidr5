@@ -78,7 +78,7 @@ export default function RaceSkis() {
   const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState("");
 
-  const { data: allAthletes = [] } = useQuery<Athlete[]>({
+  const { data: allAthletes = [], isLoading: athletesLoading } = useQuery<Athlete[]>({
     queryKey: ["/api/athletes?includeArchived=1"],
   });
   const activeAthletes = allAthletes.filter((a) => !a.archived);
@@ -417,7 +417,11 @@ export default function RaceSkis() {
         </div>
 
         {/* Athletes list */}
-        {athletes.length === 0 ? (
+        {athletesLoading && athletes.length === 0 ? (
+          <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="loading-athletes">
+            {L("Laster utøvere…", "Loading athletes…")}
+          </Card>
+        ) : athletes.length === 0 ? (
           <Card
             className="fs-card rounded-2xl p-6 text-sm text-muted-foreground"
             data-testid="empty-athletes"

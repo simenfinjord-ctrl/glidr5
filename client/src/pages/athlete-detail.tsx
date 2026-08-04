@@ -1122,7 +1122,7 @@ export default function AthleteDetail() {
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   // Include archived so an archived athlete's profile still opens from the archive.
-  const { data: athletes = [] } = useQuery<Athlete[]>({
+  const { data: athletes = [], isLoading: athletesLoading } = useQuery<Athlete[]>({
     queryKey: ["/api/athletes?includeArchived=1&includeFleet=1"],
   });
   const athlete = athletes.find((a) => a.id === athleteId);
@@ -2382,6 +2382,16 @@ export default function AthleteDetail() {
     updateAthleteMutation.mutate(athleteForm);
   }
 
+  // Never flash "not found" while the roster is still loading.
+  if (!athlete && athletesLoading) {
+    return (
+      <AppShell activeNav={isFleetAthlete ? "/race-fleet" : undefined}>
+        <div className="flex flex-col items-center gap-4 py-20 text-sm text-muted-foreground" data-testid="loading-athlete">
+          {L("Laster…", "Loading…")}
+        </div>
+      </AppShell>
+    );
+  }
   if (!athlete) {
     return (
       <AppShell activeNav={isFleetAthlete ? "/race-fleet" : undefined}>
@@ -6534,11 +6544,6 @@ function SkiDetailPanel({
           )}
         </div>
       )}
-      <AppLink href={`/ski/${ski.id}`}>
-        <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-show-tests-${ski.id}`}>
-          <BarChart2 className="h-3.5 w-3.5 mr-1" />{L("Vis tester", "Show tests")}
-        </Button>
-      </AppLink>
       {/* Who registered the pair, and when — plus the last edit if any. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground" data-testid={`detail-ski-created-${ski.id}`}>
         {ski.createdByName && (
@@ -6557,6 +6562,11 @@ function SkiDetailPanel({
       )}
       {/* Action buttons */}
       <div className="flex items-center gap-2">
+        <AppLink href={`/ski/${ski.id}`}>
+          <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-show-tests-${ski.id}`}>
+            <BarChart2 className="mr-1 h-3 w-3" />{L("Vis tester", "Show tests")}
+          </Button>
+        </AppLink>
         {onRegrind && (
           <Button variant="outline" size="sm" onClick={onRegrind} className="h-7 text-xs">
             <RefreshCw className="mr-1 h-3 w-3" />
@@ -7171,6 +7181,11 @@ function SkiCard({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <AppLink href={`/ski/${ski.id}`}>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" data-testid={`button-show-tests-card-${ski.id}`}>
+              <BarChart2 className="mr-1 h-3.5 w-3.5" />{L("Vis tester", "Show tests")}
+            </Button>
+          </AppLink>
           {!isArchived && onRegrind && (
             <Button
               variant="ghost"
@@ -7228,11 +7243,6 @@ function SkiCard({
 
       {expanded && (
         <div className="mt-3 border-t border-border/40 pt-3 space-y-4" data-testid={`section-regrinds-${ski.id}`}>
-          <AppLink href={`/ski/${ski.id}`}>
-            <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-show-tests-card-${ski.id}`}>
-              <BarChart2 className="h-3.5 w-3.5 mr-1" />{L("Vis tester", "Show tests")}
-            </Button>
-          </AppLink>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground" data-testid={`card-ski-created-${ski.id}`}>
             {ski.createdByName && (
               <span className="inline-flex items-center gap-1">

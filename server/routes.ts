@@ -4089,7 +4089,7 @@ export async function registerRoutes(
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const testSkiSource = req.body.testSkiSource === "raceskis" ? "raceskis" : "series";
-    const raceOnly = ["Classic", "Skating", "Double Poling"];
+    const raceOnly = ["Classic", "Skating", "Double Poling", "Mix"];
     const seriesOnly = ["Glide", "Structure", "Grind"];
     if (testSkiSource === "raceskis" && seriesOnly.includes(req.body.testType)) {
       return res.status(400).json({ message: "Race ski tests only allow Classic, Skating, or Double Poling" });
@@ -4565,7 +4565,7 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     const testSkiSource = req.body.testSkiSource === "raceskis" ? "raceskis" : (existing as any).testSkiSource || "series";
-    const raceOnly = ["Classic", "Skating", "Double Poling"];
+    const raceOnly = ["Classic", "Skating", "Double Poling", "Mix"];
     const seriesOnly = ["Glide", "Structure", "Grind"];
     if (testSkiSource === "raceskis" && seriesOnly.includes(req.body.testType)) {
       return res.status(400).json({ message: "Race ski tests only allow Classic, Skating, or Double Poling" });

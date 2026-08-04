@@ -853,7 +853,7 @@ export default function AthleteDetail() {
   const [testForm, setTestForm] = useState({
     date: new Date().toISOString().split("T")[0],
     location: "",
-    testType: "Classic" as "Classic" | "Skating" | "Double Poling",
+    testType: "Classic" as "Classic" | "Skating" | "Double Poling" | "Mix",
     notes: "",
     weatherId: undefined as number | undefined,
     noWeather: false,
@@ -3782,6 +3782,7 @@ export default function AthleteDetail() {
                         <SelectItem value="Classic">Classic</SelectItem>
                         <SelectItem value="Skating">Skating</SelectItem>
                         <SelectItem value="Double Poling">Double Poling</SelectItem>
+                        {isFleetAthlete && <SelectItem value="Mix">Mix</SelectItem>}
                       </SelectContent>
                     </Select>
                     {/* 5. Location */}
@@ -4100,7 +4101,7 @@ export default function AthleteDetail() {
                       <label className="mb-1 block text-sm font-medium">{L("Testtype", "Test Type")}</label>
                       <Select
                         value={testForm.testType}
-                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Classic" | "Skating" | "Double Poling" }))}
+                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Classic" | "Skating" | "Double Poling" | "Mix" }))}
                       >
                         <SelectTrigger data-testid="select-test-type">
                           <SelectValue />
@@ -4109,6 +4110,7 @@ export default function AthleteDetail() {
                           <SelectItem value="Classic">Classic</SelectItem>
                           <SelectItem value="Skating">Skating</SelectItem>
                           <SelectItem value="Double Poling">Double Poling</SelectItem>
+                          {isFleetAthlete && <SelectItem value="Mix">Mix</SelectItem>}
                         </SelectContent>
                       </Select>
                     </div>

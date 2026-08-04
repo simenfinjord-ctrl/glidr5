@@ -6180,7 +6180,7 @@ function SkiSuggestionsSection({
                                 ) : "—"}
                               </td>
                               <td className="px-3 py-2 font-semibold">
-                                <AppLink href={`/raceskis/${s.ski.athleteId}`}>
+                                <AppLink href={`/ski/${s.ski.id}`}>
                                   <span className="hover:text-primary transition-colors">{s.ski.skiId}</span>
                                 </AppLink>
                               </td>
@@ -6534,6 +6534,11 @@ function SkiDetailPanel({
           )}
         </div>
       )}
+      <AppLink href={`/ski/${ski.id}`}>
+        <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-show-tests-${ski.id}`}>
+          <BarChart2 className="h-3.5 w-3.5 mr-1" />{L("Vis tester", "Show tests")}
+        </Button>
+      </AppLink>
       {/* Who registered the pair, and when — plus the last edit if any. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground" data-testid={`detail-ski-created-${ski.id}`}>
         {ski.createdByName && (
@@ -6919,7 +6924,9 @@ function SkiAnalyticsSection({
                   data-testid={`analytics-row-${s.ski.id}`}
                 >
                   <td className="px-4 py-2.5">
-                    <div className="font-semibold text-sm">{s.ski.skiId}</div>
+                    <AppLink href={`/ski/${s.ski.id}`}>
+                      <div className="font-semibold text-sm hover:text-primary transition-colors">{s.ski.skiId}</div>
+                    </AppLink>
                     {s.ski.brand && <div className="text-xs text-muted-foreground">{s.ski.brand}</div>}
                   </td>
                   {analyticsMode === "glide" && <>
@@ -7221,6 +7228,11 @@ function SkiCard({
 
       {expanded && (
         <div className="mt-3 border-t border-border/40 pt-3 space-y-4" data-testid={`section-regrinds-${ski.id}`}>
+          <AppLink href={`/ski/${ski.id}`}>
+            <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-show-tests-card-${ski.id}`}>
+              <BarChart2 className="h-3.5 w-3.5 mr-1" />{L("Vis tester", "Show tests")}
+            </Button>
+          </AppLink>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground" data-testid={`card-ski-created-${ski.id}`}>
             {ski.createdByName && (
               <span className="inline-flex items-center gap-1">

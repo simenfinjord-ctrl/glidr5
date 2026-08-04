@@ -25,6 +25,7 @@ import CrossTeamTests from "@/pages/cross-team-tests";
 import CrossTeamTest from "@/pages/cross-team-test";
 import CompareTests from "@/pages/compare-tests";
 import RaceFleet from "@/pages/race-fleet";
+import SkiDetail from "@/pages/ski-detail";
 import NewTest from "@/pages/new-test";
 import TestDetail from "@/pages/test-detail";
 import EditTest from "@/pages/edit-test";
@@ -97,6 +98,7 @@ function Router() {
       <Route path="/grinding" component={Grinding} />
       <Route path="/raceskis" component={RaceSkis} />
       <Route path="/race-fleet" component={RaceFleet} />
+      <Route path="/ski/:id" component={SkiDetail} />
       <Route path="/raceskis/:id" component={AthleteDetail} />
       <Route path="/kick" component={Kick} />
       <Route path="/raceprep" component={RacePrep} />

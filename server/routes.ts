@@ -9925,6 +9925,67 @@ export async function registerRoutes(
   });
 
   // ── Ski race usages (waxer-logged: "this ski pair was raced", no admin prep needed) ──
+  // Everything about one pair for its detail page: the ski itself, every test
+  // it took part in (with full result lists so its row can be highlighted),
+  // and how many times it has raced.
+  app.get("/api/race-skis/:id/tests", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const skiId = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(skiId);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await canTouchRaceSki(ski, req, u);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const teamId = getActiveTeamId(req);
+    const { pool: pg } = await import("./db");
+    const testsRes = await (pg as any).query(
+      `SELECT DISTINCT t.id, t.date, t.location, t.test_type AS "testType", t.notes,
+              t.weather_id AS "weatherId", t.distance_labels AS "distanceLabels",
+              t.result_unit AS "resultUnit", t.athlete_id AS "athleteId",
+              w.air_temperature_c AS "airTemperatureC", w.snow_temperature_c AS "snowTemperatureC",
+              w.snow_type AS "snowType"
+       FROM test_entries te
+       JOIN tests t ON t.id = te.test_id
+       LEFT JOIN daily_weather w ON w.id = t.weather_id
+       WHERE t.team_id = $1 AND te.race_ski_id = $2
+       ORDER BY t.date DESC, t.id DESC`,
+      [teamId, skiId]
+    );
+    const testIds: number[] = testsRes.rows.map((r: any) => r.id);
+    let entriesByTestId: Record<number, any[]> = {};
+    if (testIds.length > 0) {
+      const er = await (pg as any).query(
+        `SELECT te.id, te.test_id AS "testId", te.ski_number AS "skiNumber", te.race_ski_id AS "raceSkiId",
+                te.product_id AS "productId", te.free_text_product AS "freeTextProduct",
+                te.result_0km_cm_behind AS "result0kmCmBehind", te.rank_0km AS "rank0km",
+                te.results, te.feeling_rank AS "feelingRank",
+                rs.ski_id AS "skiLabel", rs.fleet_group AS "fleetGroup",
+                p.brand AS "productBrand", p.name AS "productName"
+         FROM test_entries te
+         LEFT JOIN race_skis rs ON rs.id = te.race_ski_id
+         LEFT JOIN products p ON p.id = te.product_id
+         WHERE te.test_id = ANY($1)
+         ORDER BY te.ski_number ASC`,
+        [testIds]
+      );
+      for (const row of er.rows) {
+        (entriesByTestId[row.testId] ||= []).push(row);
+      }
+    }
+    // Times raced: manual usage logs + race-prep entries matching the label.
+    let racedCount = 0;
+    try {
+      const [uc, pc] = await Promise.all([
+        (pg as any).query(`SELECT COUNT(*)::int AS c FROM ski_race_usages WHERE ski_id = $1 AND team_id = $2`, [skiId, teamId]),
+        (pg as any).query(
+          `SELECT COUNT(*)::int AS c FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
+           WHERE rp.team_id = $1 AND (rpe.ski_id = $2 OR rpe.ski_id_classic = $2 OR rpe.ski_id_skating = $2)`,
+          [teamId, ski.skiId]),
+      ]);
+      racedCount = (uc.rows[0]?.c || 0) + (pc.rows[0]?.c || 0);
+    } catch { /* additive */ }
+    res.json({ ski, tests: testsRes.rows, entriesByTestId, racedCount });
+  });
+
   app.get("/api/race-skis/:id/usages", requirePermission("raceskis", "view"), async (req, res) => {
     const u = userInfo(req);
     const skiId = parseInt(req.params.id);

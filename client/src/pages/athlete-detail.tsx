@@ -921,6 +921,19 @@ export default function AthleteDetail() {
   // Fleet test form: quick series filter above the ski buttons.
   const [testSkiSeriesFilter, setTestSkiSeriesFilter] = useState<string>("all");
   const [testRows, setTestRows] = useState<RaceSkiTestRow[]>([]);
+  // "Add pair" row at the bottom of the entry table: type a ski ID directly.
+  const [addPairQuery, setAddPairQuery] = useState("");
+  function moveTestRow(rowId: string, dir: -1 | 1) {
+    setTestRows((rows) => {
+      const idx = rows.findIndex((r) => r.id === rowId);
+      const to = idx + dir;
+      if (idx < 0 || to < 0 || to >= rows.length) return rows;
+      const next = [...rows];
+      const [moved] = next.splice(idx, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
   const [distanceLabels, setDistanceLabels] = useState<string[]>([""]);
 
   const [customFieldDefs, setCustomFieldDefs] = useState<{ key: string; label: string }[]>(() => {
@@ -2356,6 +2369,7 @@ export default function AthleteDetail() {
     setSelectedSkiIds(new Set());
     setSkiSearchQuery("");
     setTestSkiSeriesFilter("all");
+    setAddPairQuery("");
     setTestRows([]);
     setShowTestForm(true);
   }
@@ -4593,11 +4607,25 @@ export default function AthleteDetail() {
                                 data-testid={`row-test-entry-${row.raceSkiId}`}
                               >
                                 <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
-                                  <div
-                                    className="inline-flex h-9 items-center justify-center rounded-xl border bg-background/70 px-2 text-sm font-semibold"
-                                    data-testid={`text-test-ski-id-${row.raceSkiId}`}
-                                  >
-                                    {row.skiId}
+                                  <div className="flex items-center gap-1">
+                                    <div className="flex flex-col">
+                                      <button type="button" onClick={() => moveTestRow(row.id, -1)} disabled={idx === 0}
+                                        className="p-0.5 text-muted-foreground/60 hover:text-foreground disabled:opacity-20"
+                                        data-testid={`button-row-up-${row.raceSkiId}`}>
+                                        <ArrowUp className="h-3 w-3" />
+                                      </button>
+                                      <button type="button" onClick={() => moveTestRow(row.id, 1)} disabled={idx === testRows.length - 1}
+                                        className="p-0.5 text-muted-foreground/60 hover:text-foreground disabled:opacity-20"
+                                        data-testid={`button-row-down-${row.raceSkiId}`}>
+                                        <ArrowDown className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                    <div
+                                      className="inline-flex h-9 items-center justify-center rounded-xl border bg-background/70 px-2 text-sm font-semibold"
+                                      data-testid={`text-test-ski-id-${row.raceSkiId}`}
+                                    >
+                                      {row.skiId}
+                                    </div>
                                   </div>
                                 </td>
                                 {activeParams.map((key) => (
@@ -4653,6 +4681,66 @@ export default function AthleteDetail() {
                               </tr>
                             );
                           })}
+                          {/* Add pair by typing its ski ID — suggestions follow
+                              the test type and what has been typed; picking one
+                              (or typing an exact ID) checks it in the selector
+                              above and links the test to the pair. */}
+                          <tr className="border-t">
+                            <td className="sticky left-0 z-10 bg-inherit px-3 py-2" colSpan={2 + activeParams.length + distanceLabels.length * 2}>
+                              {(() => {
+                                const raceTestTypes = ["Classic", "Skating", "Double Poling"];
+                                let pool = raceTestTypes.includes(testForm.testType)
+                                  ? skis.filter((sk) => sk.discipline === testForm.testType)
+                                  : skis;
+                                pool = pool.filter((sk) => !selectedSkiIds.has(sk.id));
+                                const q = addPairQuery.trim().toLowerCase();
+                                const matches = q
+                                  ? pool.filter((sk) => sk.skiId.toLowerCase().includes(q) || (sk.serialNumber ?? "").toLowerCase().includes(q))
+                                  : [];
+                                const exact = pool.find((sk) => sk.skiId.toLowerCase() === q);
+                                const pick = (id: number) => { toggleSkiSelection(id); setAddPairQuery(""); };
+                                return (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <div className="relative">
+                                      <Plus className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                      <Input
+                                        value={addPairQuery}
+                                        onChange={(e) => setAddPairQuery(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            if (exact) pick(exact.id);
+                                            else if (matches.length === 1) pick(matches[0].id);
+                                          }
+                                        }}
+                                        placeholder={L("Legg til par — skriv ski-ID…", "Add pair — type ski ID…")}
+                                        className="h-8 w-52 pl-7 text-xs"
+                                        data-testid="input-add-pair"
+                                      />
+                                    </div>
+                                    {q && matches.length === 0 && (
+                                      <span className="text-[11px] text-muted-foreground">{L("Ingen par matcher.", "No pairs match.")}</span>
+                                    )}
+                                    {matches.slice(0, 8).map((sk) => (
+                                      <button
+                                        key={sk.id}
+                                        type="button"
+                                        onClick={() => pick(sk.id)}
+                                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-indigo-300 hover:text-foreground"
+                                        data-testid={`button-add-pair-${sk.id}`}
+                                      >
+                                        <span className="font-semibold text-foreground">{sk.skiId}</span>
+                                        {(sk as any).fleetGroup && <span className="rounded-full bg-sky-100 dark:bg-sky-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-sky-700 dark:text-sky-300">{(sk as any).fleetGroup}</span>}
+                                        {sk.serialNumber && <span>#{sk.serialNumber}</span>}
+                                        {sk.brand && <span>{sk.brand}</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                            <td></td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>

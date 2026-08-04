@@ -45,7 +45,17 @@ type SkiTest = {
   athleteId: number | null;
   airTemperatureC: number | null;
   snowTemperatureC: number | null;
+  airHumidityPct: number | null;
+  snowHumidityPct: number | null;
   snowType: string | null;
+  artificialSnow: number | null;
+  naturalSnow: number | null;
+  grainSize: string | null;
+  snowHumidityType: string | null;
+  trackHardness: string | null;
+  wind: string | null;
+  clouds: number | null;
+  precipitation: string | null;
 };
 
 type SkiTestsResponse = {
@@ -210,25 +220,42 @@ export default function SkiDetail() {
                             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" data-testid={`button-open-test-${test.id}`}>{L("Åpne", "Open")}</Button>
                           </AppLink>
                         </div>
-                        {(test.airTemperatureC != null || test.snowTemperatureC != null || test.snowType) && (
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {test.airTemperatureC != null && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800"><Thermometer className="h-2.5 w-2.5" />{L("Luft", "Air")} {fmtT(test.airTemperatureC)}</span>
-                            )}
-                            {test.snowTemperatureC != null && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800"><Snowflake className="h-2.5 w-2.5" />{L("Snø", "Snow")} {fmtT(test.snowTemperatureC)}</span>
-                            )}
-                            {test.snowType && (
-                              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{test.snowType}</span>
-                            )}
-                          </div>
-                        )}
+                        {(() => {
+                          // Every recorded weather value for the day, as chips.
+                          const chips: { key: string; label: string; icon?: any; cls?: string }[] = [];
+                          if (test.airTemperatureC != null) chips.push({ key: "air", label: `${L("Luft", "Air")} ${fmtT(test.airTemperatureC)}`, icon: Thermometer, cls: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800" });
+                          if (test.snowTemperatureC != null) chips.push({ key: "snow", label: `${L("Snø", "Snow")} ${fmtT(test.snowTemperatureC)}`, icon: Snowflake, cls: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800" });
+                          if (test.airHumidityPct != null) chips.push({ key: "airhum", label: `${L("Luftfukt", "Air hum")} ${test.airHumidityPct}%` });
+                          if (test.snowHumidityPct != null) chips.push({ key: "snowhum", label: `${L("Snøfukt", "Snow hum")} ${test.snowHumidityPct}%` });
+                          if (test.snowType) chips.push({ key: "snowtype", label: test.snowType });
+                          if (test.grainSize) chips.push({ key: "grain", label: `${L("Korn", "Grain")} ${test.grainSize}` });
+                          if (test.snowHumidityType) chips.push({ key: "shtype", label: test.snowHumidityType });
+                          if (test.trackHardness) chips.push({ key: "track", label: `${L("Spor", "Track")} ${test.trackHardness}` });
+                          if (test.artificialSnow === 1 && test.naturalSnow === 1) chips.push({ key: "mixsnow", label: L("Kunst + natur", "Artificial + natural") });
+                          else if (test.artificialSnow === 1) chips.push({ key: "artsnow", label: L("Kunstsnø", "Artificial snow") });
+                          else if (test.naturalSnow === 1) chips.push({ key: "natsnow", label: L("Natursnø", "Natural snow") });
+                          if (test.precipitation) chips.push({ key: "precip", label: test.precipitation });
+                          if (test.wind) chips.push({ key: "wind", label: `${L("Vind", "Wind")} ${test.wind}` });
+                          if (test.clouds != null) chips.push({ key: "clouds", label: `${L("Skyer", "Clouds")} ${test.clouds}/8` });
+                          if (chips.length === 0) return null;
+                          return (
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {chips.map((c) => {
+                                const Icon = c.icon;
+                                return (
+                                  <span key={c.key} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1", c.cls ?? "bg-muted text-muted-foreground ring-border")}>
+                                    {Icon && <Icon className="h-2.5 w-2.5" />}{c.label}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                         <div className="mt-3 overflow-x-auto">
                           <table className="w-full border-separate border-spacing-0 text-xs">
                             <thead>
                               <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                                 <th className="px-3 py-1.5">{L("Ski", "Ski")}</th>
-                                <th className="px-3 py-1.5">{L("Produkt", "Product")}</th>
                                 <th className="px-3 py-1.5">{isTime ? L("Snitt (s) / rang", "Avg (s) / rank") : L("Snitt (cm) / rang", "Avg (cm) / rank")}</th>
                                 <th className="px-3 py-1.5">{L("Følelse", "Feel")}</th>
                               </tr>
@@ -237,16 +264,12 @@ export default function SkiDetail() {
                               {entries.map((e) => {
                                 const mine = e.raceSkiId === data.ski.id;
                                 const r = rankMap.get(e.id) ?? null;
-                                const product = e.productId
-                                  ? `${e.productBrand ?? ""} ${e.productName ?? ""}`.trim()
-                                  : e.freeTextProduct || null;
                                 return (
                                   <tr key={e.id} className={cn("border-t border-border/30", mine && "bg-amber-50/70 dark:bg-amber-950/20 font-semibold")} data-testid={`ski-test-entry-${e.id}`}>
                                     <td className="px-3 py-1.5 whitespace-nowrap">
                                       {e.skiLabel ?? `#${e.skiNumber}`}
                                       {e.fleetGroup && <span className="ml-1.5 rounded-full bg-sky-100 dark:bg-sky-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-sky-700 dark:text-sky-300">{e.fleetGroup}</span>}
                                     </td>
-                                    <td className="px-3 py-1.5 text-muted-foreground">{product || "—"}</td>
                                     <td className="px-3 py-1.5 whitespace-nowrap">
                                       {fmtAvg(avgResult(e))}
                                       {r != null && (

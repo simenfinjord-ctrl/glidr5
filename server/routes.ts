@@ -9942,7 +9942,10 @@ export async function registerRoutes(
               t.weather_id AS "weatherId", t.distance_labels AS "distanceLabels",
               t.result_unit AS "resultUnit", t.athlete_id AS "athleteId",
               w.air_temperature_c AS "airTemperatureC", w.snow_temperature_c AS "snowTemperatureC",
-              w.snow_type AS "snowType"
+              w.air_humidity_pct AS "airHumidityPct", w.snow_humidity_pct AS "snowHumidityPct",
+              w.snow_type AS "snowType", w.artificial_snow AS "artificialSnow", w.natural_snow AS "naturalSnow",
+              w.grain_size AS "grainSize", w.snow_humidity_type AS "snowHumidityType",
+              w.track_hardness AS "trackHardness", w.wind, w.clouds, w.precipitation
        FROM test_entries te
        JOIN tests t ON t.id = te.test_id
        LEFT JOIN daily_weather w ON w.id = t.weather_id

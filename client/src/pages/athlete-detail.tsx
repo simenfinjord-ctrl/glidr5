@@ -854,6 +854,8 @@ export default function AthleteDetail() {
   });
   const [garageDisciplineFilter, setGarageDisciplineFilter] = useState<string>("all");
   const [garageBrandFilter, setGarageBrandFilter] = useState<string>("all");
+  // "all" | "training" | "racing" | "sitski" | "standard"
+  const [garageKindFilter, setGarageKindFilter] = useState<string>("all");
   const [garageYearFilter, setGarageYearFilter] = useState<string>("all");
   const [garageGrindFilter, setGarageGrindFilter] = useState<string>("");
   const [garageRaValueFilter, setGarageRaValueFilter] = useState<string>("");
@@ -1224,6 +1226,10 @@ export default function AthleteDetail() {
     let list = skis;
     if (garageDisciplineFilter !== "all") list = list.filter((s) => s.discipline === garageDisciplineFilter);
     if (garageBrandFilter !== "all") list = list.filter((s) => s.brand === garageBrandFilter);
+    if (garageKindFilter === "training") list = list.filter((s) => s.isTrainingSki === 1);
+    else if (garageKindFilter === "racing") list = list.filter((s) => s.isTrainingSki !== 1);
+    else if (garageKindFilter === "sitski") list = list.filter((s) => (s as any).isSitski === 1);
+    else if (garageKindFilter === "standard") list = list.filter((s) => (s as any).isSitski !== 1);
     if (garageYearFilter !== "all") list = list.filter((s) => s.year === garageYearFilter);
     if (garageGrindFilter.trim()) {
       const q = garageGrindFilter.trim().toLowerCase();
@@ -1249,7 +1255,7 @@ export default function AthleteDetail() {
       });
     }
     return list;
-  }, [skis, garageDisciplineFilter, garageBrandFilter, garageYearFilter, garageGrindFilter, garageRaValueFilter, garageColorFilter, garageRaSort]);
+  }, [skis, garageDisciplineFilter, garageBrandFilter, garageKindFilter, garageYearFilter, garageGrindFilter, garageRaValueFilter, garageColorFilter, garageRaSort]);
 
   // Fleet garage groups by series: each series collapses/expands and, in the
   // card view, gets its own spaced section. Non-fleet athletes keep the flat
@@ -3366,6 +3372,18 @@ export default function AthleteDetail() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Select value={garageKindFilter} onValueChange={setGarageKindFilter}>
+                  <SelectTrigger className="h-7 w-[130px] text-xs" data-testid="select-garage-kind">
+                    <SelectValue placeholder={L("Alle typer", "All types")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{L("Alle typer", "All types")}</SelectItem>
+                    <SelectItem value="training">{L("Treningsski", "Training skis")}</SelectItem>
+                    <SelectItem value="racing">{L("Uten treningsski", "Excl. training skis")}</SelectItem>
+                    {isFleetAthlete && <SelectItem value="sitski">{L("Sitski", "Sit-skis")}</SelectItem>}
+                    {isFleetAthlete && <SelectItem value="standard">{L("Uten sitski", "Excl. sit-skis")}</SelectItem>}
+                  </SelectContent>
+                </Select>
                 <Select value={garageYearFilter} onValueChange={setGarageYearFilter}>
                   <SelectTrigger className="h-7 w-[100px] text-xs" data-testid="select-garage-year">
                     <SelectValue placeholder={L("Alle år", "All years")} />
@@ -3417,7 +3435,7 @@ export default function AthleteDetail() {
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-xs text-muted-foreground"
-                    onClick={() => { setGarageDisciplineFilter("all"); setGarageBrandFilter("all"); setGarageYearFilter("all"); setGarageGrindFilter(""); setGarageRaValueFilter(""); setGarageColorFilter([]); setGarageRaSort("none"); }}
+                    onClick={() => { setGarageDisciplineFilter("all"); setGarageBrandFilter("all"); setGarageKindFilter("all"); setGarageYearFilter("all"); setGarageGrindFilter(""); setGarageRaValueFilter(""); setGarageColorFilter([]); setGarageRaSort("none"); }}
                     data-testid="button-garage-clear-filters"
                   >
                     <X className="h-3 w-3 mr-1" />

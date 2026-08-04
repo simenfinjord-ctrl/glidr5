@@ -1076,6 +1076,13 @@ export default function AthleteDetail() {
     enabled: !!athleteId,
   });
 
+  // Tests may reference pairs that were archived later — match and label
+  // entries against the full list so a test never loses its rows.
+  const { data: skisWithArchived = [] } = useQuery<RaceSki[]>({
+    queryKey: [`/api/athletes/${athleteId}/skis?includeArchived=true`],
+    enabled: !!athleteId,
+  });
+
   const { data: raceHistory = [] } = useQuery<AthleteRaceHistory[]>({
     queryKey: [`/api/athletes/${athleteId}/race-history`],
     enabled: !!athleteId,
@@ -1117,7 +1124,7 @@ export default function AthleteDetail() {
     enabled: !!athleteId,
   });
 
-  const skiIds = useMemo(() => new Set(skis.map((s) => s.id)), [skis]);
+  const skiIds = useMemo(() => new Set(skisWithArchived.map((s) => s.id)), [skisWithArchived]);
 
   // Fixed set of test columns mirroring ski properties + result columns
   const allTestColumns: { key: string; label: string }[] = [
@@ -4541,14 +4548,14 @@ export default function AthleteDetail() {
                   No race ski tests yet.
                 </Card>
               ) : testViewMode === "list" ? (
-                <TestListView tests={filteredTests} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} weather={weather} />
+                <TestListView tests={filteredTests} skiIds={skiIds} allSkis={skisWithArchived} activeTestColumns={activeTestColumns} weather={weather} />
               ) : (
                 filteredTests.map((test) => (
                   <RaceSkiTestCard
                     key={test.id}
                     test={test}
                     skiIds={skiIds}
-                    allSkis={skis}
+                    allSkis={skisWithArchived}
                     activeTestColumns={activeTestColumns}
                     weather={weather}
                     expanded={expandedTestIds.has(test.id)}
@@ -7519,7 +7526,10 @@ function RaceSkiTestCard({
 
   const relevantEntries = useMemo(() => {
     if (entries.length === 0) return [];
-    return entries.filter((e) => e.raceSkiId && skiIds.has(e.raceSkiId));
+    const mine = entries.filter((e) => e.raceSkiId && skiIds.has(e.raceSkiId));
+    // The test belongs to this athlete, so if none of the entries match the
+    // known ski list (e.g. a stale cache), show them all rather than nothing.
+    return mine.length > 0 ? mine : entries.filter((e) => e.raceSkiId);
   }, [entries, skiIds]);
 
   const raceSkiById = useMemo(() => new Map(allSkis.map((s) => [s.id, s])), [allSkis]);
@@ -7680,10 +7690,6 @@ function RaceSkiTestCard({
     }
     return String(entry.skiNumber);
   };
-
-  if (expanded && entries.length > 0 && relevantEntries.length === 0) {
-    return null;
-  }
 
   return (
     <Card className="fs-card rounded-2xl p-4" data-testid={`card-test-${test.id}`}>

@@ -657,11 +657,15 @@ export class DatabaseStorage implements IStorage {
   // --- Athletes ---
 
   async listAthletes(userId: number, isAdmin: boolean, teamId?: number): Promise<Athlete[]> {
+    // The hidden fleet athlete never appears in rosters or pickers — its page
+    // is reached via /race-fleet, and its skis are added to ski lists
+    // explicitly where they belong.
+    const notFleet = eq(athletes.isFleet, 0);
     if (isAdmin) {
       if (teamId) {
-        return db.select().from(athletes).where(eq(athletes.teamId, teamId)).orderBy(sql`${athletes.name} asc`);
+        return db.select().from(athletes).where(and(eq(athletes.teamId, teamId), notFleet)).orderBy(sql`${athletes.name} asc`);
       }
-      return db.select().from(athletes).orderBy(sql`${athletes.name} asc`);
+      return db.select().from(athletes).where(notFleet).orderBy(sql`${athletes.name} asc`);
     }
     const accessRows = await db.select().from(athleteAccess).where(eq(athleteAccess.userId, userId));
     const accessAthleteIds = accessRows.map((r) => r.athleteId);
@@ -669,7 +673,7 @@ export class DatabaseStorage implements IStorage {
     const createdByMeIds = createdByMe.map((a) => a.id);
     const allIds = Array.from(new Set([...accessAthleteIds, ...createdByMeIds]));
     if (allIds.length === 0) return [];
-    const conditions: any[] = [inArray(athletes.id, allIds)];
+    const conditions: any[] = [inArray(athletes.id, allIds), eq(athletes.isFleet, 0)];
     if (teamId) {
       conditions.push(eq(athletes.teamId, teamId));
     }
@@ -738,6 +742,9 @@ export class DatabaseStorage implements IStorage {
         if (((lo as any).rows ?? []).length === 0) return false;
       }
     }
+    // The team's fleet athlete is common property: every raceskis-level user
+    // on the team may work with it (the endpoints check the permission).
+    if ((athlete as any).isFleet === 1) return true;
     if (isAdmin) return true;
     if (athlete.createdById === userId) return true;
     const [access] = await db.select().from(athleteAccess).where(

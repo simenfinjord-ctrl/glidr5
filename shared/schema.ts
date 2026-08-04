@@ -612,6 +612,9 @@ export const athletes = pgTable("athletes", {
   // Archived athletes are hidden from the default Race skis list but kept
   // (with all their skis/tests) so they can be restored later.
   archived: integer("archived").notNull().default(0),
+  // The team's hidden "Race fleets" athlete: owns the team's competition-ski
+  // series. Never listed in rosters/pickers; /race-fleet opens its page.
+  isFleet: integer("is_fleet").notNull().default(0),
 });
 
 export const insertAthleteSchema = createInsertSchema(athletes).omit({ id: true });

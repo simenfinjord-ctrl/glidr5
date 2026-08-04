@@ -855,6 +855,7 @@ export default function AthleteDetail() {
     notes: "",
     weatherId: undefined as number | undefined,
     noWeather: false,
+    resultUnit: "cm" as "cm" | "time",
   });
   const [selectedSkiIds, setSelectedSkiIds] = useState<Set<number>>(new Set());
   const [skiSearchQuery, setSkiSearchQuery] = useState("");
@@ -941,6 +942,8 @@ export default function AthleteDetail() {
     whereReceived: "",
     notes: "",
     isTrainingSki: false,
+    isSitski: false,
+    fleetGroup: "",
     color: "",
   });
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
@@ -1059,9 +1062,12 @@ export default function AthleteDetail() {
 
   // Include archived so an archived athlete's profile still opens from the archive.
   const { data: athletes = [] } = useQuery<Athlete[]>({
-    queryKey: ["/api/athletes?includeArchived=1"],
+    queryKey: ["/api/athletes?includeArchived=1&includeFleet=1"],
   });
   const athlete = athletes.find((a) => a.id === athleteId);
+  // The team's hidden Race fleets athlete: same page, plus series and sit-ski
+  // fields — and none of the person-things (transfer, delete, access, feedback).
+  const isFleetAthlete = (athlete as any)?.isFleet === 1;
 
   const { data: skis = [] } = useQuery<RaceSki[]>({
     queryKey: [`/api/athletes/${athleteId}/skis`],
@@ -1516,6 +1522,8 @@ export default function AthleteDetail() {
       whereReceived: data.whereReceived.trim() || null,
       notes: data.notes.trim() || null,
       isTrainingSki: data.isTrainingSki ? 1 : 0,
+      isSitski: (data as any).isSitski ? 1 : 0,
+      fleetGroup: ((data as any).fleetGroup || "").trim() || null,
       customParams: Object.keys(cp).length > 0 ? JSON.stringify(cp) : null,
     };
   }
@@ -1722,6 +1730,7 @@ export default function AthleteDetail() {
         weatherId: testForm.noWeather ? null : (resolvedWeatherId || null),
         noWeather: testForm.noWeather,
         notes: testForm.notes.trim() || null,
+        resultUnit: testForm.resultUnit,
         distanceLabels: JSON.stringify(distanceLabels),
         groupScope,
         entries,
@@ -1740,7 +1749,7 @@ export default function AthleteDetail() {
       }
       toast({ title: (data as any)?.queued ? "Test queued (offline)" : "Test saved" });
       setShowTestForm(false);
-      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic" as any, notes: "", weatherId: undefined, noWeather: false });
+      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic" as any, notes: "", weatherId: undefined, noWeather: false, resultUnit: "cm" });
       setSelectedSkiIds(new Set());
       setDistanceLabels([""]);
       setTestRows([]);
@@ -1751,7 +1760,7 @@ export default function AthleteDetail() {
   });
 
   function resetSkiForm() {
-    setSkiForm({ skiId: "", serialNumber: "", brand: "", discipline: "Classic", construction: "", mold: "", base: "", grind: "", heights: "", year: "", length: "", typeOfSki: "", whereReceived: "", notes: "", isTrainingSki: false, color: "" });
+    setSkiForm({ skiId: "", serialNumber: "", brand: "", discipline: "Classic", construction: "", mold: "", base: "", grind: "", heights: "", year: "", length: "", typeOfSki: "", whereReceived: "", notes: "", isTrainingSki: false, isSitski: false, fleetGroup: "", color: "" });
   }
 
   function resetRegrindForm() {
@@ -1786,6 +1795,8 @@ export default function AthleteDetail() {
       whereReceived: ski.whereReceived || "",
       notes: ski.notes || "",
       isTrainingSki: ski.isTrainingSki === 1,
+      isSitski: (ski as any).isSitski === 1,
+      fleetGroup: (ski as any).fleetGroup || "",
       color: parsedColor,
     });
     setSkiDialogOpen(true);
@@ -2229,7 +2240,7 @@ export default function AthleteDetail() {
   }
 
   function openNewTest() {
-    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic", notes: "", weatherId: undefined, noWeather: false });
+    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic", notes: "", weatherId: undefined, noWeather: false, resultUnit: "cm" });
     setDistanceLabels([""]);
     setSelectedSkiIds(new Set());
     setSkiSearchQuery("");
@@ -2261,7 +2272,7 @@ export default function AthleteDetail() {
 
   if (!athlete) {
     return (
-      <AppShell>
+      <AppShell activeNav={isFleetAthlete ? "/race-fleet" : undefined}>
         <div className="flex flex-col items-center gap-4 py-20" data-testid="not-found-athlete">
           <p className="text-muted-foreground">{L("Fant ikke utøveren.", "Athlete not found.")}</p>
           <AppLink href="/raceskis">
@@ -2277,7 +2288,7 @@ export default function AthleteDetail() {
 
   if (isAnalyticsView) {
     return (
-      <AppShell>
+      <AppShell activeNav={isFleetAthlete ? "/race-fleet" : undefined}>
         <div className="flex flex-col gap-5">
           <div>
             <Button
@@ -2308,7 +2319,7 @@ export default function AthleteDetail() {
   }
 
   return (
-    <AppShell>
+    <AppShell activeNav={isFleetAthlete ? "/race-fleet" : undefined}>
       <div className="flex flex-col gap-5">
         {/* Athlete Portal read-only banner */}
         {isAthletePortal && (
@@ -2439,7 +2450,7 @@ export default function AthleteDetail() {
                     {L("Rediger", "Edit")}
                   </Button>
                 )}
-                {hasAthleteAccess && !isAthletePortal && (
+                {hasAthleteAccess && !isAthletePortal && !isFleetAthlete && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -2451,7 +2462,7 @@ export default function AthleteDetail() {
                     {feedbackLink?.token ? L("Tilbakemeldingslenke", "Feedback link") : L("Lag tilbakemeldingslenke", "Create feedback link")}
                   </Button>
                 )}
-                {isOwnerOrAdmin && (
+                {isOwnerOrAdmin && !isFleetAthlete && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -2467,7 +2478,7 @@ export default function AthleteDetail() {
                     {L("Slett", "Delete")}
                   </Button>
                 )}
-                {isTA && (
+                {isTA && !isFleetAthlete && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -2493,8 +2504,9 @@ export default function AthleteDetail() {
           </div>
         </div>
 
-        {/* Access management */}
-        {isOwnerOrAdmin && !isAthletePortal && (
+        {/* Access management — the fleet athlete is open to the whole team,
+            so per-user access makes no sense there. */}
+        {isOwnerOrAdmin && !isAthletePortal && !isFleetAthlete && (
           <Card className="fs-card rounded-2xl p-4" data-testid="card-access-management">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -3411,6 +3423,9 @@ export default function AthleteDetail() {
                                 <span className="flex items-center gap-1.5">
                                   {/* Colour shown only in the Colour column, not next to the Ski ID. */}
                                   {ski.skiId}
+                                  {(ski as any).fleetGroup && (
+                                    <span className="rounded-full bg-sky-100 dark:bg-sky-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-sky-700 dark:text-sky-300" title={L("Serie", "Series")}>{(ski as any).fleetGroup}</span>
+                                  )}
                                   {ski.isTrainingSki === 1 && (
                                     <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300" title={L("Treningsski", "Training ski")}>{L("TRENING", "TRAINING")}</span>
                                   )}
@@ -4049,6 +4064,27 @@ export default function AthleteDetail() {
                     </div>
                   </div>
 
+                  {can("time_tests") && (
+                    <div className="mb-4">
+                      <label className="mb-1 block text-sm font-medium">{L("Resultatenhet", "Result unit")}</label>
+                      <div className="inline-flex rounded-lg border p-0.5">
+                        {(["cm", "time"] as const).map((u) => (
+                          <button
+                            key={u}
+                            type="button"
+                            onClick={() => setTestForm((f) => ({ ...f, resultUnit: u }))}
+                            className={cn(
+                              "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                              testForm.resultUnit === u ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                            )}
+                            data-testid={`button-result-unit-${u}`}
+                          >
+                            {u === "cm" ? "cm" : L("tid (s)", "time (s)")}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
                     <div className="lg:col-span-3">
                       <label className="mb-1 block text-sm font-medium">{L("Notater", "Notes")}</label>
@@ -4296,7 +4332,7 @@ export default function AthleteDetail() {
                             ))}
                             {distanceLabels.map((_, roundIdx) => (
                               <React.Fragment key={roundIdx}>
-                                <th className="px-3 pb-1">{L("Resultat (cm)", "Result (cm)")}</th>
+                                <th className="px-3 pb-1">{testForm.resultUnit === "time" ? L("Resultat (s)", "Result (s)") : L("Resultat (cm)", "Result (cm)")}</th>
                                 <th className="px-3 pb-1">{L("Rang", "Rank")}</th>
                               </React.Fragment>
                             ))}
@@ -4351,6 +4387,7 @@ export default function AthleteDetail() {
                                       <Input
                                         inputMode="decimal"
                                         type="number"
+                                        step="any"
                                         value={rr.result ?? ""}
                                         onChange={(e) => {
                                           const v = e.target.value;
@@ -4669,6 +4706,46 @@ export default function AthleteDetail() {
             </div>
             </div>{/* end grid */}
 
+            {isFleetAthlete && (
+              <div className="mb-3">
+                <label className="mb-1 block text-sm font-medium">{L("Gruppe/serie", "Group/series")}</label>
+                <Input value={(skiForm as any).fleetGroup}
+                  onChange={(e) => setSkiForm((f) => ({ ...f, fleetGroup: e.target.value }))}
+                  placeholder={L("f.eks. S1", "e.g. S1")} data-testid="input-ski-fleet-group" />
+                {(() => {
+                  const existing = Array.from(new Set(skis.map((sk) => (sk as any).fleetGroup?.trim()).filter(Boolean))) as string[];
+                  const q = ((skiForm as any).fleetGroup || "").trim().toLowerCase();
+                  const shown = existing.filter((g) => g.toLowerCase() !== q && (!q || g.toLowerCase().includes(q)));
+                  if (shown.length === 0) return null;
+                  return (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {shown.slice(0, 8).map((g) => (
+                        <button key={g} type="button" onClick={() => setSkiForm((f) => ({ ...f, fleetGroup: g }))}
+                          className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/70 hover:text-foreground">
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+            {isFleetAthlete && (
+              <button
+                type="button"
+                onClick={() => setSkiForm((f) => ({ ...f, isSitski: !(f as any).isSitski }))}
+                className={cn(
+                  "mb-2 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors",
+                  (skiForm as any).isSitski ? "border-fuchsia-400 bg-fuchsia-50 dark:bg-fuchsia-900/20" : "border-border bg-muted/30"
+                )}
+                data-testid="toggle-sitski"
+              >
+                <span className="font-medium">{L("Sitski (piggekjelke)", "Sit-ski (sledge)")}</span>
+                <span className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", (skiForm as any).isSitski ? "bg-fuchsia-500" : "bg-muted-foreground/30")}>
+                  <span className={cn("inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform", (skiForm as any).isSitski ? "translate-x-4" : "translate-x-0.5")} />
+                </span>
+              </button>
+            )}
             {/* Training-ski toggle */}
             <button
               type="button"
@@ -6163,8 +6240,11 @@ function SkiDetailPanel({
   return (
     <div className="space-y-4">
       {/* Training badge + notes */}
-      {(ski.isTrainingSki === 1 || ski.typeOfSki) && (
+      {(ski.isTrainingSki === 1 || ski.typeOfSki || (ski as any).fleetGroup) && (
         <div className="flex flex-wrap items-center gap-2">
+          {(ski as any).fleetGroup && (
+            <span className="rounded-full bg-sky-100 dark:bg-sky-900/30 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">{(ski as any).fleetGroup}</span>
+          )}
           {ski.typeOfSki && (
             <span className="rounded-full bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800">{ski.typeOfSki}</span>
           )}
@@ -6785,6 +6865,11 @@ function SkiCard({
               {ski.isTrainingSki === 1 && (
                 <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800">
                   {L("Trening", "Training")}
+                </span>
+              )}
+              {(ski as any).fleetGroup && (
+                <span className="rounded-full bg-sky-100 dark:bg-sky-900/30 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
+                  {(ski as any).fleetGroup}
                 </span>
               )}
             </div>

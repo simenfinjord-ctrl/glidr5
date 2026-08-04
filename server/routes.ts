@@ -943,6 +943,7 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS result_unit TEXT;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS fleet_group TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS is_fleet INTEGER NOT NULL DEFAULT 0;
       CREATE TABLE IF NOT EXISTS scan_corrections (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -4112,7 +4113,8 @@ export async function registerRoutes(
         try {
           const { pool: pgFl } = await import("./db");
           const fl = await (pgFl as any).query(
-            `SELECT id FROM race_skis WHERE athlete_id IS NULL AND team_id = $1`, [getActiveTeamId(req)]);
+            `SELECT rs.id FROM race_skis rs JOIN athletes a ON a.id = rs.athlete_id AND a.is_fleet = 1
+             WHERE a.team_id = $1`, [getActiveTeamId(req)]);
           for (const row of fl.rows) allowedIds.add(row.id);
         } catch { /* additive */ }
         for (const rsId of raceSkiIds) {
@@ -4127,6 +4129,23 @@ export async function registerRoutes(
     // the time_tests feature; everyone else silently stays on cm.
     const resultUnit = req.body.resultUnit === "time" && (await teamHasFeature(teamId, "time_tests")) ? "time" : "cm";
 
+    // Fleet tests belong to the hidden fleet athlete: if no athlete was given
+    // and the entries' skis are the fleet's, attach it so the test shows on
+    // the Race fleets page's Tests tab.
+    let resolvedAthleteId = testSkiSource === "raceskis" ? (req.body.athleteId || null) : null;
+    if (testSkiSource === "raceskis" && !resolvedAthleteId) {
+      try {
+        const { pool: pgFT } = await import("./db");
+        const ids = (req.body.entries || []).map((e: any) => e.raceSkiId).filter(Boolean);
+        if (ids.length > 0) {
+          const r = await (pgFT as any).query(
+            `SELECT DISTINCT a.id FROM race_skis rs JOIN athletes a ON a.id = rs.athlete_id
+             WHERE rs.id = ANY($1::int[]) AND a.is_fleet = 1 AND a.team_id = $2`, [ids, teamId]);
+          if (r.rows.length === 1) resolvedAthleteId = r.rows[0].id;
+        }
+      } catch { /* best-effort */ }
+    }
+
     const test = await storage.createTest({
       resultUnit,
       date: req.body.date,
@@ -4136,7 +4155,7 @@ export async function registerRoutes(
       noWeather: req.body.noWeather ? 1 : 0,
       testType: req.body.testType,
       seriesId: testSkiSource === "raceskis" ? null : req.body.seriesId,
-      athleteId: testSkiSource === "raceskis" ? (req.body.athleteId || null) : null,
+      athleteId: resolvedAthleteId,
       testSkiSource,
       notes: req.body.notes?.trim() || null,
       distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
@@ -4581,7 +4600,8 @@ export async function registerRoutes(
         try {
           const { pool: pgFl } = await import("./db");
           const fl = await (pgFl as any).query(
-            `SELECT id FROM race_skis WHERE athlete_id IS NULL AND team_id = $1`, [getActiveTeamId(req)]);
+            `SELECT rs.id FROM race_skis rs JOIN athletes a ON a.id = rs.athlete_id AND a.is_fleet = 1
+             WHERE a.team_id = $1`, [getActiveTeamId(req)]);
           for (const row of fl.rows) allowedIds.add(row.id);
         } catch { /* additive */ }
         for (const rsId of raceSkiIds) {
@@ -8699,6 +8719,19 @@ export async function registerRoutes(
     // unless the caller explicitly opts in (the Race skis archive view).
     const includeArchived = req.query.includeArchived === "1";
     let list = await storage.listAthletes(u.id, u.isScopeAdmin, teamId);
+    if (req.query.includeFleet === "1") {
+      try {
+        const { pool: pgIF } = await import("./db");
+        const fr = await (pgIF as any).query(`SELECT * FROM athletes WHERE team_id = $1 AND is_fleet = 1`, [teamId]);
+        for (const row of fr.rows) {
+          list.push({
+            id: row.id, name: row.name, teamId: row.team_id, archived: row.archived,
+            isFleet: 1, createdById: row.created_by_id, createdByName: row.created_by_name,
+            createdAt: row.created_at,
+          } as any);
+        }
+      } catch { /* additive */ }
+    }
     if (!includeArchived) list = list.filter((a: any) => !a.archived);
     // Transferred athletes stay visible to the OLD team through the 14-day
     // grace window, flagged so the UI can badge them and offer revoke.
@@ -9433,9 +9466,10 @@ export async function registerRoutes(
       const teamId = getActiveTeamId(req);
       const { pool: pgF } = await import("./db");
       const fl = await (pgF as any).query(
-        `SELECT id, ski_id AS "skiId", serial_number AS "serialNumber", brand, discipline, grind,
-                fleet_group AS "fleetGroup", NULL AS "athleteId"
-         FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 AND archived_at IS NULL`, [teamId]);
+        `SELECT rs.id, rs.ski_id AS "skiId", rs.serial_number AS "serialNumber", rs.brand, rs.discipline, rs.grind,
+                rs.fleet_group AS "fleetGroup", rs.athlete_id AS "athleteId", 1 AS "isFleet"
+         FROM race_skis rs JOIN athletes a ON a.id = rs.athlete_id AND a.is_fleet = 1
+         WHERE a.team_id = $1 AND rs.archived_at IS NULL`, [teamId]);
       const have = new Set((list as any[]).map((x: any) => x.id));
       for (const row of fl.rows) if (!have.has(row.id)) (list as any[]).push(row);
     } catch { /* fleet skis are additive */ }
@@ -9494,6 +9528,8 @@ export async function registerRoutes(
       whereReceived: req.body.whereReceived || null,
       notes: req.body.notes || null,
       isTrainingSki: req.body.isTrainingSki ? 1 : 0,
+      isSitski: req.body.isSitski ? 1 : 0,
+      fleetGroup: (req.body.fleetGroup ? String(req.body.fleetGroup).trim() : null) || null,
       customParams: req.body.customParams || null,
       createdAt: now,
       createdById: u.id,
@@ -9503,6 +9539,59 @@ export async function registerRoutes(
   });
 
   // ─── Race fleet (team competition skis not tied to an athlete) ──────────────
+  // ── Fleet-athlete backfill ────────────────────────────────────────────────
+  // Race fleets ARE an athlete (a hidden one per team) so the whole Athlete
+  // Skis page applies unchanged. Attach any legacy fleet skis (athlete_id
+  // NULL) and their tests to that athlete. Idempotent; runs at every boot.
+  (async () => {
+    try {
+      const { pool: pgFA } = await import("./db");
+      const orphanTeams = await (pgFA as any).query(
+        `SELECT DISTINCT team_id FROM race_skis WHERE athlete_id IS NULL AND team_id IS NOT NULL`);
+      for (const row of orphanTeams.rows) {
+        const teamId = row.team_id;
+        let fa = await (pgFA as any).query(
+          `SELECT id FROM athletes WHERE team_id = $1 AND is_fleet = 1 LIMIT 1`, [teamId]);
+        let fleetId = fa.rows[0]?.id;
+        if (!fleetId) {
+          const ins = await (pgFA as any).query(
+            `INSERT INTO athletes (name, created_at, created_by_id, created_by_name, team_id, is_fleet)
+             VALUES ('Race fleets', $1, 0, 'System', $2, 1) RETURNING id`,
+            [new Date().toISOString(), teamId]);
+          fleetId = ins.rows[0].id;
+        }
+        await (pgFA as any).query(
+          `UPDATE race_skis SET athlete_id = $1 WHERE athlete_id IS NULL AND team_id = $2`, [fleetId, teamId]);
+        // Fleet tests (race-ski tests without an athlete) belong to it too —
+        // that is what puts them on the fleet page's Tests tab.
+        await (pgFA as any).query(
+          `UPDATE tests SET athlete_id = $1
+           WHERE team_id = $2 AND test_ski_source = 'raceskis' AND athlete_id IS NULL
+             AND id IN (SELECT te.test_id FROM test_entries te JOIN race_skis rs ON rs.id = te.race_ski_id WHERE rs.athlete_id = $1)`,
+          [fleetId, teamId]);
+      }
+      if (orphanTeams.rows.length > 0) console.log(`[fleet-athlete] backfilled ${orphanTeams.rows.length} team(s)`);
+    } catch (e) { console.error("[fleet-athlete] backfill failed:", e); }
+  })();
+
+  // Resolve (and lazily create) the active team's fleet athlete — the client's
+  // /race-fleet route redirects to /raceskis/<id>.
+  app.get("/api/race-fleet/athlete", requirePermission("raceskis", "view"), async (req, res) => {
+    if (!(await requireParaTeam(req, res))) return;
+    const teamId = getActiveTeamId(req);
+    const { pool: pgFA } = await import("./db");
+    let fa = await (pgFA as any).query(`SELECT id FROM athletes WHERE team_id = $1 AND is_fleet = 1 LIMIT 1`, [teamId]);
+    let fleetId = fa.rows[0]?.id;
+    if (!fleetId) {
+      const ins = await (pgFA as any).query(
+        `INSERT INTO athletes (name, created_at, created_by_id, created_by_name, team_id, is_fleet)
+         VALUES ('Race fleets', $1, 0, 'System', $2, 1) RETURNING id`,
+        [new Date().toISOString(), teamId]);
+      fleetId = ins.rows[0].id;
+    }
+    res.json({ athleteId: fleetId });
+  });
+
   // Enabled by the "para_team" feature. Fleet skis live in race_skis with a null
   // athlete_id and a team_id, and may be flagged as a sit-ski.
   async function requireParaTeam(req: Request, res: Response): Promise<boolean> {
@@ -9730,6 +9819,8 @@ export async function registerRoutes(
     if (req.body.notes !== undefined) data.notes = req.body.notes;
     if (req.body.isTrainingSki !== undefined) data.isTrainingSki = req.body.isTrainingSki ? 1 : 0;
     if (req.body.customParams !== undefined) data.customParams = req.body.customParams;
+    if (req.body.fleetGroup !== undefined) data.fleetGroup = (String(req.body.fleetGroup).trim() || null) as any;
+    if (req.body.isSitski !== undefined) data.isSitski = req.body.isSitski ? 1 : 0;
     const updated = await storage.updateRaceSki(id, data);
     await recordChange(req, "race_ski", id, `Race ski edited: ${ski.skiId}${ski.brand ? ` (${ski.brand})` : ""}`, ski, updated);
     await stampEdit("race_skis", id, req);

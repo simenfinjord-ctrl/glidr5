@@ -260,7 +260,7 @@ export default function NewTest() {
           serialNumber: ski.serialNumber,
           brand: ski.brand,
           discipline: ski.discipline,
-          athleteName: ski.athleteId == null ? fleetLabel : (athlete?.name || "Unknown"),
+          athleteName: (ski as any).isFleet === 1 || ski.athleteId == null ? fleetLabel : (athlete?.name || "Unknown"),
           grind: ski.grind,
         };
       });
@@ -991,7 +991,7 @@ export default function NewTest() {
             onDistanceLabelsChange={setDistanceLabels}
             testSkiSource={testSkiSource}
             raceSkis={raceSkiOptions}
-            raceSkiFleetIds={fleetMode ? new Set(allRaceSkis.filter((sk) => sk.athleteId == null).map((sk) => sk.id)) : undefined}
+            raceSkiFleetIds={fleetMode ? new Set(allRaceSkis.filter((sk) => (sk as any).isFleet === 1 || sk.athleteId == null).map((sk) => sk.id)) : undefined}
             skiLabels={seriesPairLabels}
             grindProfiles={grindProfiles}
             visibleGrindCols={visibleGrindCols}

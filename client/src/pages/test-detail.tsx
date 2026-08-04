@@ -759,6 +759,7 @@ export default function TestDetail() {
       toast({ title: t("testDetail.deleteTest") });
       setLocation(
         test?.testType === "Grind" ? "/grinding"
+        : isFleetTest ? "/race-fleet?tab=tests"
         : (isRaceSkiTest && (test as any).athleteId) ? `/raceskis/${(test as any).athleteId}?tab=tests`
         : "/tests"
       );
@@ -821,9 +822,17 @@ export default function TestDetail() {
 
   const isRaceSkiTest = test?.testSkiSource === "raceskis";
   const athleteId = test?.athleteId;
+  // The team's hidden "Race fleets" athlete: a test attached to it is a fleet
+  // test and navigates back to Race fleets, not to a person.
+  const { data: fleetInfo } = useQuery<{ athleteId: number }>({
+    queryKey: ["/api/race-fleet/athlete"],
+    enabled: isRaceSkiTest,
+    retry: false,
+  });
+  const isFleetTest = isRaceSkiTest && (!athleteId || athleteId === fleetInfo?.athleteId);
 
-  // Athlete tests read the athlete's garage; fleet tests have NO athlete, so
-  // their skis come from the team-wide list (which includes fleet skis).
+  // Athlete and fleet tests alike read their athlete's garage (the fleet is a
+  // hidden athlete); only legacy athlete-less tests fall back to the team list.
   const { data: teamRaceSkis = [] } = useQuery<RaceSki[]>({
     queryKey: ["/api/race-skis/all"],
     enabled: isRaceSkiTest && !athleteId,
@@ -1274,18 +1283,12 @@ export default function TestDetail() {
   })();
 
   return (
-    <AppShell activeNav={isRaceSkiTest
-      ? (entries.some((e) => { const rs = e.raceSkiId ? raceSkiByIdSort.get(e.raceSkiId) : null; return rs && (rs as any).athleteId == null; })
-          ? "/race-fleet" : "/raceskis")
-      : undefined}>
+    <AppShell activeNav={isRaceSkiTest ? (isFleetTest ? "/race-fleet" : "/raceskis") : undefined}>
       <div className="flex flex-col gap-5">
         <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               {(() => {
-                // A race-ski test WITHOUT an athlete is a fleet test — it came
-                // from Race fleets and goes back there, straight to Tests.
-                const isFleetTest = isRaceSkiTest && !(test as any).athleteId;
                 const backHref = isGrind ? "/grinding"
                   : isFleetTest ? "/race-fleet?tab=tests"
                   : (isRaceSkiTest && (test as any).athleteId) ? `/raceskis/${(test as any).athleteId}?tab=tests`

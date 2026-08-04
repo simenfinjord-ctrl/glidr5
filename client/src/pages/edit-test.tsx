@@ -428,7 +428,7 @@ export default function EditTest() {
           serialNumber: ski.serialNumber,
           brand: ski.brand,
           discipline: ski.discipline,
-          athleteName: (ski as any).athleteId == null ? fleetLabel : (athlete?.name || "Unknown"),
+          athleteName: (ski as any).isFleet === 1 || (ski as any).athleteId == null ? fleetLabel : (athlete?.name || "Unknown"),
           grind: ski.grind,
         };
       });

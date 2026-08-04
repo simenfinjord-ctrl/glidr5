@@ -872,9 +872,9 @@ export default function AthleteDetail() {
     try { localStorage.setItem("glidr-raceski-test-columns", JSON.stringify(activeTestColumns)); } catch {}
   }, [activeTestColumns]);
 
-  const [pageTab, setPageTab] = useState<"garage" | "tests" | "races" | "analytics" | "suggestions">(() => {
+  const [pageTab, setPageTab] = useState<"garage" | "tests" | "races" | "analytics" | "suggestions" | "athletes">(() => {
     const tab = new URLSearchParams(search).get("tab");
-    return tab === "tests" || tab === "races" || tab === "analytics" || tab === "suggestions" ? tab : "garage";
+    return tab === "tests" || tab === "races" || tab === "analytics" || tab === "suggestions" || tab === "athletes" ? tab : "garage";
   });
   const [testsExpanded, setTestsExpanded] = useState(true);
   const [testViewMode, setTestViewMode] = useState<"card" | "list">("card");
@@ -2658,6 +2658,19 @@ export default function AthleteDetail() {
               </span>
             )}
           </button>
+          {isFleetAthlete && (
+            <button
+              onClick={() => setPageTab("athletes")}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                pageTab === "athletes" ? "border-transparent" : "border-transparent text-muted-foreground hover:text-foreground/80"
+              }`}
+              style={pageTab === "athletes" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
+              data-testid="tab-my-athletes"
+            >
+              <Users className="h-4 w-4" />
+              {language === "no" ? "Mine utøvere" : "My athletes"}
+            </button>
+          )}
           <button
             onClick={() => setPageTab("races")}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
@@ -2699,6 +2712,9 @@ export default function AthleteDetail() {
         </div>
 
         {/* ── Race History tab ─────────────────────────────────────────────── */}
+        {pageTab === "athletes" && isFleetAthlete && (
+          <MyAthletesSection weatherList={weather} canEdit={!isAthletePortal && can("raceskis", "edit")} />
+        )}
         {pageTab === "races" && raceHistory.length === 0 && (
           <div className="text-center py-10 text-muted-foreground text-sm">
             <Flag className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -6187,8 +6203,15 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
   const [usageForm, setUsageForm] = useState({
     date: new Date().toISOString().slice(0, 10), location: "", discipline: ski.discipline,
     weatherMode: "link" as "link" | "manual", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "",
+    usedByAthleteId: "", waxNotes: "",
   });
+  const [usedBySearch, setUsedBySearch] = useState("");
   const { data: usages = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
+  // Who raced the pair — regular athletes and My-athletes profiles alike.
+  const { data: teamPeople = [] } = useQuery<{ id: number; name: string; sportClass?: string | null }[]>({
+    queryKey: ["/api/athletes?includeProfiles=1"],
+    enabled: usageOpen,
+  });
   const { data: prepFeedback = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/prep-feedback`] });
   const usageWeatherOptions = useMemo(() => weatherList.filter((w) => w.date === usageForm.date), [weatherList, usageForm.date]);
   const ratingClass = (r: string) =>
@@ -6208,12 +6231,15 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
         date: usageForm.date, location: usageForm.location || null, discipline: usageForm.discipline,
         weatherId: usageForm.weatherMode === "link" && usageForm.weatherId ? parseInt(usageForm.weatherId) : null,
         manualWeather, result: usageForm.result || null, notes: usageForm.notes || null,
+        usedByAthleteId: usageForm.usedByAthleteId ? parseInt(usageForm.usedByAthleteId) : null,
+        waxNotes: usageForm.waxNotes || null,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
       setUsageOpen(false);
-      setUsageForm((f) => ({ ...f, location: "", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "" }));
+      setUsageForm((f) => ({ ...f, location: "", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "", usedByAthleteId: "", waxNotes: "" }));
+      setUsedBySearch("");
     },
   });
   const deleteUsage = useMutation({
@@ -6243,6 +6269,17 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                 <div className="text-[11px]">
                   <span className="font-medium text-foreground">{usage.location || "—"}{usage.date ? ` · ${fmtDate(usage.date)}` : ""}</span>
                   {usage.discipline && <span className="text-muted-foreground"> · {usage.discipline}</span>}
+                  {usage.usedByName && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800">
+                      <UserIcon className="h-2.5 w-2.5" />{usage.usedByName}
+                    </span>
+                  )}
+                  {usage.source === "raceprep" && (
+                    <span className="ml-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300">Race Prep</span>
+                  )}
+                  {usage.waxNotes && (
+                    <div className="mt-0.5 text-[10px] text-muted-foreground italic">{L("Smøring: ", "Wax: ")}{usage.waxNotes}</div>
+                  )}
                   {w && (
                     <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
                       {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {fmtT(w.snowTemperatureC)}</span>}
@@ -6250,6 +6287,7 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                       {w.snowType && <span>{w.snowType}</span>}
                     </div>
                   )}
+                  {usage.source !== "raceprep" && (
                   <RaceUsageFeedbackEditor
                     skiId={ski.id}
                     usageId={usage.id}
@@ -6259,13 +6297,14 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                     onSaved={() => queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] })}
                     lang={language === "no" ? "no" : "en"}
                   />
+                  )}
                 </div>
                 {usage.notes && (
                   <div className="flex-1 min-w-0 text-[11px] text-muted-foreground italic border-l border-border/50 pl-2 self-stretch" data-testid={`usage-note-${usage.id}`}>
                     {usage.notes}
                   </div>
                 )}
-                {canEdit && (
+                {canEdit && usage.source !== "raceprep" && (
                   <button onClick={() => deleteUsage.mutate(usage.id)} className="text-muted-foreground/50 hover:text-red-500 shrink-0" data-testid={`button-delete-usage-${usage.id}`}>
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -6340,6 +6379,43 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                   <Input value={usageForm.snowType} onChange={(e) => setUsageForm((f) => ({ ...f, snowType: e.target.value }))} placeholder={L("Snøtype", "Snow type")} />
                 </div>
               )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">{L("Brukt av (utøver)", "Used by (athlete)")}</label>
+              {usageForm.usedByAthleteId ? (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                    {teamPeople.find((a) => String(a.id) === usageForm.usedByAthleteId)?.name || "…"}
+                    <button type="button" onClick={() => setUsageForm((f) => ({ ...f, usedByAthleteId: "" }))} className="hover:text-red-500" data-testid="button-clear-used-by">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="relative mb-1.5">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                    <Input value={usedBySearch} onChange={(e) => setUsedBySearch(e.target.value)} placeholder={L("Søk utøver…", "Search athlete…")} className="h-8 pl-7 text-xs" data-testid="input-used-by-search" />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                    {teamPeople
+                      .filter((a) => !usedBySearch.trim() || a.name.toLowerCase().includes(usedBySearch.toLowerCase().trim()))
+                      .slice(0, 20)
+                      .map((a) => (
+                        <button key={a.id} type="button" onClick={() => setUsageForm((f) => ({ ...f, usedByAthleteId: String(a.id) }))}
+                          className="rounded-full border border-border bg-background/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-indigo-300 hover:text-foreground"
+                          data-testid={`button-used-by-${a.id}`}>
+                          {a.name}{a.sportClass ? ` · ${a.sportClass}` : ""}
+                        </button>
+                      ))}
+                    {teamPeople.length === 0 && <p className="text-[11px] text-muted-foreground">{L("Ingen utøvere. Legg til under Mine utøvere.", "No athletes. Add them under My athletes.")}</p>}
+                  </div>
+                </>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">{L("Wax-notes (dagens smøring)", "Wax notes (today's wax)")}</label>
+              <Input value={usageForm.waxNotes} onChange={(e) => setUsageForm((f) => ({ ...f, waxNotes: e.target.value }))} placeholder={L("f.eks. HF8 + topping…", "e.g. HF8 + topping…")} data-testid="input-usage-wax-notes" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">{L("Kommentar", "Comment")}</label>
@@ -6969,40 +7045,6 @@ function SkiCard({
     select: (rows) => [...rows].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
   });
 
-  // Waxer-logged race usages for this ski pair (no admin race prep needed)
-  const [usageOpen, setUsageOpen] = useState(false);
-  const [usageForm, setUsageForm] = useState({
-    date: new Date().toISOString().slice(0, 10), location: "", discipline: ski.discipline,
-    weatherMode: "link" as "link" | "manual", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "",
-  });
-  const { data: usages = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/usages`], enabled: expanded });
-  const usageWeatherOptions = useMemo(() => weatherList.filter((w) => w.date === usageForm.date), [weatherList, usageForm.date]);
-  const saveUsage = useMutation({
-    mutationFn: async () => {
-      const manualWeather = usageForm.weatherMode === "manual"
-        ? JSON.stringify({
-            snowTemperatureC: usageForm.snowTemp ? parseFloat(usageForm.snowTemp.replace(",", ".")) : null,
-            airTemperatureC: usageForm.airTemp ? parseFloat(usageForm.airTemp.replace(",", ".")) : null,
-            snowType: usageForm.snowType || null,
-          })
-        : null;
-      await apiRequest("POST", `/api/race-skis/${ski.id}/usages`, {
-        date: usageForm.date, location: usageForm.location || null, discipline: usageForm.discipline,
-        weatherId: usageForm.weatherMode === "link" && usageForm.weatherId ? parseInt(usageForm.weatherId) : null,
-        manualWeather, result: usageForm.result || null, notes: usageForm.notes || null,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
-      setUsageOpen(false);
-      setUsageForm((f) => ({ ...f, location: "", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "" }));
-    },
-  });
-  const deleteUsage = useMutation({
-    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/race-skis/${ski.id}/usages/${id}`); },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] }),
-  });
-
   const skiColorId = getSkiColor(ski);
   const skiColorEntry = SKI_COLORS.find((c) => c.id === skiColorId);
 
@@ -7265,114 +7307,11 @@ function SkiCard({
             );
           })()}
 
-          {/* Waxer-logged race usage */}
-          <div className="pt-2 border-t border-border/40">
-            <div className="flex items-center justify-between mb-1.5">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Løpsbruk", "Race usage")}</h3>
-              {!isArchived && (
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setUsageOpen(true)} data-testid={`button-add-usage-${ski.id}`}>
-                  <Plus className="h-3 w-3 mr-1" />{L("Logg løpsbruk", "Log race use")}
-                </Button>
-              )}
-            </div>
-            {usages.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground">{L("Ingen løpsbruk logget.", "No race use logged.")}</p>
-            ) : (
-              <div className="space-y-1.5">
-                {usages.map((usage) => {
-                  let mw: any = null; try { mw = usage.manualWeather ? JSON.parse(usage.manualWeather) : null; } catch {}
-                  const lw = usage.weatherId ? raceWeatherById.get(usage.weatherId) : null;
-                  const w: any = lw || mw;
-                  return (
-                    <div key={usage.id} className="flex items-start justify-between gap-2 rounded-lg bg-muted/30 px-3 py-1.5" data-testid={`row-usage-${usage.id}`}>
-                      <div className="text-[11px]">
-                        <span className="font-medium text-foreground">{usage.location || "—"}{usage.date ? ` · ${fmtDate(usage.date)}` : ""}</span>
-                        {usage.discipline && <span className="text-muted-foreground"> · {usage.discipline}</span>}
-                        {w && (
-                          <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
-                            {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {fmtT(w.snowTemperatureC)}</span>}
-                            {w.airTemperatureC != null && <span>{L("Luft", "Air")} {fmtT(w.airTemperatureC)}</span>}
-                            {w.snowType && <span>{w.snowType}</span>}
-                          </div>
-                        )}
-                      </div>
-                      {!isArchived && (
-                        <button onClick={() => deleteUsage.mutate(usage.id)} className="text-muted-foreground/50 hover:text-red-500 shrink-0" data-testid={`button-delete-usage-${usage.id}`}>
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Waxer-logged race usage — shared with the list view's detail panel. */}
+          <SkiRaceUsageSection ski={ski} weatherList={weatherList} raceWeatherById={raceWeatherById} canEdit={!isArchived} />
         </div>
       )}
 
-      <Dialog open={usageOpen} onOpenChange={setUsageOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{L("Logg løpsbruk", "Log race use")} — {ski.skiId}</DialogTitle></DialogHeader>
-          <div className="space-y-3 pb-12 sm:pb-0">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium">{L("Dato (valgfritt)", "Date (optional)")}</label>
-                <Input type="date" value={usageForm.date} onChange={(e) => setUsageForm((f) => ({ ...f, date: e.target.value, weatherId: "" }))} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium">{L("Stilart", "Discipline")}</label>
-                <Select value={usageForm.discipline} onValueChange={(v) => setUsageForm((f) => ({ ...f, discipline: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Classic">Classic</SelectItem>
-                    <SelectItem value="Skating">Skating</SelectItem>
-                    <SelectItem value="Double Poling">Double Poling</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium">{L("Sted", "Location")}</label>
-              <LocationAutocomplete value={usageForm.location} onChange={(v) => setUsageForm((f) => ({ ...f, location: v }))} placeholder={L("f.eks. Ruka", "e.g. Ruka")} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium">{L("Vær", "Weather")}</label>
-              <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setUsageForm((f) => ({ ...f, weatherMode: "link" }))} className={cn("flex-1 rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-colors", usageForm.weatherMode === "link" ? "border-primary bg-primary/5" : "border-border text-muted-foreground")}>{L("Koble til observasjon", "Link record")}</button>
-                <button type="button" onClick={() => setUsageForm((f) => ({ ...f, weatherMode: "manual" }))} className={cn("flex-1 rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-colors", usageForm.weatherMode === "manual" ? "border-primary bg-primary/5" : "border-border text-muted-foreground")}>{L("Manuelt", "Manual")}</button>
-              </div>
-              {usageForm.weatherMode === "link" ? (
-                usageWeatherOptions.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground">{L("Ingen værobservasjon på denne datoen.", "No weather record on this date.")}</p>
-                ) : (
-                  <Select value={usageForm.weatherId || "__none__"} onValueChange={(v) => setUsageForm((f) => ({ ...f, weatherId: v === "__none__" ? "" : v }))}>
-                    <SelectTrigger><SelectValue placeholder={L("Velg", "Choose")} /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
-                      {usageWeatherOptions.map((w) => (<SelectItem key={w.id} value={String(w.id)}>{w.location}{w.snowTemperatureC != null ? ` (${fmtT(w.snowTemperatureC)})` : ""}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                )
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  <Input value={usageForm.snowTemp} onChange={(e) => setUsageForm((f) => ({ ...f, snowTemp: e.target.value }))} placeholder={L("Snø °C", "Snow °C")} />
-                  <Input value={usageForm.airTemp} onChange={(e) => setUsageForm((f) => ({ ...f, airTemp: e.target.value }))} placeholder={L("Luft °C", "Air °C")} />
-                  <Input value={usageForm.snowType} onChange={(e) => setUsageForm((f) => ({ ...f, snowType: e.target.value }))} placeholder={L("Snøtype", "Snow type")} />
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium">{L("Kommentar", "Comment")}</label>
-              <Input value={usageForm.notes} onChange={(e) => setUsageForm((f) => ({ ...f, notes: e.target.value }))} placeholder={L("Valgfri kommentar…", "Optional comment…")} />
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={() => saveUsage.mutate()} disabled={saveUsage.isPending || !usageForm.date} data-testid="button-save-usage">
-                {saveUsage.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }
@@ -8850,5 +8789,293 @@ function AthleteAnalyticsView({
         setCompareSkiIds={setCompareSkiIds}
       />
     </div>
+  );
+}
+
+// ─── My athletes (Race fleets) ────────────────────────────────────────────────
+// The fleet page's people register: waxers create profile-only athletes here
+// (no own garage/page), regular Athlete Skis athletes appear too, and both
+// share the same record — edits land on /api/athletes either way. Each person
+// shows every fleet pair they have raced on, in which conditions, plus how
+// they like their skis waxed.
+const PROFILE_FIELDS: { key: keyof Athlete & string; no: string; en: string }[] = [
+  { key: "team", no: "Lag/klubb", en: "Team/club" },
+  { key: "sportClass", no: "Klasse", en: "Sport class" },
+  { key: "heightCm", no: "Høyde (cm)", en: "Height (cm)" },
+  { key: "weightKg", no: "Vekt (kg)", en: "Weight (kg)" },
+  { key: "poleHeight", no: "Stavhøyde klassisk", en: "Pole height classic" },
+  { key: "poleHeightSkate", no: "Stavhøyde skøyting", en: "Pole height skate" },
+  { key: "bindingPosition", no: "Bindingsposisjon", en: "Binding position" },
+  { key: "defaultSkiBrand", no: "Skimerke", en: "Ski brand" },
+];
+
+function MyAthletesSection({ weatherList, canEdit }: { weatherList: WeatherItem[]; canEdit: boolean }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const [searchQ, setSearchQ] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const emptyForm = { name: "", team: "", sportClass: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", defaultSkiBrand: "", skiServicePreferences: "" };
+  const [form, setForm] = useState<Record<string, string>>(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const { data: people = [] } = useQuery<(Athlete & { isProfileOnly?: number })[]>({
+    queryKey: ["/api/athletes?includeProfiles=1"],
+  });
+  const weatherById = useMemo(() => new Map(weatherList.map((w) => [w.id, w])), [weatherList]);
+
+  const filtered = useMemo(() => {
+    const q = searchQ.toLowerCase().trim();
+    const list = q ? people.filter((a) => [a.name, a.team, a.sportClass].filter(Boolean).some((v) => v!.toLowerCase().includes(q))) : people;
+    return [...list].sort((a, b) => a.name.localeCompare(b.name));
+  }, [people, searchQ]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const body = {
+        name: form.name.trim(),
+        team: form.team.trim() || null,
+        sportClass: form.sportClass.trim() || null,
+        heightCm: form.heightCm.trim() || null,
+        weightKg: form.weightKg.trim() || null,
+        poleHeight: form.poleHeight.trim() || null,
+        poleHeightSkate: form.poleHeightSkate.trim() || null,
+        bindingPosition: form.bindingPosition.trim() || null,
+        defaultSkiBrand: form.defaultSkiBrand.trim() || null,
+        skiServicePreferences: form.skiServicePreferences.trim() || null,
+      };
+      if (editingId != null) {
+        await apiRequest("PUT", `/api/athletes/${editingId}`, body);
+      } else {
+        await apiRequest("POST", "/api/athletes", { ...body, isProfileOnly: 1 });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes?includeProfiles=1"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
+      toast({ title: editingId != null ? L("Utøver oppdatert", "Athlete updated") : L("Utøver lagt til", "Athlete added") });
+      setAddOpen(false);
+      setEditingId(null);
+      setForm(emptyForm);
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  function openAdd() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setAddOpen(true);
+  }
+  function openEdit(a: Athlete) {
+    setEditingId(a.id);
+    setForm({
+      name: a.name || "", team: a.team || "", sportClass: a.sportClass || "",
+      heightCm: a.heightCm || "", weightKg: a.weightKg || "",
+      poleHeight: a.poleHeight || "", poleHeightSkate: a.poleHeightSkate || "",
+      bindingPosition: a.bindingPosition || "", defaultSkiBrand: a.defaultSkiBrand || "",
+      skiServicePreferences: a.skiServicePreferences || "",
+    });
+    setAddOpen(true);
+  }
+
+  return (
+    <div className="space-y-3" data-testid="section-my-athletes">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <Users className="h-5 w-5 text-primary" />
+          {L("Mine utøvere", "My athletes")}
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{people.length}</span>
+        </h2>
+        {canEdit && (
+          <Button size="sm" onClick={openAdd} data-testid="button-add-profile-athlete">
+            <Plus className="mr-1.5 h-3.5 w-3.5" />{L("Legg til utøver", "Add athlete")}
+          </Button>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {L("Personene som bruker lagets skipark. Utøvere med egen side i Athlete Skis vises også her — samme data begge steder. Logg løpsbruk på et skipar og velg utøver, så samles historikken her.",
+           "The people using the team's ski pool. Athletes with their own Athlete Skis page appear here too — same data in both places. Log race use on a pair and pick the athlete, and the history collects here.")}
+      </p>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder={L("Søk navn, lag, klasse…", "Search name, team, class…")} className="h-9 pl-8" data-testid="input-athlete-search" />
+      </div>
+      {filtered.length === 0 ? (
+        <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">
+          {people.length === 0
+            ? L("Ingen utøvere ennå. Legg til den første.", "No athletes yet. Add the first one.")
+            : L("Ingen utøvere matcher søket.", "No athletes match the search.")}
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((a) => (
+            <MyAthleteCard
+              key={a.id}
+              athlete={a}
+              expanded={expandedId === a.id}
+              onToggle={() => setExpandedId(expandedId === a.id ? null : a.id)}
+              onEdit={canEdit ? () => openEdit(a) : undefined}
+              weatherById={weatherById}
+            />
+          ))}
+        </div>
+      )}
+
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setEditingId(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId != null ? L("Rediger utøver", "Edit athlete") : L("Legg til utøver", "Add athlete")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pb-12 sm:pb-0">
+            <div>
+              <label className="mb-1 block text-sm font-medium">{L("Navn", "Name")} *</label>
+              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} data-testid="input-profile-name" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {PROFILE_FIELDS.map((fld) => (
+                <div key={fld.key}>
+                  <label className="mb-1 block text-sm font-medium">{L(fld.no, fld.en)}</label>
+                  <Input value={form[fld.key] ?? ""} onChange={(e) => setForm((f) => ({ ...f, [fld.key]: e.target.value }))} data-testid={`input-profile-${fld.key}`} />
+                </div>
+              ))}
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{L("Smørepreferanser", "Waxing preferences")}</label>
+              <Textarea
+                value={form.skiServicePreferences}
+                onChange={(e) => setForm((f) => ({ ...f, skiServicePreferences: e.target.value }))}
+                placeholder={L("Hvordan liker utøveren å få skiene smurt…", "How the athlete likes their skis waxed…")}
+                className="min-h-[70px]"
+                data-testid="input-profile-waxprefs"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()} data-testid="button-save-profile">
+                {saveMutation.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function MyAthleteCard({ athlete, expanded, onToggle, onEdit, weatherById }: {
+  athlete: Athlete & { isProfileOnly?: number };
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit?: () => void;
+  weatherById: Map<number, WeatherItem>;
+}) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { data: usages = [] } = useQuery<any[]>({
+    queryKey: [`/api/athletes/${athlete.id}/ski-usages`],
+    enabled: expanded,
+  });
+  const isProfile = athlete.isProfileOnly === 1;
+  return (
+    <Card className="fs-card rounded-2xl p-4" data-testid={`card-my-athlete-${athlete.id}`}>
+      <div className="flex items-center justify-between gap-2 cursor-pointer" onClick={onToggle}>
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <span className="font-semibold">{athlete.name}</span>
+          {athlete.sportClass && (
+            <span className="rounded-full bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800">{athlete.sportClass}</span>
+          )}
+          {athlete.team && <span className="text-xs text-muted-foreground">{athlete.team}</span>}
+          {isProfile ? (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{L("Profil", "Profile")}</span>
+          ) : (
+            <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800">Athlete Skis</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {!isProfile && (
+            <AppLink href={`/raceskis/${athlete.id}`}>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={(e: any) => e.stopPropagation()} data-testid={`link-athlete-page-${athlete.id}`}>
+                {L("Åpne side", "Open page")}
+              </Button>
+            </AppLink>
+          )}
+          {onEdit && (
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }} data-testid={`button-edit-athlete-${athlete.id}`}>
+              <Edit2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </div>
+      </div>
+      {expanded && (
+        <div className="mt-3 border-t border-border/40 pt-3 space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5">
+            {PROFILE_FIELDS.map((fld) => {
+              const v = (athlete as any)[fld.key];
+              if (!v) return null;
+              return (
+                <div key={fld.key}>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{L(fld.no, fld.en)}</div>
+                  <div className="text-sm">{v}</div>
+                </div>
+              );
+            })}
+          </div>
+          {athlete.skiServicePreferences && (
+            <div className="rounded-lg bg-sky-50/70 dark:bg-sky-950/20 border border-sky-200/70 dark:border-sky-900/40 px-3 py-2 text-xs text-sky-900 dark:text-sky-200 whitespace-pre-wrap" data-testid={`waxprefs-${athlete.id}`}>
+              <span className="font-semibold">{L("Smørepreferanser: ", "Waxing preferences: ")}</span>
+              {athlete.skiServicePreferences}
+            </div>
+          )}
+          <div>
+            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Skipar brukt", "Pairs used")}</h3>
+            {usages.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                {L("Ingen bruk logget ennå. Logg løpsbruk på et skipar i garasjen og velg denne utøveren, eller legg hen inn i Race Prep.",
+                   "No use logged yet. Log race use on a pair in the garage and pick this athlete, or add them in Race Prep.")}
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {usages.map((usage) => {
+                  let mw: any = null; try { mw = usage.manualWeather ? JSON.parse(usage.manualWeather) : null; } catch {}
+                  const lw = usage.weatherId ? weatherById.get(usage.weatherId) : null;
+                  const w: any = lw || mw;
+                  return (
+                    <div key={usage.id} className="rounded-lg bg-muted/30 px-3 py-1.5 text-[11px]" data-testid={`athlete-usage-${usage.id}`}>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <span className="inline-flex items-center rounded-md border bg-background/70 px-1.5 py-0.5 font-semibold">{usage.skiLabel}</span>
+                        {usage.fleetGroup && <span className="rounded-full bg-sky-100 dark:bg-sky-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-sky-700 dark:text-sky-300">{usage.fleetGroup}</span>}
+                        {usage.grind && <span className="text-muted-foreground">{usage.grind}</span>}
+                        <span className="font-medium">{usage.location || "—"}{usage.date ? ` · ${fmtDate(usage.date)}` : ""}</span>
+                        {usage.discipline && <span className="text-muted-foreground">{usage.discipline}</span>}
+                        {usage.source === "raceprep" && (
+                          <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300">Race Prep</span>
+                        )}
+                      </div>
+                      {w && (
+                        <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
+                          {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {fmtT(w.snowTemperatureC)}</span>}
+                          {w.airTemperatureC != null && <span>{L("Luft", "Air")} {fmtT(w.airTemperatureC)}</span>}
+                          {w.snowType && <span>{w.snowType}</span>}
+                        </div>
+                      )}
+                      {(usage.waxNotes || usage.notes) && (
+                        <div className="mt-0.5 text-muted-foreground italic">
+                          {usage.waxNotes && <div>{L("Smøring: ", "Wax: ")}{usage.waxNotes}</div>}
+                          {usage.notes && <div>{usage.notes}</div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }

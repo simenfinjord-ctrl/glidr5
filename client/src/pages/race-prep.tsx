@@ -632,7 +632,7 @@ function SkiIdCell({
 
   // Resolve the owner athlete's name for the "borrowed from" badge.
   const { data: athletesForName = [] } = useQuery<Athlete[]>({
-    queryKey: ["/api/athletes"],
+    queryKey: ["/api/athletes?includeProfiles=1"],
     enabled: displayBorrowedId != null,
   });
   const borrowedName = displayBorrowedId != null
@@ -935,7 +935,7 @@ function PrepDetailDialog({
   // the athletes THIS user has access to, which is exactly the edit right the
   // ski field needs below.
   const { data: athletes = [] } = useQuery<Athlete[]>({
-    queryKey: ["/api/athletes"],
+    queryKey: ["/api/athletes?includeProfiles=1"],
     enabled: open,
   });
   const accessibleAthleteIds = useMemo(() => new Set(athletes.map((a) => a.id)), [athletes]);

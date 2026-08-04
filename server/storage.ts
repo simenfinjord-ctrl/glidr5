@@ -745,6 +745,9 @@ export class DatabaseStorage implements IStorage {
     // The team's fleet athlete is common property: every raceskis-level user
     // on the team may work with it (the endpoints check the permission).
     if ((athlete as any).isFleet === 1) return true;
+    // Profile-only athletes are team-shared records (no personal garage), so
+    // every waxer with athlete access on the team may edit them.
+    if ((athlete as any).isProfileOnly === 1) return true;
     if (isAdmin) return true;
     if (athlete.createdById === userId) return true;
     const [access] = await db.select().from(athleteAccess).where(

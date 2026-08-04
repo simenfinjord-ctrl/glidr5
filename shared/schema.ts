@@ -615,6 +615,10 @@ export const athletes = pgTable("athletes", {
   // The team's hidden "Race fleets" athlete: owns the team's competition-ski
   // series. Never listed in rosters/pickers; /race-fleet opens its page.
   isFleet: integer("is_fleet").notNull().default(0),
+  // Profile-only athletes (created from Race fleets "My athletes"): a person
+  // record without an own garage/page — used to log who a fleet pair was
+  // given to. Hidden from the Athlete Skis roster.
+  isProfileOnly: integer("is_profile_only").notNull().default(0),
 });
 
 export const insertAthleteSchema = createInsertSchema(athletes).omit({ id: true });

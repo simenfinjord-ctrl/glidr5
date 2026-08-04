@@ -944,6 +944,9 @@ export async function registerRoutes(
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS result_unit TEXT;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS fleet_group TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS is_fleet INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS is_profile_only INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS used_by_athlete_id INTEGER;
+      ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS wax_notes TEXT;
       CREATE TABLE IF NOT EXISTS scan_corrections (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -8733,6 +8736,9 @@ export async function registerRoutes(
       } catch { /* additive */ }
     }
     if (!includeArchived) list = list.filter((a: any) => !a.archived);
+    // Profile-only athletes live in Race fleets' "My athletes" — rosters and
+    // pickers elsewhere don't see them unless they opt in.
+    if (req.query.includeProfiles !== "1") list = list.filter((a: any) => (a as any).isProfileOnly !== 1);
     // Transferred athletes stay visible to the OLD team through the 14-day
     // grace window, flagged so the UI can badge them and offer revoke.
     if (teamId) {
@@ -8804,6 +8810,7 @@ export async function registerRoutes(
       bindingPosition: req.body.bindingPosition || null,
       skiServicePreferences: req.body.skiServicePreferences || null,
       sportClass: req.body.sportClass || null,
+      isProfileOnly: req.body.isProfileOnly ? 1 : 0,
       mainWaxerId,
       mainWaxerName,
       createdAt: now,
@@ -9574,6 +9581,64 @@ export async function registerRoutes(
     } catch (e) { console.error("[fleet-athlete] backfill failed:", e); }
   })();
 
+  // Everything a person has raced on: manual fleet-usage logs where they were
+  // picked as the user, plus their race-prep entries resolved to team skis.
+  app.get("/api/athletes/:id/ski-usages", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, teamId))) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const { pool } = await import("./db");
+    const manual = await (pool as any).query(
+      `SELECT su.id, 'usage' AS source, su.date, su.location, su.discipline,
+              su.weather_id AS "weatherId", su.manual_weather AS "manualWeather",
+              su.result, su.notes, su.wax_notes AS "waxNotes",
+              rs.id AS "raceSkiId", rs.ski_id AS "skiLabel", rs.fleet_group AS "fleetGroup",
+              rs.brand, rs.grind, su.created_by_name AS "createdByName"
+       FROM ski_race_usages su JOIN race_skis rs ON rs.id = su.ski_id
+       WHERE su.used_by_athlete_id = $1 AND su.team_id = $2
+       ORDER BY su.date DESC`,
+      [athleteId, teamId]
+    );
+    let prepRows: any[] = [];
+    try {
+      const pr = await (pool as any).query(
+        `SELECT rpe.id, rp.date, rp.location, rp.discipline, rp.weather_id AS "weatherId",
+                rpe.ski_id AS "skiId1", rpe.ski_id_classic AS "skiId2", rpe.ski_id_skating AS "skiId3",
+                rpe.notes
+         FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
+         WHERE rpe.athlete_id = $1 AND rp.team_id = $2 ORDER BY rp.date DESC`,
+        [athleteId, teamId]
+      );
+      const labels = Array.from(new Set(pr.rows.flatMap((r: any) => [r.skiId1, r.skiId2, r.skiId3]).filter(Boolean)));
+      const skiByLabel = new Map<string, any>();
+      if (labels.length > 0) {
+        const sk = await (pool as any).query(
+          `SELECT rs.id, rs.ski_id AS "skiLabel", rs.fleet_group AS "fleetGroup", rs.brand, rs.grind
+           FROM race_skis rs JOIN athletes a ON a.id = rs.athlete_id
+           WHERE a.team_id = $1 AND rs.ski_id = ANY($2::text[])`,
+          [teamId, labels]
+        );
+        for (const row of sk.rows) skiByLabel.set(row.skiLabel, row);
+      }
+      prepRows = pr.rows.flatMap((r: any) =>
+        [r.skiId1, r.skiId2, r.skiId3].filter(Boolean).map((label: string, i: number) => {
+          const rs = skiByLabel.get(label);
+          return {
+            id: -(r.id * 10 + i), source: "raceprep", date: r.date, location: r.location,
+            discipline: r.discipline, weatherId: r.weatherId, manualWeather: null,
+            result: null, notes: r.notes, waxNotes: null,
+            raceSkiId: rs?.id ?? null, skiLabel: label, fleetGroup: rs?.fleetGroup ?? null,
+            brand: rs?.brand ?? null, grind: rs?.grind ?? null, createdByName: null,
+          };
+        })
+      );
+    } catch { /* additive */ }
+    res.json([...manual.rows, ...prepRows]);
+  });
+
   // Resolve (and lazily create) the active team's fleet athlete — the client's
   // /race-fleet route redirects to /raceskis/<id>.
   app.get("/api/race-fleet/athlete", requirePermission("raceskis", "view"), async (req, res) => {
@@ -9846,14 +9911,30 @@ export async function registerRoutes(
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
-      `SELECT id, ski_id AS "skiId", athlete_id AS "athleteId", date, location, discipline,
-              weather_id AS "weatherId", manual_weather AS "manualWeather", result, notes,
-              athlete_rating AS "athleteRating", athlete_comment AS "athleteComment",
-              created_by_name AS "createdByName", created_at AS "createdAt"
-       FROM ski_race_usages WHERE ski_id = $1 AND team_id = $2 ORDER BY date DESC`,
+      `SELECT su.id, su.ski_id AS "skiId", su.athlete_id AS "athleteId", su.date, su.location, su.discipline,
+              su.weather_id AS "weatherId", su.manual_weather AS "manualWeather", su.result, su.notes,
+              su.athlete_rating AS "athleteRating", su.athlete_comment AS "athleteComment",
+              su.used_by_athlete_id AS "usedByAthleteId", ua.name AS "usedByName", su.wax_notes AS "waxNotes",
+              su.created_by_name AS "createdByName", su.created_at AS "createdAt"
+       FROM ski_race_usages su LEFT JOIN athletes ua ON ua.id = su.used_by_athlete_id
+       WHERE su.ski_id = $1 AND su.team_id = $2 ORDER BY su.date DESC`,
       [skiId, getActiveTeamId(req)]
     );
-    res.json(result.rows);
+    // Race-prep days where this pair's ski-ID was entered also count as use —
+    // the prep already knows who raced it, where and when.
+    let prepRows: any[] = [];
+    try {
+      const pr = await (pool as any).query(
+        `SELECT rpe.id, rp.date, rp.location, rp.discipline, rp.weather_id AS "weatherId",
+                rpe.athlete_id AS "usedByAthleteId", rpe.athlete_name AS "usedByName", rpe.notes
+         FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
+         WHERE rp.team_id = $1 AND (rpe.ski_id = $2 OR rpe.ski_id_classic = $2 OR rpe.ski_id_skating = $2)
+         ORDER BY rp.date DESC`,
+        [getActiveTeamId(req), ski.skiId]
+      );
+      prepRows = pr.rows.map((r: any) => ({ ...r, id: -r.id, source: "raceprep" }));
+    } catch { /* additive */ }
+    res.json([...result.rows, ...prepRows]);
   });
 
   app.post("/api/race-skis/:id/usages", requirePermission("raceskis", "edit"), async (req, res) => {
@@ -9863,15 +9944,16 @@ export async function registerRoutes(
     if (!ski) return res.status(404).json({ message: "Not found" });
     const hasAccess = await canTouchRaceSki(ski, req, u);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
-    const { date, location, discipline, weatherId, manualWeather, result: raceResult, notes } = req.body;
+    const { date, location, discipline, weatherId, manualWeather, result: raceResult, notes, usedByAthleteId, waxNotes } = req.body;
     // #18: date is optional. The column is NOT NULL, so store "" when omitted.
     const { pool } = await import("./db");
+    const usedBy = usedByAthleteId != null && usedByAthleteId !== "" ? parseInt(String(usedByAthleteId)) : null;
     const inserted = await (pool as any).query(
-      `INSERT INTO ski_race_usages (ski_id, athlete_id, team_id, date, location, discipline, weather_id, manual_weather, result, notes, created_by_id, created_by_name, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+      `INSERT INTO ski_race_usages (ski_id, athlete_id, team_id, date, location, discipline, weather_id, manual_weather, result, notes, used_by_athlete_id, wax_notes, created_by_id, created_by_name, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
       [skiId, ski.athleteId, getActiveTeamId(req), date || "", location || null, discipline || null,
        weatherId || null, manualWeather ? (typeof manualWeather === "string" ? manualWeather : JSON.stringify(manualWeather)) : null,
-       raceResult || null, notes || null, u.id, u.name, new Date().toISOString()]
+       raceResult || null, notes || null, usedBy && !isNaN(usedBy) ? usedBy : null, waxNotes || null, u.id, u.name, new Date().toISOString()]
     );
     res.json({ id: inserted.rows[0].id });
   });

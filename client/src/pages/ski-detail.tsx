@@ -4,7 +4,7 @@
 // with the pair's own row highlighted — same idea as the product detail page.
 // Reached from "Show tests" on a pair (Athlete Skis / Race fleets) and from
 // the fleet Analytics tab.
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { ArrowLeft, Trophy, TrendingUp, FlaskConical, Flag, Thermometer, Snowflake } from "lucide-react";
@@ -102,6 +102,23 @@ function denseRanks(entries: SkiTestEntry[]): Map<number, number> {
 
 const fmtAvg = (v: number | null) => (v == null ? "—" : String(Math.round(v * 1000) / 1000));
 
+// Every weather value the page can show, with a presence check per test —
+// drives both the per-test chips and the on/off toggles at the top.
+const WEATHER_FIELDS: { key: string; no: string; en: string; has: (t: SkiTest) => boolean }[] = [
+  { key: "air", no: "Lufttemp", en: "Air temp", has: (t) => t.airTemperatureC != null },
+  { key: "snow", no: "Snøtemp", en: "Snow temp", has: (t) => t.snowTemperatureC != null },
+  { key: "airhum", no: "Luftfukt", en: "Air humidity", has: (t) => t.airHumidityPct != null },
+  { key: "snowhum", no: "Snøfukt", en: "Snow humidity", has: (t) => t.snowHumidityPct != null },
+  { key: "snowtype", no: "Snøtype", en: "Snow type", has: (t) => !!t.snowType },
+  { key: "grain", no: "Kornstørrelse", en: "Grain size", has: (t) => !!t.grainSize },
+  { key: "shtype", no: "Snøfukt-type", en: "Snow humidity type", has: (t) => !!t.snowHumidityType },
+  { key: "track", no: "Sporhardhet", en: "Track hardness", has: (t) => !!t.trackHardness },
+  { key: "snowkind", no: "Kunst/natursnø", en: "Artificial/natural", has: (t) => t.artificialSnow === 1 || t.naturalSnow === 1 },
+  { key: "precip", no: "Nedbør", en: "Precipitation", has: (t) => !!t.precipitation },
+  { key: "wind", no: "Vind", en: "Wind", has: (t) => !!t.wind },
+  { key: "clouds", no: "Skydekke", en: "Cloud cover", has: (t) => t.clouds != null },
+];
+
 export default function SkiDetail() {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -144,6 +161,21 @@ export default function SkiDetail() {
   }, [data]);
 
   const backHref = isFleetSki ? "/race-fleet" : data ? `/raceskis/${data.ski.athleteId}` : "/raceskis";
+
+  // Weather display toggles: all on by default; only fields this pair's tests
+  // actually carry are offered.
+  const [hiddenWeather, setHiddenWeather] = useState<Set<string>>(new Set());
+  const usedWeatherFields = useMemo(() => {
+    if (!data) return [];
+    return WEATHER_FIELDS.filter((f) => data.tests.some((t) => f.has(t)));
+  }, [data]);
+  function toggleWeatherField(key: string) {
+    setHiddenWeather((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
 
   return (
     <AppShell activeNav={isFleetSki ? "/race-fleet" : "/raceskis"}>
@@ -193,6 +225,31 @@ export default function SkiDetail() {
                 ))}
               </div>
 
+              {usedWeatherFields.length > 0 && (
+                <div className="mt-4" data-testid="weather-field-toggles">
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Værdata som vises", "Weather data shown")}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {usedWeatherFields.map((f) => {
+                      const on = !hiddenWeather.has(f.key);
+                      return (
+                        <button
+                          key={f.key}
+                          type="button"
+                          onClick={() => toggleWeatherField(f.key)}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition-colors",
+                            on ? "bg-primary/10 text-primary ring-primary/40" : "bg-muted/40 text-muted-foreground/60 ring-border line-through"
+                          )}
+                          data-testid={`toggle-weather-${f.key}`}
+                        >
+                          {L(f.no, f.en)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Test history */}
               <h2 className="mt-6 mb-1 flex items-center gap-2 text-lg font-semibold">
                 <FlaskConical className="h-5 w-5 text-primary" />{L("Testhistorikk", "Test History")}
@@ -223,20 +280,20 @@ export default function SkiDetail() {
                         {(() => {
                           // Every recorded weather value for the day, as chips.
                           const chips: { key: string; label: string; icon?: any; cls?: string }[] = [];
-                          if (test.airTemperatureC != null) chips.push({ key: "air", label: `${L("Luft", "Air")} ${fmtT(test.airTemperatureC)}`, icon: Thermometer, cls: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800" });
-                          if (test.snowTemperatureC != null) chips.push({ key: "snow", label: `${L("Snø", "Snow")} ${fmtT(test.snowTemperatureC)}`, icon: Snowflake, cls: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800" });
-                          if (test.airHumidityPct != null) chips.push({ key: "airhum", label: `${L("Luftfukt", "Air hum")} ${test.airHumidityPct}%` });
-                          if (test.snowHumidityPct != null) chips.push({ key: "snowhum", label: `${L("Snøfukt", "Snow hum")} ${test.snowHumidityPct}%` });
-                          if (test.snowType) chips.push({ key: "snowtype", label: test.snowType });
-                          if (test.grainSize) chips.push({ key: "grain", label: `${L("Korn", "Grain")} ${test.grainSize}` });
-                          if (test.snowHumidityType) chips.push({ key: "shtype", label: test.snowHumidityType });
-                          if (test.trackHardness) chips.push({ key: "track", label: `${L("Spor", "Track")} ${test.trackHardness}` });
-                          if (test.artificialSnow === 1 && test.naturalSnow === 1) chips.push({ key: "mixsnow", label: L("Kunst + natur", "Artificial + natural") });
-                          else if (test.artificialSnow === 1) chips.push({ key: "artsnow", label: L("Kunstsnø", "Artificial snow") });
-                          else if (test.naturalSnow === 1) chips.push({ key: "natsnow", label: L("Natursnø", "Natural snow") });
-                          if (test.precipitation) chips.push({ key: "precip", label: test.precipitation });
-                          if (test.wind) chips.push({ key: "wind", label: `${L("Vind", "Wind")} ${test.wind}` });
-                          if (test.clouds != null) chips.push({ key: "clouds", label: `${L("Skyer", "Clouds")} ${test.clouds}/8` });
+                          if (!hiddenWeather.has("air") && test.airTemperatureC != null) chips.push({ key: "air", label: `${L("Luft", "Air")} ${fmtT(test.airTemperatureC)}`, icon: Thermometer, cls: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800" });
+                          if (!hiddenWeather.has("snow") && test.snowTemperatureC != null) chips.push({ key: "snow", label: `${L("Snø", "Snow")} ${fmtT(test.snowTemperatureC)}`, icon: Snowflake, cls: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800" });
+                          if (!hiddenWeather.has("airhum") && test.airHumidityPct != null) chips.push({ key: "airhum", label: `${L("Luftfukt", "Air hum")} ${test.airHumidityPct}%` });
+                          if (!hiddenWeather.has("snowhum") && test.snowHumidityPct != null) chips.push({ key: "snowhum", label: `${L("Snøfukt", "Snow hum")} ${test.snowHumidityPct}%` });
+                          if (!hiddenWeather.has("snowtype") && test.snowType) chips.push({ key: "snowtype", label: test.snowType });
+                          if (!hiddenWeather.has("grain") && test.grainSize) chips.push({ key: "grain", label: `${L("Korn", "Grain")} ${test.grainSize}` });
+                          if (!hiddenWeather.has("shtype") && test.snowHumidityType) chips.push({ key: "shtype", label: test.snowHumidityType });
+                          if (!hiddenWeather.has("track") && test.trackHardness) chips.push({ key: "track", label: `${L("Spor", "Track")} ${test.trackHardness}` });
+                          if (!hiddenWeather.has("snowkind") && test.artificialSnow === 1 && test.naturalSnow === 1) chips.push({ key: "mixsnow", label: L("Kunst + natur", "Artificial + natural") });
+                          else if (!hiddenWeather.has("snowkind") && test.artificialSnow === 1) chips.push({ key: "artsnow", label: L("Kunstsnø", "Artificial snow") });
+                          else if (!hiddenWeather.has("snowkind") && test.naturalSnow === 1) chips.push({ key: "natsnow", label: L("Natursnø", "Natural snow") });
+                          if (!hiddenWeather.has("precip") && test.precipitation) chips.push({ key: "precip", label: test.precipitation });
+                          if (!hiddenWeather.has("wind") && test.wind) chips.push({ key: "wind", label: `${L("Vind", "Wind")} ${test.wind}` });
+                          if (!hiddenWeather.has("clouds") && test.clouds != null) chips.push({ key: "clouds", label: `${L("Skyer", "Clouds")} ${test.clouds}/8` });
                           if (chips.length === 0) return null;
                           return (
                             <div className="mt-1 flex flex-wrap gap-1.5">

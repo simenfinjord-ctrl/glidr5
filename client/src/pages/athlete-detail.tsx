@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
+import { LastEdited } from "@/components/last-edited";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useRoute, useLocation, useSearch } from "wouter";
 import {
@@ -14,6 +15,7 @@ import {
   Edit2,
   Trash2,
   Users,
+  User as UserIcon,
   ChevronDown,
   ChevronRight,
   RefreshCw,
@@ -1184,6 +1186,45 @@ export default function AthleteDetail() {
     }
     return list;
   }, [skis, garageDisciplineFilter, garageBrandFilter, garageYearFilter, garageGrindFilter, garageRaValueFilter, garageColorFilter, garageRaSort]);
+
+  // Fleet garage groups by series: each series collapses/expands and, in the
+  // card view, gets its own spaced section. Non-fleet athletes keep the flat
+  // list with the training-ski divider.
+  const [collapsedFleetGroups, setCollapsedFleetGroups] = useState<Set<string>>(new Set());
+  function toggleFleetGroup(g: string) {
+    setCollapsedFleetGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  }
+  const fleetGrouped = useMemo(() => {
+    if (!isFleetAthlete) return null;
+    const map = new Map<string, RaceSki[]>();
+    for (const sk of filteredGarageSkis) {
+      const g = ((sk as any).fleetGroup || "").trim() || "__none__";
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(sk);
+    }
+    if (map.size === 0) return null;
+    return Array.from(map.entries()).sort((a, b) =>
+      a[0] === "__none__" ? 1 : b[0] === "__none__" ? -1 : a[0].localeCompare(b[0], undefined, { numeric: true }));
+  }, [isFleetAthlete, filteredGarageSkis]);
+  type GarageItem = { header?: { group: string; count: number; collapsed: boolean }; ski?: RaceSki };
+  const garageItems = useMemo<GarageItem[]>(() => {
+    if (fleetGrouped) {
+      const items: GarageItem[] = [];
+      for (const [g, gs] of fleetGrouped) {
+        const collapsed = collapsedFleetGroups.has(g);
+        items.push({ header: { group: g, count: gs.length, collapsed } });
+        if (!collapsed) for (const sk of gs) items.push({ ski: sk });
+      }
+      return items;
+    }
+    return [...filteredGarageSkis]
+      .sort((a, b) => (a.isTrainingSki || 0) - (b.isTrainingSki || 0))
+      .map((sk) => ({ ski: sk }));
+  }, [fleetGrouped, collapsedFleetGroups, filteredGarageSkis]);
 
   function setGarageView(mode: "grid" | "list") {
     setGarageViewMode(mode);
@@ -3336,9 +3377,30 @@ export default function AthleteDetail() {
               </Card>
             ) : garageViewMode === "grid" ? (
               <div className="space-y-3 mt-3">
-                {[...filteredGarageSkis].sort((a, b) => (a.isTrainingSki || 0) - (b.isTrainingSki || 0)).map((ski, _i, _arr) => (
+                {garageItems.map((it, _i, _arr) => {
+                  if (it.header) {
+                    const { group, count, collapsed } = it.header;
+                    return (
+                      <button
+                        key={`series-${group}`}
+                        type="button"
+                        onClick={() => toggleFleetGroup(group)}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-muted/50",
+                          _i > 0 && "!mt-6",
+                        )}
+                        data-testid={`garage-series-${group}`}
+                      >
+                        {collapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+                        <span>{group === "__none__" ? L("Uten serie", "No series") : group}</span>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{count}</span>
+                      </button>
+                    );
+                  }
+                  const ski = it.ski!;
+                  return (
                   <React.Fragment key={ski.id}>
-                    {ski.isTrainingSki === 1 && (_i === 0 || _arr[_i - 1].isTrainingSki !== 1) && (
+                    {!fleetGrouped && ski.isTrainingSki === 1 && (_i === 0 || _arr[_i - 1].ski?.isTrainingSki !== 1) && (
                       <div className="pt-3 mt-1 border-t border-amber-200/60 dark:border-amber-900/40 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400" data-testid="garage-training-section">
                         {L("Treningsski", "Training skis")}
                       </div>
@@ -3359,7 +3421,8 @@ export default function AthleteDetail() {
                     weatherList={weather}
                   />
                   </React.Fragment>
-                ))}
+                  );
+                })}
                 {filteredGarageSkis.length === 0 && skis.length > 0 && (
                   <p className="text-sm text-muted-foreground">{L("Ingen ski matcher filtrene.", "No skis match the current filters.")}</p>
                 )}
@@ -3408,7 +3471,23 @@ export default function AthleteDetail() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredGarageSkis.map((ski, idx) => (
+                        {garageItems.map((it, idx) => {
+                          if (it.header) {
+                            const { group, count, collapsed } = it.header;
+                            return (
+                              <tr key={`series-${group}`} className="cursor-pointer select-none" onClick={() => toggleFleetGroup(group)} data-testid={`garage-series-row-${group}`}>
+                                <td colSpan={visibleGarageColumns.length + 2} className="border-t bg-muted/40 px-4 py-2 text-xs font-semibold">
+                                  <span className="inline-flex items-center gap-1.5">
+                                    {collapsed ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />}
+                                    {group === "__none__" ? L("Uten serie", "No series") : group}
+                                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{count}</span>
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          }
+                          const ski = it.ski!;
+                          return (
                           <React.Fragment key={ski.id}>
                             <tr
                               className={cn(
@@ -3472,7 +3551,8 @@ export default function AthleteDetail() {
                               </tr>
                             )}
                           </React.Fragment>
-                        ))}
+                          );
+                        })}
                         {filteredGarageSkis.length === 0 && (
                           <tr>
                             <td colSpan={visibleGarageColumns.length + 2} className="px-4 py-6 text-sm text-muted-foreground text-center">
@@ -6253,6 +6333,17 @@ function SkiDetailPanel({
           )}
         </div>
       )}
+      {/* Who registered the pair, and when — plus the last edit if any. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground" data-testid={`detail-ski-created-${ski.id}`}>
+        {ski.createdByName && (
+          <span className="inline-flex items-center gap-1">
+            <UserIcon className="h-3 w-3 shrink-0" />
+            {L(`Lagt inn av ${ski.createdByName}`, `Added by ${ski.createdByName}`)}
+            {ski.createdAt ? ` · ${new Date(ski.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}` : ""}
+          </span>
+        )}
+        <LastEdited record={ski as any} />
+      </div>
       {ski.notes && (
         <div className="rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap" data-testid={`detail-ski-notes-${ski.id}`}>
           {ski.notes}
@@ -6963,6 +7054,16 @@ function SkiCard({
 
       {expanded && (
         <div className="mt-3 border-t border-border/40 pt-3 space-y-4" data-testid={`section-regrinds-${ski.id}`}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground" data-testid={`card-ski-created-${ski.id}`}>
+            {ski.createdByName && (
+              <span className="inline-flex items-center gap-1">
+                <UserIcon className="h-3 w-3 shrink-0" />
+                {L(`Lagt inn av ${ski.createdByName}`, `Added by ${ski.createdByName}`)}
+                {ski.createdAt ? ` · ${new Date(ski.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}` : ""}
+              </span>
+            )}
+            <LastEdited record={ski as any} />
+          </div>
           {/* All parameters */}
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Parametre", "Parameters")}</h3>

@@ -6562,11 +6562,17 @@ function SkiDetailPanel({
       )}
       {/* Action buttons */}
       <div className="flex items-center gap-2">
-        <AppLink href={`/ski/${ski.id}`}>
-          <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-show-tests-${ski.id}`}>
+        {((ski as any).testCount ?? 0) > 0 ? (
+          <AppLink href={`/ski/${ski.id}`}>
+            <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-show-tests-${ski.id}`}>
+              <BarChart2 className="mr-1 h-3 w-3" />{L("Vis tester", "Show tests")}
+            </Button>
+          </AppLink>
+        ) : (
+          <Button variant="outline" size="sm" disabled className="h-7 text-xs text-muted-foreground/50" title={L("Ingen tester ennå", "No tests yet")} data-testid={`button-show-tests-${ski.id}`}>
             <BarChart2 className="mr-1 h-3 w-3" />{L("Vis tester", "Show tests")}
           </Button>
-        </AppLink>
+        )}
         {onRegrind && (
           <Button variant="outline" size="sm" onClick={onRegrind} className="h-7 text-xs">
             <RefreshCw className="mr-1 h-3 w-3" />
@@ -7181,11 +7187,17 @@ function SkiCard({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <AppLink href={`/ski/${ski.id}`}>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" data-testid={`button-show-tests-card-${ski.id}`}>
+          {((ski as any).testCount ?? 0) > 0 ? (
+            <AppLink href={`/ski/${ski.id}`}>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" data-testid={`button-show-tests-card-${ski.id}`}>
+                <BarChart2 className="mr-1 h-3.5 w-3.5" />{L("Vis tester", "Show tests")}
+              </Button>
+            </AppLink>
+          ) : (
+            <Button variant="ghost" size="sm" disabled className="text-muted-foreground/40" title={L("Ingen tester ennå", "No tests yet")} data-testid={`button-show-tests-card-${ski.id}`}>
               <BarChart2 className="mr-1 h-3.5 w-3.5" />{L("Vis tester", "Show tests")}
             </Button>
-          </AppLink>
+          )}
           {!isArchived && onRegrind && (
             <Button
               variant="ghost"

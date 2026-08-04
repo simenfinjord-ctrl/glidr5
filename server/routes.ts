@@ -9498,8 +9498,13 @@ export async function registerRoutes(
       const { pool } = await import("./db");
       const ownerAth = await storage.getAthlete(athleteId);
       const isFleetAth = (ownerAth as any)?.isFleet === 1;
-      const [usageRes, prepRes] = await Promise.all([
+      const [usageRes, testRes, prepRes] = await Promise.all([
         (pool as any).query(`SELECT ski_id, COUNT(*)::int AS c FROM ski_race_usages WHERE athlete_id = $1 GROUP BY ski_id`, [athleteId]),
+        // How many tests each pair has been in — powers the Show tests button.
+        (pool as any).query(
+          `SELECT te.race_ski_id AS ski_id, COUNT(DISTINCT te.test_id)::int AS c
+           FROM test_entries te JOIN race_skis rs ON rs.id = te.race_ski_id
+           WHERE rs.athlete_id = $1 GROUP BY te.race_ski_id`, [athleteId]),
         (pool as any).query(
           `SELECT rpe.ski_id, rpe.ski_id_classic, rpe.ski_id_skating,
                   rpe.athlete_id, rpe.borrowed_athlete_id, rpe.borrowed_athlete_id_classic, rpe.borrowed_athlete_id_skating
@@ -9525,7 +9530,8 @@ export async function registerRoutes(
         const keys = [ski.skiId, ski.serialNumber].filter(Boolean).map((s: string) => String(s).trim().toLowerCase());
         return prepLabels.filter((l: string) => keys.includes(l)).length;
       };
-      const withCounts = list.map((s: any) => ({ ...s, racedCount: (usageBySkiId.get(s.id) || 0) + prepCount(s) }));
+      const testsBySkiId = new Map<number, number>(testRes.rows.map((r: any) => [r.ski_id, r.c]));
+      const withCounts = list.map((s: any) => ({ ...s, racedCount: (usageBySkiId.get(s.id) || 0) + prepCount(s), testCount: testsBySkiId.get(s.id) || 0 }));
       return res.json(withCounts);
     } catch {
       return res.json(list);

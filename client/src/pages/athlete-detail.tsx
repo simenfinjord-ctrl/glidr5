@@ -3327,25 +3327,32 @@ export default function AthleteDetail() {
           <CollapsibleContent>
             {/* Always-visible discipline quick filter — one tap to see only
                 classic or only skate skis, on any screen size. */}
-            <div className="mt-3 flex items-center gap-1.5" data-testid="garage-discipline-chips">
+            <div className="mt-3 flex flex-wrap items-center gap-1.5" data-testid="garage-discipline-chips">
               {[
-                { v: "all", label: L("Alle", "All") },
-                { v: "Classic", label: L("Klassisk", "Classic") },
-                { v: "Skating", label: L("Skøyte", "Skate") },
-              ].map((c) => (
+                { v: "all", kind: "all", label: L("Alle", "All") },
+                { v: "Classic", kind: "all", label: L("Klassisk", "Classic") },
+                { v: "Skating", kind: "all", label: L("Skøyte", "Skate") },
+                ...(isFleetAthlete ? [{ v: "all", kind: "sitski", label: L("Sitski", "Sit-ski") }] : []),
+                { v: "all", kind: "training", label: L("Trening", "Training") },
+              ].map((c) => {
+                const active = c.kind === "all"
+                  ? garageKindFilter === "all" && garageDisciplineFilter === c.v
+                  : garageKindFilter === c.kind;
+                return (
                 <button
-                  key={c.v}
+                  key={`${c.v}-${c.kind}`}
                   type="button"
-                  onClick={() => setGarageDisciplineFilter(c.v)}
-                  data-testid={`chip-garage-discipline-${c.v}`}
+                  onClick={() => { setGarageDisciplineFilter(c.v); setGarageKindFilter(c.kind); }}
+                  data-testid={`chip-garage-discipline-${c.kind === "all" ? c.v : c.kind}`}
                   className={cn(
                     "rounded-full px-3 py-1 text-xs font-medium ring-1 transition-colors",
-                    garageDisciplineFilter === c.v ? "bg-primary text-primary-foreground ring-primary" : "ring-border text-muted-foreground hover:bg-muted"
+                    active ? "bg-primary text-primary-foreground ring-primary" : "ring-border text-muted-foreground hover:bg-muted"
                   )}
                 >
                   {c.label}
                 </button>
-              ))}
+                );
+              })}
             </div>
             {/* Filter bar */}
             {showGarageFilters && (
@@ -3370,18 +3377,6 @@ export default function AthleteDetail() {
                     {garageBrandOptions.map((b) => (
                       <SelectItem key={b} value={b}>{b}</SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-                <Select value={garageKindFilter} onValueChange={setGarageKindFilter}>
-                  <SelectTrigger className="h-7 w-[130px] text-xs" data-testid="select-garage-kind">
-                    <SelectValue placeholder={L("Alle typer", "All types")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{L("Alle typer", "All types")}</SelectItem>
-                    <SelectItem value="training">{L("Treningsski", "Training skis")}</SelectItem>
-                    <SelectItem value="racing">{L("Uten treningsski", "Excl. training skis")}</SelectItem>
-                    {isFleetAthlete && <SelectItem value="sitski">{L("Sitski", "Sit-skis")}</SelectItem>}
-                    {isFleetAthlete && <SelectItem value="standard">{L("Uten sitski", "Excl. sit-skis")}</SelectItem>}
                   </SelectContent>
                 </Select>
                 <Select value={garageYearFilter} onValueChange={setGarageYearFilter}>

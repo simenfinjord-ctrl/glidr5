@@ -1144,7 +1144,7 @@ export default function AthleteDetail() {
   // fields — and none of the person-things (transfer, delete, access, feedback).
   const isFleetAthlete = (athlete as any)?.isFleet === 1;
 
-  const { data: skis = [] } = useQuery<RaceSki[]>({
+  const { data: skis = [], isLoading: skisLoading } = useQuery<RaceSki[]>({
     queryKey: [`/api/athletes/${athleteId}/skis`],
     enabled: !!athleteId,
   });
@@ -1196,7 +1196,7 @@ export default function AthleteDetail() {
     queryKey: ["/api/weather/for-filtering"],
   });
 
-  const { data: allTests = [] } = useQuery<RaceSkiTest[]>({
+  const { data: allTests = [], isLoading: allTestsLoading } = useQuery<RaceSkiTest[]>({
     queryKey: ["/api/tests"],
     enabled: !!athleteId,
   });
@@ -2451,6 +2451,7 @@ export default function AthleteDetail() {
           <AthleteAnalyticsView
             skis={skis}
             raceSkiTests={raceSkiTests}
+            loading={skisLoading || allTestsLoading}
             compareSkiIds={compareSkiIds}
             setCompareSkiIds={setCompareSkiIds}
           />
@@ -3752,6 +3753,7 @@ export default function AthleteDetail() {
             <AthleteAnalyticsView
               skis={skis}
               raceSkiTests={raceSkiTests}
+              loading={skisLoading || allTestsLoading}
               compareSkiIds={compareSkiIds}
               setCompareSkiIds={setCompareSkiIds}
             />
@@ -8573,11 +8575,13 @@ function AuditLogSection({ athleteId, skis }: { athleteId: number; skis: RaceSki
 function AthleteAnalyticsView({
   skis,
   raceSkiTests,
+  loading = false,
   compareSkiIds,
   setCompareSkiIds,
 }: {
   skis: RaceSki[];
   raceSkiTests: RaceSkiTest[];
+  loading?: boolean;
   compareSkiIds: Set<number>;
   setCompareSkiIds: React.Dispatch<React.SetStateAction<Set<number>>>;
 }) {
@@ -8585,7 +8589,7 @@ function AthleteAnalyticsView({
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
 
-  const { data: allEntries = [] } = useQuery<(TestEntry & { testId: number })[]>({
+  const { data: allEntries = [], isLoading: entriesQueryLoading } = useQuery<(TestEntry & { testId: number })[]>({
     queryKey: [`/api/athletes/analytics/entries`, testIds.join(",")],
     enabled: testIds.length > 0,
     queryFn: async () => {
@@ -8738,6 +8742,15 @@ function AthleteAnalyticsView({
     }).filter((r) => r.totalEntries > 0);
   }, [skiStats, allEntries, raceSkiTests, weatherById]);
 
+  // Never flash the empty state while the underlying queries are in flight —
+  // it reads as data loss.
+  if (loading || (testIds.length > 0 && entriesQueryLoading)) {
+    return (
+      <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="loading-analytics-view">
+        {L("Laster analyse…", "Loading analytics…")}
+      </Card>
+    );
+  }
   if (skiStats.length === 0) {
     return (
       <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-analytics-view">

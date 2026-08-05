@@ -9424,6 +9424,11 @@ export async function registerRoutes(
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
     if (req.body.sportClass !== undefined) data.sportClass = req.body.sportClass || null;
     if (req.body.archived !== undefined) data.archived = req.body.archived ? 1 : 0;
+    // Profile-only can be toggled from My athletes (para teams) — also the
+    // repair path for athletes created before the flag existed.
+    if (req.body.isProfileOnly !== undefined && (await teamHasFeature(getActiveTeamId(req), "para_team"))) {
+      data.isProfileOnly = req.body.isProfileOnly ? 1 : 0;
+    }
     // Main waxer: only Team Admins / Super Admins may reassign it. Name is
     // resolved server-side so the client can't write an arbitrary label.
     if (req.body.mainWaxerId !== undefined) {

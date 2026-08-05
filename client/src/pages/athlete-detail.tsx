@@ -7085,7 +7085,10 @@ function SkiAnalyticsSection({
           <div className="space-y-2">
             {feelingSummaries.map(({ ski, summary }) => (
               <div key={ski.id} className="rounded-lg bg-muted/40 px-3 py-2" data-testid={`feeling-summary-${ski.id}`}>
-                <div className="text-sm font-semibold">{ski.skiId}{ski.brand ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">{ski.brand}</span> : null}</div>
+                <div className="text-sm font-semibold">
+                  <AppLink href={`/ski/${ski.id}`}><span className="hover:text-primary transition-colors cursor-pointer">{ski.skiId}</span></AppLink>
+                  {ski.brand ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">{ski.brand}</span> : null}
+                </div>
                 <div className="text-xs text-foreground/90 mt-0.5">{summary}</div>
               </div>
             ))}
@@ -8785,7 +8788,9 @@ function AthleteAnalyticsView({
                   data-testid={`analytics-perf-row-${ski.id}`}
                 >
                   <td className="px-4 py-2.5">
-                    <div className="font-semibold">{ski.skiId}</div>
+                    <AppLink href={`/ski/${ski.id}`}>
+                      <div className="font-semibold hover:text-primary transition-colors cursor-pointer">{ski.skiId}</div>
+                    </AppLink>
                     {ski.brand && <div className="text-xs text-muted-foreground">{ski.brand}</div>}
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground">{testCount}</td>
@@ -8855,7 +8860,9 @@ function AthleteAnalyticsView({
                   data-testid={`analytics-conditions-row-${ski.id}`}
                 >
                   <td className="px-4 py-2.5">
-                    <div className="font-semibold">{ski.skiId}</div>
+                    <AppLink href={`/ski/${ski.id}`}>
+                      <div className="font-semibold hover:text-primary transition-colors cursor-pointer">{ski.skiId}</div>
+                    </AppLink>
                     {ski.brand && <div className="text-xs text-muted-foreground">{ski.brand}</div>}
                   </td>
                   <td className="px-3 py-2.5">
@@ -8940,7 +8947,9 @@ function AthleteAnalyticsView({
                     className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
                     data-testid={`analytics-temp-row-${ski.id}`}
                   >
-                    <td className="px-4 py-2.5 font-semibold">{ski.skiId}</td>
+                    <td className="px-4 py-2.5 font-semibold">
+                      <AppLink href={`/ski/${ski.id}`}><span className="hover:text-primary transition-colors cursor-pointer">{ski.skiId}</span></AppLink>
+                    </td>
                     <td className="px-3 py-2.5 text-muted-foreground">{ski.brand ?? "—"}</td>
                     <td className="px-3 py-2.5">
                       {bestTempRange ? (
@@ -8998,6 +9007,9 @@ function MyAthletesSection({ weatherList, canEdit }: { weatherList: WeatherItem[
   const emptyForm = { name: "", team: "", sportClass: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", defaultSkiBrand: "", skiServicePreferences: "" };
   const [form, setForm] = useState<Record<string, string>>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
+  // Profile-only: no own page/garage in Athlete Skis. Default ON for new
+  // people added here; editable so wrongly-flagged athletes can be repaired.
+  const [formProfileOnly, setFormProfileOnly] = useState(true);
 
   const { data: people = [] } = useQuery<(Athlete & { isProfileOnly?: number })[]>({
     queryKey: ["/api/athletes?includeProfiles=1"],
@@ -9025,9 +9037,9 @@ function MyAthletesSection({ weatherList, canEdit }: { weatherList: WeatherItem[
         skiServicePreferences: form.skiServicePreferences.trim() || null,
       };
       if (editingId != null) {
-        await apiRequest("PUT", `/api/athletes/${editingId}`, body);
+        await apiRequest("PUT", `/api/athletes/${editingId}`, { ...body, isProfileOnly: formProfileOnly ? 1 : 0 });
       } else {
-        await apiRequest("POST", "/api/athletes", { ...body, isProfileOnly: 1 });
+        await apiRequest("POST", "/api/athletes", { ...body, isProfileOnly: formProfileOnly ? 1 : 0 });
       }
     },
     onSuccess: () => {
@@ -9046,10 +9058,12 @@ function MyAthletesSection({ weatherList, canEdit }: { weatherList: WeatherItem[
   function openAdd() {
     setEditingId(null);
     setForm(emptyForm);
+    setFormProfileOnly(true);
     setAddOpen(true);
   }
   function openEdit(a: Athlete) {
     setEditingId(a.id);
+    setFormProfileOnly((a as any).isProfileOnly === 1);
     setForm({
       name: a.name || "", team: a.team || "", sportClass: a.sportClass || "",
       heightCm: a.heightCm || "", weightKg: a.weightKg || "",
@@ -9131,6 +9145,25 @@ function MyAthletesSection({ weatherList, canEdit }: { weatherList: WeatherItem[
                 data-testid="input-profile-waxprefs"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setFormProfileOnly((v) => !v)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors",
+                formProfileOnly ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20" : "border-border bg-muted/30"
+              )}
+              data-testid="toggle-profile-only"
+            >
+              <span className="text-left">
+                <span className="block font-medium">{L("Kun profil", "Profile only")}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {L("Vises bare her i My athletes — ingen egen side i Athlete Skis", "Only listed here in My athletes — no own page in Athlete Skis")}
+                </span>
+              </span>
+              <span className={cn("relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors", formProfileOnly ? "bg-indigo-500" : "bg-muted-foreground/30")}>
+                <span className={cn("inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform", formProfileOnly ? "translate-x-4" : "translate-x-0.5")} />
+              </span>
+            </button>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setAddOpen(false)}>Cancel</Button>
               <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()} data-testid="button-save-profile">

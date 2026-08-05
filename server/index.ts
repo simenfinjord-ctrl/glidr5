@@ -143,7 +143,10 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      // Never log response bodies for auth/credential-bearing endpoints (user
+      // records, watch codes/PINs) — they end up in plaintext platform logs.
+      const sensitive = path.startsWith("/api/auth") || path.startsWith("/api/watch") || path.includes("reset-password");
+      if (capturedJsonResponse && !sensitive) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
       log(logLine);

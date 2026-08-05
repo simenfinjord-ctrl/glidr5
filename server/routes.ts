@@ -425,7 +425,9 @@ function requirePermission(area: PermissionArea, level: PermissionLevel) {
         } catch {}
       }
     }
-    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
+    // TA status must be resolved against the ACTIVE team — being TA at home
+    // grants nothing on a team where the user is just a member.
+    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, getEffectiveIsTeamAdmin(req));
     const userLevel = perms[area];
     if (userLevel === "none") {
       return res.status(403).json({ message: "No access" });
@@ -434,9 +436,22 @@ function requirePermission(area: PermissionArea, level: PermissionLevel) {
   };
 }
 
+// May the caller VIEW this test (already verified to be in their team)?
+// Mirrors GET /api/tests/:id: tests permission + group scope, with the
+// creator and race-ski athlete access as fallbacks.
+async function canViewTestRecord(test: any, req: Request): Promise<boolean> {
+  const u = userInfo(req);
+  if (test.createdById === u.id) return true;
+  if (u.permissions.tests !== "none" && userHasGroupAccess(u.groupScope, u.isScopeAdmin, test.groupScope || "")) return true;
+  if (test.testSkiSource === "raceskis" && test.athleteId) {
+    return await storage.hasAthleteAccess(test.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+  }
+  return false;
+}
+
 function isEffectiveAdmin(req: Request): boolean {
   const u = req.user!;
-  return u.isAdmin === 1 || u.isTeamAdmin === 1;
+  return u.isAdmin === 1 || getEffectiveIsTeamAdmin(req);
 }
 
 function userHasGroupAccess(userGroupScope: string, isAdmin: boolean, recordGroupScope: string): boolean {
@@ -1584,7 +1599,7 @@ export async function registerRoutes(
     const teamId = uu.activeTeamId || u.teamId;
     const like = `%${q.toLowerCase()}%`;
     const { pool } = await import("./db");
-    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
+    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, getEffectiveIsTeamAdmin(req));
     const isAthleteAccess = uu.isAthleteAccess === 1;
     const isBlind = u.isBlindTester === 1;
 
@@ -1938,7 +1953,7 @@ export async function registerRoutes(
               created_at AS "createdAt", created_by_id AS "createdById", created_by_name AS "createdByName"
        FROM kick_skis WHERE team_id=$1 AND archived_at IS NULL ORDER BY id DESC`, [teamId]);
     const rows = r.rows.filter((row: any) =>
-      userHasGroupAccess(u.groupScope, isEffectiveAdmin(req), row.groupScope || ""));
+      userHasGroupAccess(getEffectiveGroupScope(req), isEffectiveAdmin(req), row.groupScope || ""));
     // Child team: parent's kick skis (read-only) so shared kick tests resolve.
     const share = await getParentShare(teamId);
     if (share && share.sharedAreas.includes("kick")) {
@@ -2108,7 +2123,7 @@ export async function registerRoutes(
        FROM kick_mixes km LEFT JOIN products p ON p.id = km.product_id
        WHERE km.team_id=$1 ORDER BY km.id DESC`, [teamId]);
     const rows = r.rows.filter((row: any) =>
-      userHasGroupAccess(u.groupScope, isEffectiveAdmin(req), row.groupScope || ""));
+      userHasGroupAccess(getEffectiveGroupScope(req), isEffectiveAdmin(req), row.groupScope || ""));
     // Child team: parent's kick mixes (read-only).
     const shareMix = await getParentShare(teamId);
     if (shareMix && shareMix.sharedAreas.includes("kick")) {
@@ -2537,6 +2552,9 @@ export async function registerRoutes(
     const userId = parseInt(req.params.id);
     const teamId = parseInt(req.body.teamId);
     if (!teamId) return res.status(400).json({ message: "teamId required" });
+    if ((req.user as any).isAdmin !== 1 && teamId !== getActiveTeamId(req)) {
+      return res.status(403).json({ message: "Cannot manage other teams" });
+    }
     const team = await storage.getTeam(teamId);
     if (!team) return res.status(404).json({ message: "Team not found" });
     const targetUser = await storage.getUser(userId);
@@ -2627,6 +2645,10 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const { pool: pGrp } = await import("./db");
     const snap = await (pGrp as any).query(`SELECT * FROM groups WHERE id=$1`, [id]);
+    if (snap.rows.length === 0) return res.status(404).json({ message: "Not found" });
+    if ((req.user as any).isAdmin !== 1 && snap.rows[0].team_id !== getActiveTeamId(req)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
     const deleted = await storage.deleteGroup(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     await recordDeletion(req, "group", id, `Group deleted: ${snap.rows[0]?.name ?? id}`, snap.rows[0] ?? null);
@@ -2646,7 +2668,7 @@ export async function registerRoutes(
     // Only surface what this user could actually open — a prompt to fix
     // something they cannot reach is just noise.
     const u = req.user!;
-    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
+    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, getEffectiveIsTeamAdmin(req));
     const may = (area: string) => (perms as any)[area] && (perms as any)[area] !== "none";
 
     // Weather is what makes a test reusable later; a test without it decays
@@ -3309,15 +3331,18 @@ export async function registerRoutes(
           })
           .filter(Boolean) as { id: number; brand: string; name: string }[];
 
+        // Blind testers / athlete-access accounts must not see product↔result
+        // mappings — same redaction as /api/tests/:id/entries.
+        const redactPT = req.user!.isBlindTester === 1 || (req.user as any).isAthleteAccess === 1;
         entriesByTestId[e.test_id].push({
           id: e.id, skiNumber: e.ski_number,
-          productId: e.product_id, additionalProductIds: e.additional_product_ids,
-          productBrand: e.product_brand, productName: e.product_name,
-          additionalProducts,
+          productId: redactPT ? null : e.product_id, additionalProductIds: redactPT ? null : e.additional_product_ids,
+          productBrand: redactPT ? null : e.product_brand, productName: redactPT ? null : e.product_name,
+          additionalProducts: redactPT ? [] : additionalProducts,
           result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
           resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
           results: e.results, feelingRank: e.feeling_rank,
-          methodology: e.methodology ?? null,
+          methodology: redactPT ? null : (e.methodology ?? null),
           isSelectedProduct,
         });
       }
@@ -3512,6 +3537,8 @@ export async function registerRoutes(
     const { ids, groupScope } = req.body as { ids: number[]; groupScope: string };
     if (!Array.isArray(ids) || !groupScope) return res.status(400).json({ message: "ids and groupScope required" });
     for (const id of ids) {
+      const prod = await storage.getProduct(id);
+      if (!prod || !verifyTeamOwnership(prod, req)) continue;
       await storage.updateProduct(id, { groupScope });
     }
     if (!isIncognito(req) && ids.length > 0) try {
@@ -4010,10 +4037,11 @@ export async function registerRoutes(
               e.product_id ? (productName.get(e.product_id) || null) : (e.free_text_product || null),
               ...additional.map((id: number) => productName.get(id) || null),
             ].filter((x: any): x is string => !!x);
+            const redactXT = req.user!.isBlindTester === 1 || (req.user as any).isAthleteAccess === 1;
             return {
               skiNumber: e.ski_number,
-              productNames: names,
-              methodology: e.methodology || "",
+              productNames: redactXT ? [] : names,
+              methodology: redactXT ? "" : (e.methodology || ""),
               rounds: srvEntryRounds(e, labels.length),
               feelingRank: e.feeling_rank ?? null,
               kickRank: e.kick_rank ?? null,
@@ -4066,7 +4094,8 @@ export async function registerRoutes(
           e.product_id ? (productName.get(e.product_id) || null) : (e.free_text_product || null),
           ...additional.map((pid: number) => productName.get(pid) || null),
         ].filter((x: any): x is string => !!x);
-        return { skiNumber: e.ski_number, productNames: names, methodology: e.methodology || "", rounds: srvEntryRounds(e, labels.length), feelingRank: e.feeling_rank ?? null, kickRank: e.kick_rank ?? null };
+        const redactCmp = req.user!.isBlindTester === 1 || (req.user as any).isAthleteAccess === 1;
+        return { skiNumber: e.ski_number, productNames: redactCmp ? [] : names, methodology: redactCmp ? "" : (e.methodology || ""), rounds: srvEntryRounds(e, labels.length), feelingRank: e.feeling_rank ?? null, kickRank: e.kick_rank ?? null };
       });
       out.push({ id: test.id, date: test.date, startTime: (test as any).startTime, location: test.location, testName: (test as any).testName, testType: (test as any).testType, teamId: tid, distanceLabels: labels, entries });
     }
@@ -4702,9 +4731,18 @@ export async function registerRoutes(
   app.patch("/api/tests/:id/feeling", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id);
     const teamId = getActiveTeamId(req);
+    // Same rules as other test mutations: edit rights on tests, matching group
+    // scope, and never for read-only athlete-access accounts.
+    if ((req.user as any).isAthleteAccess === 1) return res.status(403).json({ message: "Read-only account" });
+    const uF = userInfo(req);
     const { pool } = await import("./db");
-    const t = await (pool as any).query(`SELECT id FROM tests WHERE id = $1 AND team_id = $2`, [testId, teamId]);
+    const t = await (pool as any).query(`SELECT id, group_scope, test_ski_source, athlete_id FROM tests WHERE id = $1 AND team_id = $2`, [testId, teamId]);
     if (!t.rows.length) return res.status(404).json({ message: "Not found" });
+    let mayEdit = uF.permissions.tests === "edit" && userHasGroupAccess(uF.groupScope, uF.isScopeAdmin, t.rows[0].group_scope || "");
+    if (!mayEdit && t.rows[0].test_ski_source === "raceskis" && t.rows[0].athlete_id) {
+      mayEdit = await storage.hasAthleteAccess(t.rows[0].athlete_id, uF.id, uF.isScopeAdmin, teamId);
+    }
+    if (!mayEdit) return res.status(403).json({ message: "Forbidden" });
     const rankings = Array.isArray(req.body.rankings) ? req.body.rankings : [];
     for (const r of rankings) {
       await (pool as any).query(
@@ -4720,6 +4758,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const existing = await storage.getTest(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
     const u = userInfo(req);
     const canEditTests = userHasGroupAccess(u.groupScope, u.isScopeAdmin, existing.groupScope) && (u.permissions.tests === "edit" || u.permissions.tests === "view");
     let hasAccess = canEditTests;
@@ -5056,6 +5095,7 @@ export async function registerRoutes(
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
     if (!verifyTeamOwnership(test, req)) return res.status(403).json({ message: "Forbidden" });
+    if (!(await canViewTestRecord(test, req))) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
       `SELECT id, test_id, filename, mime_type, created_at, uploaded_by_id FROM test_attachments WHERE test_id = $1 ORDER BY created_at DESC`,
@@ -5123,6 +5163,7 @@ export async function registerRoutes(
     // Verify caller belongs to the same team as the parent test
     const parentTest = await storage.getTest(test_id);
     if (!parentTest || !verifyTeamOwnership(parentTest, req)) return res.status(403).json({ message: "Forbidden" });
+    if (!(await canViewTestRecord(parentTest, req))) return res.status(403).json({ message: "Forbidden" });
 
     // R2 path: url column holds the object key; resolve to signed/public URL and redirect
     if (url) {
@@ -5296,6 +5337,10 @@ export async function registerRoutes(
       `SELECT id FROM tests WHERE id = $1 AND team_id = $2`, [testId, teamId]
     );
     if (!testCheck.rows.length) return res.status(404).json({ message: "Not found" });
+    {
+      const tRec = await storage.getTest(testId);
+      if (!tRec || !(await canViewTestRecord(tRec, req))) return res.status(403).json({ message: "Forbidden" });
+    }
     const result = await (pool as any).query(
       `SELECT id, test_id, user_id, user_name, content, created_at FROM test_comments WHERE test_id = $1 ORDER BY created_at ASC`,
       [testId]
@@ -5518,10 +5563,15 @@ export async function registerRoutes(
               te.grind_type AS "grindType", p.brand, p.name AS "productName", p.category
        FROM test_entries te LEFT JOIN products p ON p.id = te.product_id
        WHERE te.test_id = $1 ORDER BY te.ski_number ASC`, [testId])).rows;
+    // Blind testers / athlete-access accounts: strip product identity here too.
+    const redactCT = req.user!.isBlindTester === 1 || (req.user as any).isAthleteAccess === 1;
+    const safeEntries = redactCT
+      ? entries.map((e: any) => ({ ...e, productId: null, additionalProductIds: null, freeTextProduct: null, methodology: null, brand: null, productName: null, category: null }))
+      : entries;
     const team = await storage.getTeam(test.teamId);
     const weather = test.weatherId ? await storage.getWeather(test.weatherId) : null;
     const { runsheetBracket: _rb, ...safeTest } = test;
-    res.json({ test: safeTest, entries, weather, teamName: team?.name ?? "", readOnly: true });
+    res.json({ test: safeTest, entries: safeEntries, weather, teamName: team?.name ?? "", readOnly: true });
   });
 
   // GET /api/tests/share-links — every active public link for this team, so a
@@ -5812,9 +5862,9 @@ export async function registerRoutes(
     const u = req.user!;
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
-    if (u.isTeamAdmin === 1 && u.isAdmin !== 1) {
+    if (u.isAdmin !== 1) {
       const targetUser = await storage.getUser(id);
-      if (!targetUser || targetUser.teamId !== u.teamId) {
+      if (!targetUser || targetUser.teamId !== getActiveTeamId(req)) {
         return res.status(403).json({ message: "Can only manage users in your team" });
       }
     }
@@ -5862,9 +5912,9 @@ export async function registerRoutes(
     const u = req.user!;
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
-    if (u.isTeamAdmin === 1 && u.isAdmin !== 1) {
+    if (u.isAdmin !== 1) {
       const targetUser = await storage.getUser(id);
-      if (!targetUser || targetUser.teamId !== u.teamId) {
+      if (!targetUser || targetUser.teamId !== getActiveTeamId(req)) {
         return res.status(403).json({ message: "Can only manage users in your team" });
       }
     }
@@ -5883,9 +5933,9 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
     if (id === u.id) return res.status(400).json({ message: "Cannot delete yourself" });
-    if (u.isTeamAdmin === 1 && u.isAdmin !== 1) {
+    if (u.isAdmin !== 1) {
       const targetUser = await storage.getUser(id);
-      if (!targetUser || targetUser.teamId !== u.teamId) {
+      if (!targetUser || targetUser.teamId !== getActiveTeamId(req)) {
         return res.status(403).json({ message: "Can only manage users in your team" });
       }
     }
@@ -5920,9 +5970,9 @@ export async function registerRoutes(
     const u = req.user!;
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
-    if (u.isTeamAdmin === 1 && u.isAdmin !== 1) {
+    if (u.isAdmin !== 1) {
       const targetUser = await storage.getUser(id);
-      if (!targetUser || targetUser.teamId !== u.teamId) {
+      if (!targetUser || targetUser.teamId !== getActiveTeamId(req)) {
         return res.status(403).json({ message: "Can only manage users in your team" });
       }
     }
@@ -5941,7 +5991,7 @@ export async function registerRoutes(
     const targetUser = await storage.getUser(id);
     if (!targetUser) return res.status(404).json({ message: "User not found" });
     const u = req.user!;
-    if (u.isAdmin !== 1 && targetUser.teamId !== u.teamId) {
+    if (u.isAdmin !== 1 && targetUser.teamId !== getActiveTeamId(req)) {
       return res.status(403).json({ message: "Cannot modify users outside your team" });
     }
     const { pool: p } = await import("./db");
@@ -6283,7 +6333,7 @@ export async function registerRoutes(
       if (!row) return null;
       const data: Record<string, any> = { ...row, ...overrides };
       delete data.id;
-      const cols = Object.keys(data);
+      const cols = Object.keys(data).filter((c) => /^[a-z0-9_]+$/i.test(c));
       const r2 = await (pool as any).query(
         `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(", ")}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING id`,
         cols.map((c) => data[c])
@@ -6979,6 +7029,8 @@ export async function registerRoutes(
 
   // Resolve personal watch code → user name (used by Garmin app, no auth required)
   app.get("/api/watch/resolve-user/:code", async (req, res) => {
+    const ipW = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+    if (watchPinRateLimit(ipW)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const { code } = req.params;
     if (!/^\d{4}$/.test(code)) return res.status(400).json({ message: "Invalid code" });
     const { pool } = await import("./db");
@@ -7949,7 +8001,16 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const { pool } = await import("./db");
     const mySessionId = (req.session as any)?.id;
-    await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' != $1`, [String(u.id)]);
+    if ((req.user as any).isAdmin === 1) {
+      await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' != $1`, [String(u.id)]);
+    } else {
+      // Team admin: only their own team's users.
+      const members = await (pool as any).query(`SELECT id FROM users WHERE team_id = $1 AND id != $2`, [getActiveTeamId(req), u.id]);
+      const memberIds = members.rows.map((r: any) => String(r.id));
+      if (memberIds.length > 0) {
+        await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' = ANY($1::text[])`, [memberIds]);
+      }
+    }
     res.json({ ok: true });
   });
 
@@ -7980,6 +8041,12 @@ export async function registerRoutes(
     const u = userInfo(req);
     if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });
     const targetId = parseInt(req.params.userId);
+    if (!u.isAdmin) {
+      const tUser = await storage.getUser(targetId);
+      if (!tUser || tUser.teamId !== getActiveTeamId(req)) {
+        return res.status(403).json({ message: "Cannot manage users outside your team" });
+      }
+    }
     const { pool } = await import("./db");
     await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' = $1`, [String(targetId)]);
     res.json({ ok: true });
@@ -8039,6 +8106,8 @@ export async function registerRoutes(
   // ── Team member activity (any authenticated user, same-team only) ───────────
   app.get("/api/team/members/:id/activity", requireAuth, async (req, res) => {
     const u = userInfo(req);
+    // Activity (incl. login IPs) is admin-grade information.
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const targetId = parseInt(req.params.id);
     const rawDays = parseInt(req.query.days as string) || 30;
     const days = Math.min(Math.max(rawDays, 1), 90);
@@ -8046,7 +8115,7 @@ export async function registerRoutes(
 
     // Verify the target user belongs to the same team as the requester
     const targetUser = await storage.getUser(targetId);
-    if (!targetUser || targetUser.teamId !== u.teamId) {
+    if (!targetUser || (!u.isAdmin && targetUser.teamId !== getActiveTeamId(req))) {
       return res.status(403).json({ message: "Cannot view activity for users outside your team" });
     }
 
@@ -8454,7 +8523,7 @@ export async function registerRoutes(
         const data: Record<string, any> = {};
         for (const [k, v] of Object.entries(row)) if (k !== "id" && valid.includes(k)) data[k] = v;
         Object.assign(data, overrides);
-        const cols = Object.keys(data);
+        const cols = Object.keys(data).filter((c) => /^[a-z0-9_]+$/i.test(c));
         const r = await (pEm as any).query(
           `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(",")}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(",")}) RETURNING id`,
           cols.map((c) => data[c]));
@@ -9415,6 +9484,11 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const athlete = await storage.getAthlete(id);
     if (!athlete) return res.status(404).json({ message: "Not found" });
+    // Team boundary first: deleting never crosses tenants, no matter the role
+    // or who once created the record.
+    if (!u.isAdmin && (athlete as any).teamId !== getActiveTeamId(req)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
     if (!u.isScopeAdmin && athlete.createdById !== u.id) {
       return res.status(403).json({ message: "Only admin or creator can delete" });
     }
@@ -9546,6 +9620,7 @@ export async function registerRoutes(
     const now = new Date().toISOString();
     const ski = await storage.createRaceSki({
       athleteId,
+      teamId: getActiveTeamId(req) || null,
       serialNumber: req.body.serialNumber || null,
       skiId: req.body.skiId,
       brand: req.body.brand || null,
@@ -10535,7 +10610,7 @@ export async function registerRoutes(
 
   app.put("/api/race-preps/:id", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
-    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team admin only" });
     const id = parseInt(req.params.id);
     const teamId = u.activeTeamId || u.teamId;
     const { date, startTime, location, raceType, discipline, products, method, structure, notes, productIds, structureIds, kickProductIds, tette, weatherId, productApps, structureApps } = req.body;
@@ -10549,7 +10624,7 @@ export async function registerRoutes(
 
   app.delete("/api/race-preps/:id", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
-    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team admin only" });
     const id = parseInt(req.params.id);
     const teamId = u.activeTeamId || u.teamId;
     const { pool } = await import("./db");
@@ -10669,7 +10744,7 @@ export async function registerRoutes(
 
   app.post("/api/race-preps/:id/entries", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
-    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team admin only" });
     const teamId = u.activeTeamId || u.teamId;
     const racePrepId = parseInt(req.params.id);
     if (!await getRacePrepForTeam(racePrepId, teamId)) return res.status(403).json({ message: "Forbidden" });
@@ -10706,7 +10781,7 @@ export async function registerRoutes(
     const { pool } = await import("./db");
     const entryRes = await (pool as any).query(`SELECT athlete_id AS "athleteId", race_prep_id AS "racePrepId" FROM race_prep_entries WHERE id=$1`, [eid]);
     if (!entryRes.rows.length || entryRes.rows[0].racePrepId !== prepId) return res.status(404).json({ message: "Not found" });
-    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) {
+    if (!canManageTeam(req)) {
       const hasAccess = await storage.hasAthleteAccess(entryRes.rows[0].athleteId, u.id, false, teamId);
       if (!hasAccess) return res.status(403).json({ message: "No access to this athlete" });
     }
@@ -10762,7 +10837,7 @@ export async function registerRoutes(
 
   app.delete("/api/race-preps/:id/entries/:eid", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
-    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team admin only" });
     const teamId = u.activeTeamId || u.teamId;
     const prepId = parseInt(req.params.id);
     const eid = parseInt(req.params.eid);
@@ -11017,7 +11092,7 @@ export async function registerRoutes(
                   (SELECT COUNT(*)::int FROM test_entries e WHERE e.test_id = t.id
                      AND (e.result_0km_cm_behind IS NOT NULL OR e.rank_0km IS NOT NULL)) AS "resultCount"
            FROM tests t LEFT JOIN daily_weather w ON w.id = t.weather_id
-           WHERE t.id = ANY($1::int[])`, [ids]);
+           WHERE t.id = ANY($1::int[]) AND t.team_id = $2`, [ids, teamId]);
         const m = new Map(r.rows.map((x: any) => [x.id, x]));
         for (const it of items as any[]) it.test = m.get(it.testId) ?? null;
       } catch (e) { console.error("[runsheets] test context failed:", e); }
@@ -11030,6 +11105,8 @@ export async function registerRoutes(
     const teamId = getActiveTeamId(req);
     const { testId, label } = req.body;
     if (!testId || !label) return res.status(400).json({ message: "testId and label required" });
+    const rsTest = await storage.getTest(Number(testId));
+    if (!rsTest || !verifyTeamOwnership(rsTest, req)) return res.status(403).json({ message: "Forbidden" });
     const existing = await storage.getRunsheetByTestId(testId, teamId);
     if (existing) return res.status(409).json({ message: "This test already has a runsheet" });
     const created = await storage.createRunsheet({
@@ -11103,10 +11180,31 @@ export async function registerRoutes(
     return entry.count > WATCH_MAX_FAILURES;
   }
   function watchResetFailures(ip: string) { watchCodeFailures.delete(ip); }
+  // Coarser limiter for the unauthenticated PIN endpoints: normal watch usage
+  // stays far below it, PIN enumeration cannot.
+  const watchPinHits = new Map<string, { count: number; resetAt: number }>();
+  function watchPinRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const entry = watchPinHits.get(ip);
+    if (!entry || now > entry.resetAt) {
+      watchPinHits.set(ip, { count: 1, resetAt: now + WATCH_FAILURE_WINDOW_MS });
+      return false;
+    }
+    entry.count++;
+    return entry.count > 120;
+  }
 
   async function generateSessionCode(): Promise<string> {
-    const code = String(Math.floor(1000 + Math.random() * 9000));
-    return code;
+    // The Garmin app enters exactly 4 digits, so the length is fixed — but a
+    // colliding code would silently take over another session via upsert, so
+    // retry until the code is free.
+    const { pool } = await import("./db");
+    for (let i = 0; i < 15; i++) {
+      const code = String(Math.floor(1000 + Math.random() * 9000));
+      const existing = await (pool as any).query(`SELECT 1 FROM watch_sessions WHERE code = $1`, [code]).catch(() => ({ rows: [] }));
+      if (existing.rows.length === 0) return code;
+    }
+    return String(Math.floor(1000 + Math.random() * 9000));
   }
 
   async function getWatchSession(code: string): Promise<WatchSession | null> {
@@ -11326,8 +11424,12 @@ export async function registerRoutes(
     if (!Array.isArray(skiPairs) || skiPairs.length < 2) {
       return res.status(400).json({ message: "Need at least 2 ski pairs" });
     }
-    const code = await generateSessionCode();
     const teamId = getActiveTeamId(req);
+    if (testId) {
+      const sTest = await storage.getTest(Number(testId));
+      if (!sTest || (sTest as any).teamId !== teamId) return res.status(403).json({ message: "Forbidden" });
+    }
+    const code = await generateSessionCode();
     const session: WatchSession = {
       code,
       skiPairs: skiPairs.map(Number),
@@ -11348,7 +11450,7 @@ export async function registerRoutes(
     const session = await getWatchSession(req.params.code as string);
     if (!session) return res.status(404).json({ message: "Session not found" });
     const u = userInfo(req);
-    if (session.userId !== u.id && !u.isScopeAdmin) return res.status(403).json({ message: "Forbidden" });
+    if (session.userId !== u.id && !(u.isScopeAdmin && (session as any).teamId === getActiveTeamId(req))) return res.status(403).json({ message: "Forbidden" });
     const currentHeat = watchFindCurrentHeat(session.bracket);
     const diffs = watchCalcDiffs(session.bracket);
     const results = [...diffs.entries()].sort((a, b) => a[1] - b[1]).map(([ski, diff], i, arr) => {
@@ -11469,7 +11571,7 @@ export async function registerRoutes(
     const session = await getWatchSession(req.params.code as string);
     if (session) {
       const u = userInfo(req);
-      if (session.userId !== u.id && !u.isScopeAdmin) return res.status(403).json({ message: "Forbidden" });
+      if (session.userId !== u.id && !(u.isScopeAdmin && (session as any).teamId === getActiveTeamId(req))) return res.status(403).json({ message: "Forbidden" });
     }
     await deleteWatchSession(req.params.code as string);
     res.json({ ok: true });
@@ -11682,6 +11784,9 @@ export async function registerRoutes(
 
   // Get or generate team's watch PIN (authenticated users)
   app.get("/api/watch/pin", requireAuth, async (req, res) => {
+    // The PIN is a bearer credential for the whole team's watch queue — only
+    // watch-enabled users need it.
+    if (!(await hasGarminWatchAccess(req))) return res.status(403).json({ message: "Watch access not granted" });
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
@@ -11802,6 +11907,10 @@ export async function registerRoutes(
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const { testId, seriesId, testName, seriesName } = req.body;
+    if (testId) {
+      const qTest = await storage.getTest(Number(testId));
+      if (!qTest || (qTest as any).teamId !== teamId) return res.status(403).json({ message: "Forbidden" });
+    }
     const { pool } = await import("./db");
     // Check if already in queue
     const existing = await (pool as any).query(
@@ -11982,6 +12091,8 @@ export async function registerRoutes(
 
   // Resolve PIN → team (used by Garmin app)
   app.get("/api/watch/resolve/:pin", async (req, res) => {
+    const ipW = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+    if (watchPinRateLimit(ipW)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const { pin } = req.params;
     const { pool } = await import("./db");
     const result = await (pool as any).query(
@@ -11994,6 +12105,8 @@ export async function registerRoutes(
 
   // Get active queue by PIN (Garmin app)
   app.get("/api/watch/list/:pin", async (req, res) => {
+    const ipW = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+    if (watchPinRateLimit(ipW)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const { pin } = req.params;
     const { pool } = await import("./db");
     const teamResult = await (pool as any).query(
@@ -12094,6 +12207,8 @@ export async function registerRoutes(
 
   // Get archive by PIN (Garmin app — last 10 completed)
   app.get("/api/watch/archive/:pin", async (req, res) => {
+    const ipW = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+    if (watchPinRateLimit(ipW)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const { pin } = req.params;
     const { pool } = await import("./db");
     const teamResult = await (pool as any).query(
@@ -12111,6 +12226,8 @@ export async function registerRoutes(
 
   // Start a session from queue item (Garmin app) — returns stored session code
   app.post("/api/watch/list/:pin/start/:itemId", async (req, res) => {
+    const ipW = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+    if (watchPinRateLimit(ipW)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const { pin, itemId } = req.params;
     const { pool } = await import("./db");
     const teamResult = await (pool as any).query(
@@ -12244,6 +12361,8 @@ export async function registerRoutes(
 
   // Mark queue item as completed (called by watch app after finishing)
   app.post("/api/watch/list/:pin/complete/:itemId", async (req, res) => {
+    const ipW = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+    if (watchPinRateLimit(ipW)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const { pin, itemId } = req.params;
     const { pool } = await import("./db");
     const teamResult = await (pool as any).query(
@@ -13164,14 +13283,12 @@ RULES:
   app.get("/api/billing/status", requireAuth, billing.getBillingStatus);
 
   app.post("/api/billing/checkout", requireAuth, async (req, res) => {
-    const u = req.user as any;
-    if (!u.isTeamAdmin && !u.isAdmin) return res.status(403).json({ message: "Only team admins can manage billing" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Only team admins can manage billing" });
     return billing.createCheckout(req, res);
   });
 
   app.post("/api/billing/portal", requireAuth, async (req, res) => {
-    const u = req.user as any;
-    if (!u.isTeamAdmin && !u.isAdmin) return res.status(403).json({ message: "Only team admins can manage billing" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Only team admins can manage billing" });
     return billing.createPortalSession(req, res);
   });
 
@@ -13671,7 +13788,7 @@ RULES:
   // POST /api/invitations — send an invitation (team admin or SA only)
   app.post("/api/invitations", requireAuth, async (req: Request, res: Response) => {
     const u = req.user as any;
-    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) {
+    if (!canManageTeam(req)) {
       return res.status(403).json({ message: "Team admin access required." });
     }
     const { email } = req.body;
@@ -13749,6 +13866,8 @@ RULES:
     if (!name || !password) {
       return res.status(400).json({ message: "Name and password are required." });
     }
+    const invPwError = validatePassword(password);
+    if (invPwError) return res.status(400).json({ message: invPwError });
     try {
       const { pool } = await import("./db");
       const result = await pool.query(
@@ -13798,6 +13917,11 @@ RULES:
         [new Date().toISOString(), token]
       );
       await sendWelcomeEmail(inv.email, name, "no");
+      // Regenerate the session before logging in — a pre-planted session id
+      // must never become authenticated (fixation).
+      await new Promise<void>((resolve, reject) => {
+        req.session.regenerate((err) => (err ? reject(err) : resolve()));
+      });
       await new Promise<void>((resolve, reject) => {
         req.logIn(newUser as any, (err) => {
           if (err) { reject(err); return; }
@@ -13815,7 +13939,7 @@ RULES:
   // GET /api/invitations — list invitations for team admin
   app.get("/api/invitations", requireAuth, async (req: Request, res: Response) => {
     const u = req.user as any;
-    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) {
+    if (!canManageTeam(req)) {
       return res.status(403).json({ message: "Team admin access required." });
     }
     const teamId: number = u.activeTeamId || u.teamId;
@@ -13835,7 +13959,7 @@ RULES:
   // DELETE /api/invitations/:id — revoke invitation
   app.delete("/api/invitations/:id", requireAuth, async (req: Request, res: Response) => {
     const u = req.user as any;
-    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) {
+    if (!canManageTeam(req)) {
       return res.status(403).json({ message: "Team admin access required." });
     }
     const teamId: number = u.activeTeamId || u.teamId;

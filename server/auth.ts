@@ -241,6 +241,16 @@ export async function setupAuth(app: Express) {
             if (user.isActive === 0) {
               return done(null, false, { message: "Account is deactivated. Contact your administrator." });
             }
+            if ((user as any).loginLocked === 1) {
+              return done(null, false, { message: "Account is locked. Contact your administrator." });
+            }
+            if (user.teamId && user.isAdmin !== 1) {
+              const { pool } = await import("./db");
+              const teamRes = await (pool as any).query(`SELECT is_paused FROM teams WHERE id = $1`, [user.teamId]);
+              if (teamRes.rows[0]?.is_paused === 1) {
+                return done(null, false, { message: "Team is paused. Contact your administrator." });
+              }
+            }
             return done(null, user);
           } catch (err) {
             return done(err as Error);
@@ -320,7 +330,10 @@ export async function setupAuth(app: Express) {
           }
           const { password, ...safe } = user;
           const effectivePermsStr = (req.session as any)?.effectivePermissions ?? safe.permissions;
-          const perms = parsePermissions(effectivePermsStr, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
+          const effTA = (safe.activeTeamId ?? safe.teamId) === safe.teamId
+            ? (safe as any).isTeamAdmin === 1
+            : !!(req.session as any)?.activeTeamIsAdmin;
+          const perms = parsePermissions(effectivePermsStr, !!safe.isAdmin, effTA);
           let teamEnabledAreas: string[] | null = null;
           const effectiveTeamId = safe.activeTeamId ?? safe.teamId;
           if (effectiveTeamId && safe.isAdmin !== 1) {
@@ -360,7 +373,10 @@ export async function setupAuth(app: Express) {
     }
     const { password, ...safe } = req.user;
     const effectivePermsStr = (req.session as any)?.effectivePermissions ?? safe.permissions;
-    const perms = parsePermissions(effectivePermsStr, !!safe.isAdmin, safe.isTeamAdmin === 1);
+    const effTAme = (safe.activeTeamId ?? safe.teamId) === safe.teamId
+      ? safe.isTeamAdmin === 1
+      : !!(req.session as any)?.activeTeamIsAdmin;
+    const perms = parsePermissions(effectivePermsStr, !!safe.isAdmin, effTAme);
     const incognito = !!(req.session as any)?.incognito;
     const stealth = !!(req.session as any)?.stealth;
     let teamEnabledAreas: string[] | null = null;
@@ -515,6 +531,9 @@ export async function setupAuth(app: Express) {
   app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
   app.get(
     "/api/auth/google/callback",
+    // Regenerate before authenticating so a pre-planted session id can never
+    // become an authenticated one (fixation) — the local strategy does the same.
+    (req, _res, next) => req.session.regenerate(() => next()),
     passport.authenticate("google", { failureRedirect: "/login?error=google" }),
     (_req, res) => res.redirect("/dashboard"),
   );

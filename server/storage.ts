@@ -729,7 +729,9 @@ export class DatabaseStorage implements IStorage {
     // teams. Exception: for 14 days after an athlete transfer the SENDING team
     // keeps access (the transfer row carries the window); after that the gate
     // closes by itself even though old athlete_access rows remain.
-    if (teamId && athlete.teamId && athlete.teamId !== teamId) {
+    // A NULL team on the athlete must never bypass the boundary (it would let
+    // any caller into fleet/profile-only rows below).
+    if (teamId && athlete.teamId !== teamId) {
       const nowIso = new Date().toISOString();
       const g = await db.execute(sql`SELECT 1 FROM athlete_transfers
         WHERE athlete_id = ${athleteId} AND from_team_id = ${teamId}

@@ -24,8 +24,11 @@ rennbruk — logges én gang og gjenbrukes overalt: analyse, forslag, historikk.
 
 - **Klient:** React 18 + TypeScript, Vite, wouter (routing), TanStack Query
   (server-state), shadcn/ui + Tailwind, Recharts (grafer). PWA med
-  pull-to-refresh og offline-kø (mutasjoner køes i localStorage når offline og
-  spilles av ved reconnect; feltbruk uten dekning er et hovedscenario).
+  pull-to-refresh (to terskler: 70px = refetch alt + versjonssjekk, 170px =
+  hard reload) og offline-støtte i **IndexedDB** (`idb`, DB `glidr-offline`:
+  kø for mutasjoner + cache av alle vellykkede API-svar, pre-fetch av
+  whitelist-endepunkter, restaureres inn i React Query når man går offline).
+  «Legg til på hjemskjerm»-banner (iOS-veiledning / Android native prompt).
 - **Server:** Node/Express + TypeScript i én stor `server/routes.ts` (~14k
   linjer), Passport (lokal + Google OAuth), express-session med Postgres
   session-store, drizzle-orm mot **PostgreSQL** (Neon/Render). Migrasjoner:
@@ -49,10 +52,22 @@ rennbruk — logges én gang og gjenbrukes overalt: analyse, forslag, historikk.
   et hjemmelag (`users.team_id`) og kan være medlem av flere lag
   (`user_teams`); aktivt lag ligger i session (`activeTeamId`) og byttes med
   `POST /api/teams/switch` (validerer medlemskap).
-- **Parent/child-lag:** et hovedlag kan dele områder (tests, products, kick,
-  grinding …) lesbart til barnelag (`parent_team_id`, `shared_areas`), med
-  ekskluderinger per post (`child_visibility_exclusions`). Delte tester
-  reberegnes/kurateres før visning hos barnet.
+- **Parent/child-lag:** et hovedlag kan dele områder — nøyaktig whitelist:
+  `tests, products, kick, weather, grinding` — lesbart til barnelag
+  (`parent_team_id` + `shared_areas` lagret på BARNET; kun ett nivå; settes av
+  SA). Ekskluderinger per post (`child_visibility_exclusions`, kun typene
+  test/test_entry/product — vær/kick er alt-eller-ingenting). `grinding` er
+  ingen egen deling, den låser bare opp Grind-tester i tests-delingen. Delte
+  poster tagges `sharedFromTeam` + `readOnly`; raceski-tester deles ALDRI;
+  runsheet_bracket strippes. Delte tester med skjulte rader **reberegnes**:
+  beste gjenværende par blir 0-punkt, diffs på nytt (2 desimaler), ranks
+  renummereres SEKVENSIELT 1..n (ikke dense), feeling/kick kompakteres —
+  urørte tester beholder originaltallene. Foreldre-data ignorerer gruppescope
+  (barnet ser alt i delte områder, inkl. mixer). **Parent-TA-unntaket:** en TA
+  på forelderlaget kan bytte inn i barnelag uten medlemskap og får full TA
+  skrivetilgang der (bevisst unntak fra per-lag-TA-regelen). **Emansipering**
+  (SA): barnet frikobles, valgfritt med fysisk kopi av det kuraterte synlige
+  settet.
 - **Lagfunksjoner** (`teams.enabled_areas`, styres av Super Admin): navigasjons-
   områder + featureflagg — bl.a. `para_team` (Race fleets + My athletes +
   sportsklasse), `time_tests` (fotocelle-tid), `blind_tester`, `garmin_watch`,
@@ -80,15 +95,22 @@ rennbruk — logges én gang og gjenbrukes overalt: analyse, forslag, historikk.
 - **Blind tester:** `is_blind_tester=1` — ser ALDRI produkt↔resultat-koblingen:
   productId/navn/methodology/freeTextProduct redigeres bort i alle test-lesende
   endepunkter (entries, PDF, compare, cross-team, produkthistorikk).
-- **Athlete access:** `is_athlete_access=1` + `linked_athlete_id` — lesekonto
-  for én utøver (deling til utøveren selv); read-only, samme redaksjon.
+- **Athlete access:** `is_athlete_access=1` + `linked_athlete_id` — konto for
+  utøveren selv; kan gis flere utøvere (`athlete_access`-rader) og bytte aktiv
+  utøver; **per-utøver `can_edit`** (TA-matrise `PUT /api/users/:id/athlete-access`)
+  gir raceskis=edit når minst én utøver er redigerbar (`editableAthleteIds` på
+  /me); ellers read-only; samme produktredaksjon som blind tester. Kontoer kan
+  opprettes inline fra utøversiden.
+- **All teams-tilgang:** `users.can_view_all_teams` settes av TA for egne
+  brukere (SA for alle); effektiv kun ved medlemskap i ≥2 lag. All
+  teams-visningene utelater raceski- og Grind-tester.
 
 ### 3.3 Sikkerhetsprinsipper (fra full audit)
 - Hvert endepunkt: auth-middleware + team-eierskap (`verifyTeamOwnership` /
   `team_id = $n` / `hasAthleteAccess(athleteId, userId, isScopeAdmin, teamId)`).
-- `hasAthleteAccess`: team-grense FØRST (med unntak: 14 dagers grace etter
-  overføring, aktive lån), deretter fleet/profilåpning, admin, skaper,
-  `athlete_access`-rad.
+- `hasAthleteAccess`, eksakt rekkefølge: team-grense (NULL-team gir ALDRI
+  bypass) → transfer-grace (14 d) → aktivt lån → `is_fleet=1` ⇒ true →
+  `is_profile_only=1` ⇒ true → admin → skaper → `athlete_access`-rad.
 - Ingen SQL-interpolering av brukerinput (alltid parametre); identifikatorer
   kun fra whitelists.
 - Session-regenerering ved alle innloggingsveier (lokal, Google, 2FA,
@@ -117,10 +139,16 @@ Kjernetabeller (kolonnenavn i snake_case; tekst-datoer ISO):
   name, created_*, team_id, archived, **is_fleet** (lagets skjulte «Race
   fleets»-utøver), **is_profile_only** (profil uten egen garasje, fra «My
   athletes», para-gated).
-- **athlete_access** (delte brukere per utøver), **athlete_transfers**
-  (flytting mellom lag, aksept via e-post, 14 dagers grace for avsender),
-  **athlete_loans** (utlån med utløp, evt. skrivetilgang),
-  **athlete_race_calendar** (rennkalender per utøver).
+- **athlete_access** (delte brukere per utøver; `can_edit` per rad — NB:
+  tilgangsdialogen på utøversiden skriver settet uten can_edit),
+  **athlete_transfers** (from/to_team_id, accepted_by_id, `strip_products`
+  (default true; false ved SA admin-move), `prev_main_waxer_id/name`,
+  `grace_until` = aksept + 14 d), **athlete_loans** (owner_team_id/to_team_id/
+  status/expires_at/`can_edit` — NB: can_edit lagres men håndheves foreløpig
+  ikke; lån gir i praksis full tilgang), **athlete_race_calendar**.
+- **teams** har også sync-kolonner: product_sheet_url + product_sheet_group,
+  backup_sheet_url, drive_folder_id/json/pdf-file-id, last_backup_rows/error,
+  feedback_sheet_url/enabled; **users.can_view_all_teams**.
 - **race_skis** (konkurranseski/utøverski): athlete_id, ski_id(label),
   serial_number, brand, discipline(Classic/Skating), construction, mold, base,
   grind, heights, year, length, type_of_ski, where_received, notes,
@@ -195,32 +223,75 @@ Kjernetabeller (kolonnenavn i snake_case; tekst-datoer ISO):
   kategorikolonne i tabeller.
 - **«Sist endret av»**: updated_at/by på poster, vises via `LastEdited`-
   komponent; «Lagt inn av X · tidspunkt» på skipar.
-- **Desktop:** venstremeny er låst (scroller ikke med innholdet). Bredere
-  dialoger på PC der det trengs.
+- **Navigasjon/utseende:** venstremenyen er låst mot scrolling, kollapsbar,
+  dra-justerbar bredde (180–360px, persistert) med seksjons-grupper; hele
+  naven kan byttes til **toppmeny-layout**. Per bruker: mørk/lys modus,
+  8 aksentfarger, valgfri **mobil bunn-nav** med «Mer»-ark. Per lag (SA):
+  **nasjonstema** (14 nasjoner — aksentfarge + flaggbånd i skallet).
+  **Cmd/Ctrl+K kommandopalett**: globalt søk på tester, produkter, fleets,
+  utøvere, slipprofiler og vær med gruppert resultatliste. Bredere dialoger
+  på PC der det trengs. Konfigurerbar Feedback-knapp i menyen (ekstern
+  Google-form-URL per lag). Watch-kø-badge i nav.
 
 ---
+
+### 5.1 Globale mekanismer (app-skallet)
+- **Vedlikeholdsmodus** (SA): polles hvert 30. sek; fullskjerm «Under
+  vedlikehold» for alle ikke-SA, med valgfritt gjenåpningstidspunkt.
+- **Broadcast-banner** (SA): mykt «oppdateringer pågår»-varsel, separat fra
+  vedlikeholdsmodus. **«What's new»-popup**: SA publiserer release-notis
+  (feature/fix/update); vises én gang per notis, kan dempes.
+- **Vilkårsport**: engangs blokkerende aksept av Terms & Policy (versjon +
+  tidsstempel server-side; mutasjoner blokkeres til akseptert; SA kan
+  nullstille en brukers aksept).
+- **Tester-konto** (`is_tester`): låses til `/watch-queue` fra alle ruter.
+- **SA-moduser:** «admin mode» (localStorage-flagg; `/` → `/overview`),
+  **stealth** (read-only kryssvisning uten logging) og **incognito**
+  (handlinger logges ikke). SA som ser et lag de ikke er medlem av (uten
+  stealth) redirectes fra datasider til `/admin`.
+- **Onboarding-veiviser** (ikke-admin, til `onboarding_completed`) +
+  engangs **produkt-tur** for alle.
 
 ## 6. Sider og funksjoner
 
 ### 6.1 Dashboard
-Nøkkeltall (tester denne sesongen m.m.), siste aktivitet, og **Attention-kort**:
-teller ting som venter (tester uten vær, uten resultater, athlete-ski-tester
-osv.) med **deep-links som åpner nøyaktig de telte testene** (attention-modus
-bypasser sidefiltre); hvert varsel kan **avvises** med antall-hukommelse
-(dukker opp igjen når antallet endres). Synlighetsscopet per bruker.
+**Tilpassbart widget-dashbord** («Tilpass dashbord», 11 av/på-widgets):
+Needs Attention, Stats Overview, Today's Tests, Watch Queue (feature-gated),
+Quick Actions (med fjernbare snarveier), Recent Results, Recent Weather,
+Products, Top Products, Athlete Recent Tests (per-utøver-multivalg),
+Team Activity (kun admin), skigarasje-oversikt. Tidsavhengig hilsen +
+deterministisk dagssitat.
+**Attention-kortet** teller: tester uten vær / uten resultater (+ athlete-ski-
+variantene), fleets som trenger sliping, produkter tomme på lager, produkter i
+bestilling, og team-tilgangsforespørsler — med **deep-links som åpner nøyaktig
+de telte testene** (attention-modus bypasser sidefiltre); hvert varsel kan
+**avvises** med antall-hukommelse. Synlighetsscopet per bruker.
+**Team-join-forespørsler** vises som accept/decline-kort (avsender ser og kan
+kansellere sine i My Team; mottaker varsles på dashbord, inbox og e-post).
 
 ### 6.2 Tests (testfleet-tester)
 - New test: dato/tid/sted (autocomplete), testtype (Glide/Structure/Grind),
   serie, vær (auto-match på dato+sted eller manuelt/`ManualWeatherDialog`),
   produkter per par (hovedprodukt + tilleggsprodukter + fritekst),
   application-parametre (redigerbare kolonner), flere runder, gruppescope.
-- Testliste med sesong/dato/type/sted/vær-filtre, «quick day select»,
-  kolonnevelger, kort/liste-visning, gull-chip for vinnerprodukt.
-- Test-detalj: resultatliste per runde, **Rank-kolonnen er dropdown** (velg
-  runde eller Average), relativisering-toggle, vedlegg, kommentarer med
-  mentions, deling via offentlig lenke (share_token; TA-oversikt over aktive
+- Testliste med **fire visningsmoduser** (kort → to-kolonners kort → tabell →
+  **kalender** (månedsgrid med år/måned-navigasjon), sykles med én knapp,
+  persistert), sesong/dato/type/sted-filtre, «quick day select», kolonnevelger,
+  gull-chip for vinnerprodukt, blind-tester vis/skjul-toggle, og et **fullt
+  vær-områdefilter**: min/maks på luft-/snøtemp, luft-/snøfukt og skydekke +
+  sporhardhet, snøfukttype, kornstørrelse, kunst-/natursnø, nedbør, vind, sikt.
+- Test-detalj (gjelder både testfleet- og raceski-tester; tilbake-lenke og nav
+  følger kilden — «Back to athlete»/«Back to Race fleets»): resultatliste per
+  runde, **Rank-kolonnen er dropdown** (runde eller Average),
+  relativisering-toggle, «Rank by diff»/«Rank by feel»-bryter og
+  **Feeling test-modus** (dra-og-slipp-rangering av par etter følelse),
+  forrige/neste test-navigasjon, «Add to watch queue», foto-vedlegg med
+  dra-og-slipp, kolonnevelger + sortering, kommentarer med mentions,
+  **child-team-synlighetsdialog** (skjul hele testen eller enkeltpar for
+  barnelag), deling via offentlig lenke (share_token; TA-oversikt over aktive
   lenker), PDF-utskrift, dupliser, rediger (stampes).
-- **Compare tests** (inntil 4), **cross-team** («All teams», se 6.13).
+- **Compare tests**: fritt multivalg med søk (sted/navn/dato), fjern per test,
+  tøm alle. **Cross-team** («All teams», se 6.13).
 
 ### 6.3 Bildeskanning av testark (OpenAI)
 Last opp foto av håndskrevne/pre-printede testark (US-blokkark):
@@ -230,14 +301,20 @@ Last opp foto av håndskrevne/pre-printede testark (US-blokkark):
   HWK literal. Kategori: Powder som default, «liq.» ⇒ Liquid.
 - **Modellen lærer:** korreksjoner lagres i `scan_corrections` per lag og slås
   opp (exact-recall) før fuzzy-matching neste gang.
+- Skanningen leser også **værdata fra arket** (temp/fukt/snøtype/korn/spor/
+  vind/nedbør/sikt/skydekke/kunst-natursnø) med opt-out «vær legges inn
+  manuelt senere».
 - Review-UI speiler «New test» (én linje per par), produkter kan opprettes
   underveis, produktkategori vises i velgere. Skann havner alltid i fleeten
   «From picture - no series available». Klientside-nedskalering av bildet
   (2200px JPEG) før opplasting. UI-tekst: «analyserer bildet» (aldri «AI»).
 
 ### 6.4 Testfleets (testskis)
-Serier av nummererte testpar (pair_labels), regrind-historikk per par,
-lim-inn-liste av ski-ID-er (tak 120), serdetaljside med tester og slip.
+Serier av nummererte testpar (pair_labels), regrind-historikk per par (mønster,
+stein/verktøy, dato, notat, «Current»/«Latest»-markering, sletting),
+**fleet-slipestatus** («hvor er skiene til sliping?»), lim-inn-liste av
+ski-ID-er (tak 120), arkiverte serier med gjenoppretting og permanent sletting,
+seriedetaljside med tester og slip.
 
 ### 6.5 Athlete Skis (utøverski)
 - Utøverliste (kort/tabell), arkivering, «Legg til utøver» (navn, klubb,
@@ -261,8 +338,21 @@ lim-inn-liste av ski-ID-er (tak 120), serdetaljside med tester og slip.
     gjennom alle tre label-kolonner). Rennkalender med vær-filtre.
   - **Analytics:** per-par statistikk (glide/feeling/begge), sammenlign par,
     beste temperaturområde; **Suggestions:** forslagsmotor med værmatch.
-  - Tilgangsstyring per utøver (deling til brukere), share-view (read-only),
-    feedback-lenke, Export PDF, overføring/lån til andre lag.
+  - Tilgangsstyring per utøver (deling til brukere; share-view read-only-konto
+    kan **opprettes inline**), feedback-lenke, **konfigurerbar PDF-eksport**
+    (velg seksjoner: inventar/tester/slip/sammendrag + per-parameter-kolonner
+    inkl. custom params), overføring/lån (permanent overføring; utlån med
+    valgfritt utløp; **SA-hurtigflytting uten karantene**; historikk-dialog
+    over alle overføringer/lån; duplikat-sammenslåing ved kollisjon).
+    **Hovedsmører-regel:** bytte av hovedsmører beholder forrige smørers
+    delte tilgang. Rennkalender-oppføringer kan redigeres/slettes; renntyper:
+    Classic, Skating, Skiathlon, Sprint classic, Sprint skating.
+  - Faner totalt: garage / tests / **races (Race use)** / analytics /
+    suggestions (+ athletes på fleet). Garasjekolonner inkluderer Times raced;
+    15 sorteringsvalg.
+- `/raceskis`-listen: kort/liste, arkiverte utøvere med gjenoppretting,
+  **innkommende lån/overføringer med Accept/Decline og «End loan»**,
+  lag-standard skimerke (prefylles på nye par).
 
 ### 6.6 Race fleets (para-feature)
 **Arkitektur: fleeten ER en utøver.** Hvert lag har en skjult
@@ -295,21 +385,33 @@ chips med **på/av-togglere** øverst (kun felter som finnes, alle på som
 default). Nås fra «Vis tester» og fra Analytics/Suggestions-tabellene.
 
 ### 6.8 Weather
-Værobservasjoner (alle felter i §4), gruppert per dag, koblet til tester/bruk;
-værstasjon-integrasjon (config per lag); «missing weather»-side.
+Værobservasjoner (alle felter i §4), gruppert per dag, kort/tabell-visning
+(tett sorterbar tabell m/ korn/kvalitet/kunstsnø/lagt-inn-av), koblet til
+tester/bruk; **værstasjon-integrasjon** (config per lag + «Hent»-knapp som
+fyller skjemaet live); offline-lagring; «missing weather»-side med både
+«Add weather» og «Skip / marker som uten vær» per test.
 
 ### 6.9 Products
-Produktregister m/ kategorier, lager (product_stock), bestillinger, Google
-Sheets-sync (push/pull), deling til andre lag (TA begge sider, kopi uten
-statistikk), arkiv. **Produktside:** statistikk-kort (tester, #1, snittrang,
-testtyper, ganger i renn), testhistorikk med egen rad uthevet, Application
-Insights (per applikasjon: antall, snittrang, beste, typiske forhold).
+Produktregister m/ kategorier og **fire visninger**: Products, Lager/stock,
+Arkiv, **Compare products** (ytelsessammenligning over valgte tester).
+**Bulk-operasjoner:** multivalg med gruppe-tilordning, arkiver/gjenopprett,
+og **del til andre lag** med mållagsgruppe per lag. **Glide-mixer** som egne
+produktentiteter (i tillegg til kick-mixer). Bestillingsflyt med antall per
+produkt og **ordrestatus per merke**. Google Sheets-sync (push/pull, med
+mål-importgruppe per lag). **Produktside:** statistikk-kort (tester, #1,
+snittrang, testtyper, ganger i renn), testhistorikk med egen rad uthevet og
+resultat/rank i rette kolonner, Application Insights (per applikasjon: antall,
+snittrang, beste, typiske forhold).
 
 ### 6.10 Grinding & Kick
-- Grinding: slipprofiler, sliperecords, grinding sheets (US-format ved
-  `us_grind`), grind-tester (testType Grind, egen permission).
-- Kick: kick-ski, kick-tester (binder + kick solution + feeling per ski),
-  kick-mixer (blandinger m/ rulletemperatur). Deles fra parent-lag.
+- Grinding, tre faner: Tests, Grinds (profiler) og **Analytics**;
+  **bulk-import av slipprofiler** fra limt tekst med forhåndsvisning.
+  Grinding sheets (US-format ved `us_grind`); grind-tester (testType Grind,
+  egen permission).
+- Kick, fire seksjoner: Test skis (m/ farge, høyder, binder, dupliser),
+  Kick tests (binder + kick solution + feeling per ski), Mixes
+  (rulletemperatur), og **Analysis/rapport** som aggregerer kick-løsninger på
+  tvers av tester med forhold og tekstlige innsikter. Deles fra parent-lag.
 
 ### 6.11 Race Prep
 Renndag-oppsett per renn: dato/starttid/sted/renntype/disiplin (inkl. Skiathlon
@@ -318,57 +420,175 @@ applikasjonsmåter, tette, metode, vær. **Entries per utøver** (TA setter opp
 startlisten): ski-ID per slot m/ autocomplete fra utøverens garasje +
 lånemuligheter fra andre garasjer og fleet («Borrowed»); waxer per utøver;
 athlete-feedback (rating/kommentar, også via offentlig feedback-lenke);
-forfatter-private kommentarer (admin ser alle). Race-prep-bruk teller som
-løpsbruk på paret og vises i utøverens Race use.
+forfatter-private kommentarer (admin ser alle); **bulk-dialog «legg til
+utøvere i startlisten»** med søk; **PDF-eksport/nedlastbar rapport** per prep.
+Race-prep-bruk teller som løpsbruk på paret og vises i utøverens Race use.
 
 ### 6.12 Live Runsheets / Watch Queue / Garmin
 - Runsheet per test: heat-basert kjøring (bracket i `runsheet_bracket`),
   progress-lagring, mobilvisning.
 - **Watch-økter:** 4-sifret sesjonskode (kollisjonssjekket); klokka kjører heats
   og resultater skrives tilbake i testen (diff/rank).
-- **Watch Queue:** kø av tester for klokka; lag-PIN (4 siffer) + personlige
-  4-sifrede brukerkoder; Garmin-appen henter kø/starter/fullfører via PIN.
-  Uautentiserte PIN-endepunkter er rate-limitet (120/5min/IP).
+- **Watch Queue:** kø av tester for klokka med Aktiv/Arkiv-faner (fjern,
+  gjenopprett, auto-arkiv ved fullføring); lag-PIN (4 siffer, regenererbar) +
+  personlige 4-sifrede brukerkoder (refresh + kopier); Garmin-appen henter
+  kø/starter/fullfører via PIN. Uautentiserte PIN-endepunkter er rate-limitet
+  (120/5min/IP). **«Run on phone»**: mobil runsheet som kjører heatene uten
+  klokke. Live Runsheets har vis/skjul produktnavn per par (blindtest-støtte)
+  og kolonner for kilde/testtype/oppdatert.
 
 ### 6.13 All teams (multi-team)
-For brukere med tilgang til flere lag: samlet testliste, **Analytics-motor** og
-**Suggestions-motor** på tvers av valgte lag (lag-checkboxes), temperaturbånd
-(≥0, −1..−4, −5..−9, −10..−14, <−15 på snøtemp), snøtype, venues, full
-filtrering som Suggestions ellers. Enkelttest åpnes read-only på tvers.
+For brukere med tilgang til flere lag — tre faner: **Tests** (m/ kort/liste-
+toggle), **Analytics** og **Suggestions**, alle på tvers av valgte lag
+(lag-checkboxes). Analytics: produkter på tvers av lagene, beste produkter per
+snøtemperatur (bånd ≥0, −1..−4, −5..−9, −10..−14, <−15), snøtype og
+**Test venues**-oversikt. Suggestions med full filtrering som ellers.
+Enkelttest åpnes read-only på tvers.
 
 ### 6.14 Suggestions & Analytics (per lag)
 Forslagsmotor: match dagens forhold (vær) mot historiske tester → rangerte
-produkter/ski med antall matchende tester. Test analytics: merkeanalyse,
-buckets, trender.
+produkter/ski med antall matchende tester. **Test analytics, åtte faner:**
+Overview, Products, Compare, Conditions, **Durability** (klassifiserer
+produkter som bedre/dårligere over distanse fra flerrunde-tester),
+**Raced Products**, **Raced Skis**, **Brand stats** — pluss head-to-head-
+matrise, kombinasjonssøk («beste combo-partner»), formkurve og beste
+applikasjon per produkt. **Export Report som PDF** (inkl. topp produkter
+etter win rate).
 
 ### 6.15 My Team
-Medlemsliste med grupper, kontaktinfo (alle ser all kontaktinfo), testCount
-(alle), lastSeen (kun TA), plass/abonnement (kun TA og kun ved
-kommersialisering), eksterne medlemmer merket med **hjemmelaget sitt** (aldri
-Admin/Member), filter på egne grupper + eksternes hjemmelag,
-rettighetsredigering (én post per bruker+lag, TA-eskalering setter alt til
-edit).
+Medlemsliste i tre visninger (liste/grid/kompakt) med grupper, kontaktinfo
+(alle ser all kontaktinfo), testCount (alle), lastSeen (kun TA),
+plass/abonnement (kun TA og kun ved kommersialisering), eksterne medlemmer
+merket med **hjemmelaget sitt** (aldri Admin/Member), filtre på rolle, egne
+grupper + eksternes hjemmelag, rettighetsredigering (én post per bruker+lag,
+TA-eskalering setter alt til edit), **deaktiver medlem** (gjenopprettes i
+Admin) og **fjern fra laget** (to-stegs bekreftelse), utgående
+team-join-forespørsler med kansellering.
 
 ### 6.16 Admin (SA + TA)
-Brukeradmin (opprett/rediger/reset passord/deaktiver/slett — kun eget lags
-brukere for TA), invitasjoner (e-post m/ token), grupper, laginnstillinger,
-features (SA), planer/billing (Stripe checkout/portal, TA), aktivitetslogg med
-snapshots + gjenoppretting, login-logg, force-logout (lag-scopet),
-emergency lockdown (SA), eksport/backup (JSON selektiv m/ merking,
-Google Sheets, Excel), import-v2, team-usage, klientfeil-logg.
+Kontrollrom med **søkbar funksjonssidebar** (hopp-til-funksjon, Enter åpner
+første treff; gruppert dropdown på mobil). Grupper: Overview / People / Logs /
+Data / System; SA-only-faner er badget «SA».
+- **People:** brukeradmin med fanedelt redigeringsdialog (Profil / Rettigheter /
+  Lag m/ medlemskapsteller / Annet) + egen «Access on this team»-dialog; roller
+  Member, Team Admin, Super Admin (SA) og Athlete Access; legg eksisterende
+  bruker til lag via e-post; lås opp konto; per-bruker force-logout; kun eget
+  lags brukere for TA. Invitasjoner (e-post m/ token), grupper,
+  **registreringer** (SA: interesse-liste, rediger, **opprett lag direkte fra
+  registrering**).
+- **Logs:** aktivitetslogg = **aktivitet + papirkurv** (kategorisert, snapshot
+  + gjenoppretting via restore; purge før dato), login-logg (slett enkeltvis /
+  per lag), **Security-fane (SA):** vedlikeholdsmodus m/ gjenåpningstid,
+  broadcast-banner, What's new-publisering, emergency lockdown per lag,
+  nullstill vilkårsaksept per bruker, force-logout-all (lag-scopet).
+- **Data:** eksport/backup (JSON selektiv m/ merking, Google Sheets/Drive,
+  Excel), import-v2 med per-område-valg, legacy-import, **fjern duplikate
+  produkter**, system-dump til konfigurert Drive-mappe, eksport-logging,
+  team-usage, klientfeil-logg.
+- **System (SA):** per-lag-grenser (maks brukere/grupper/tester/produkter),
+  parent/child-dialog med per-område-deling, **emansiper barnelag** (valgfri
+  datakopi), lagnotater, planhistorikk, standardlag, slett lag, per-lag-backup,
+  **Accounting** (billing-CRUD, planpriser, **plan-builder-prising** — brukere/
+  grupper inkludert + pris per ekstra, valutakurser, neste fakturadato),
+  watch-app-publisering, **Dokumenter**: Feature Guide, strategidokument,
+  Letter of Intent-utkast og salgsdeck-PDF (NO+EN).
+- **Team plan-fane (TA selvbetjening):** kun ved kommersialisering; redigerbar
+  bare for «custom»-planer; setter også lagets **tidssone**.
 
-### 6.17 Konto & auth
-Login (lockout etter feilforsøk, 2FA TOTP, Google OAuth m/ samme sperrer),
-passord-reset (engangs-token), invitasjonsaksept (passordpolicy +
-session-regenerering), «husk meg» (forlenget session), språkvalg, watch-kode,
-GDPR-sletting (anonymisering), inbox/varsler.
+### 6.17 Konto & auth (My Account)
+Login (lockout etter feilforsøk, 2FA TOTP **med backup-koder**, Google OAuth
+m/ samme sperrer), passord-reset (engangs-token), invitasjonsaksept
+(passordpolicy + session-regenerering), «husk meg» (forlenget session).
+My Account: **avatar** (opplasting m/ størrelsesgrense + forhåndsvalg),
+**brukernavn** separat fra e-post (kan brukes til login), språk,
+**temperaturenhet °C/°F per bruker** (lagres alltid i °C; inputfelter forblir
+°C), aksentfarge, nav-layout, mobil-nav-toggle, **aktive økter** med
+per-økt-utlogging og «denne enheten»-markør, watch-kode + lag-PIN m/
+regenerering, inviter medlemmer direkte (TA), **be om planbytte**-dialog +
+gjeldende plan/pris (mnd/år), SA admin-mode-toggle, GDPR-sletting
+(anonymisering). **Inbox** (`/inbox`, SA/TA): meldingstyper reset_password
+(m/ inline ny-midlertidig-passord-handling), test_comment (@-mention) og
+athlete_feedback; uleste-tellere, merk alle lest, slett.
 
-### 6.18 Offentlige sider
-what-is-glidr, pricing (planer fra app_settings), get-started/demo,
-interest-registrering, legal/DPA/contact, status, delt test (`/share/test/:token`),
-feedback-side (`/feedback/:token`).
+### 6.18 Offentlige og interne spesialsider
+- what-is-glidr, pricing (planer fra app_settings), legal/DPA/contact.
+- **`/get-started`**, tre moduser: **selvbetjent plan-bygger** (komponer plan
+  fra plan-builder-prisingen, mnd/år, opprett lag umiddelbart),
+  interesse-skjema, direkte kontakt. **`/demo`**: skriptet animert
+  funksjonsgjennomgang (markedsføring).
+- **`/status`**: offentlig helse-side som poller `/api/health` hvert 30. sek
+  med latens og sist-sjekket.
+- Delt test (`/share/test/:token`), feedback (`/feedback/:token`).
+- **`/overview`** (SA): global oversikt — lag/brukere/tester/produkter,
+  kommersialiseringsstatus, aktive økter, siste innlogginger, siste tester på
+  tvers, suspenderte lag; SA-landingsside i admin mode.
+- **`/test-protocol`** (SA): stegvis verifiseringssjekkliste for plattformen
+  (auth/vilkår/sikkerhet, brukere & tilgang, …), hvert steg OK/flagget med
+  notat, persistert server-side.
+- `/logo-preview` (internt designverktøy). `pages/runsheets.tsx` og
+  `pages/profile.tsx` er døde filer (skal ikke gjenskapes; `/profile`
+  redirecter til `/my-account`).
 
 ---
+
+## 6b. Deling av data — komplett katalog
+
+1. **Parent/child-speiling** (se §3.1) — live read-only nedover; parent-TA har
+   skrivetilgang oppover-unntak; emansipering m/ valgfri kopi.
+2. **Produktdeling til andre lag** (kopi): TA på kilde + TA på HVERT mållag;
+   kun kategori/merke/navn + valgt mållagsgruppe krysser (ikke lager/ordre/
+   statistikk/arkiv); dedupe på normalisert merke|navn; mixer nektes
+   (`mixesSkipped`); activity_log begge steder (`products_shared_out/in`);
+   ingen «angre» — kopien er en selvstendig rad.
+3. **SA test-kopi** (`POST /api/tests/:id/share`): SA deep-kopierer én test til
+   valgte lag — produkter matches (merke+navn+kategori) eller opprettes, vær
+   dupliseres, entries gjenskapes, kreditert «Shared by <navn>», havner i
+   mållagets første gruppe.
+4. **Utøveroverføring:** TA→TA via e-post; aksepterende TA må ha byttet til
+   mottakerlaget; flytter utøver + garasje + løpsbruk + kalender + tester;
+   `stripProducts` (default på) nuller produktreferanser i testene (gjen-
+   opprettes IKKE ved angring); mottaker-TA blir hovedsmører; 14 dagers grace
+   for avsenderlaget; angre innen grace reverserer alt annet. **SA admin-move**:
+   umiddelbart, uten grace, stripProducts default av.
+5. **Utøverlån:** TA→TA, valgfritt utløp; utøveren blir hjemme; låntakerlag
+   får tilgang via hasAthleteAccess så lenge lånet er aktivt; «End loan» når
+   som helst fra eierlaget; badges i UI.
+6. **Per-utøver brukertilgang** + share-view-kontoer (se §3.2).
+7. **Offentlig feedback-lenke per utøver:** UUID-token, én aktiv per
+   utøver+lag, ingen utløp; GET (uinnlogget) viser utøverens KOMPLETTE
+   løpsbruk- og prep-historikk; POST skriver rating/kommentar og inbokser alle
+   med tilgang; revoke setter revoked=1.
+8. **Offentlig test-lenke** (`share_token`): 20 bytes hex, ingen utløp;
+   offentlig side viser dato/sted/navn/type/notater/skaper + per par: ranks/
+   resultater (runde 1 + xkm-kolonnene, ikke results-JSON), feeling/kick,
+   metode og produkt (merke/navn/kategori). Opprettelse krever kun innlogget
+   lagmedlem; oversikten over aktive lenker krever tests:view; sletting
+   tests:edit; begge logges.
+9. **All teams** (se §3.2/6.13).
+10. **Team join requests:** TA inviterer eksisterende bruker fra annet lag;
+    brukeren aksepterer selv → medlemskap + per-lag-rettigheter satt til
+    **alt=edit** (begrenset til lagets områder), TA=nei, tomt gruppescope;
+    varsles på dashbord/inbox/e-post; kanselleres av avsender.
+11. **Invitasjoner** (nye kontoer): token i klartekst, **48 t utløp**, én aktiv
+    per lag+e-post; aksept oppretter konto m/ standardrettigheter.
+12. **Google Sheets/Drive:** produkt-sync BEGGE veier men asymmetrisk — pull
+    (ark→Glidr) er kun additiv (sletter aldri), auto hvert 5. min; push
+    (Glidr→ark) skriver KUN lager/ordre tilbake (eller appender ny rad).
+    Team-backup-ark (grupper, tester+entries, vær, serier, produkter, utøvere,
+    slip, brukere, lagerendringer, race preps) hvert 30. min + nattlig
+    Drive-jobb (JSON+PDF); **datatap-vakt**: auto-backup nekter å overskrive
+    hvis radtallet falt under 20 % av forrige (SA inbokses; manuell kjøring
+    tvinger). SA-konfigurert **system-dump** (alle tabeller/kolonner inkl.
+    hasher) til privat Drive-mappe. Felles service-konto; laget deler arket
+    med service-kontoens e-post.
+13. **JSON/Excel-eksport + import-v2:** full-export skjuler vilkårsfelter for
+    ikke-SA; Excel bygges klientside og logges; import-v2 lander alltid i
+    KALLERENS aktive lag, 24 tabellspesifikasjoner i avhengighetsrekkefølge,
+    dedupe på naturlige nøkler, returnerer `notRestored`-liste. NB: importerte
+    feedback_links blir aktive igjen. GDPR-selveksport for egen bruker.
+14. **Inbox/mentions:** per PERSON (to_user_id), følger brukeren på tvers av
+    lagbytte (bevisst — det er slik overførings-/lånevarsler virker);
+    @-mentions i testkommentarer matches på eksakt navn innen laget.
 
 ## 7. Klient-konvensjoner
 
@@ -392,6 +612,33 @@ feedback-side (`/feedback/:token`).
 
 ---
 
-*Generert fra kildekoden i `glidr5` (commit-historikken er fasit). Ved
-gjenoppbygging: følg §3 (sikkerhet) og §5 (regler) strengt — det er der
-djevelen bor.*
+## Vedlegg A — Klientruter (komplett)
+
+/login, /forgot-password, /reset-password, /invite/:token,
+/share/test/:token, /feedback/:token (offentlige) · / → /dashboard ·
+/dashboard · /tests · /tests/new · /tests/:id · /tests/:id/edit ·
+/tests/compare · /all-teams-tests · /tests/cross/:id · /testskis ·
+/testskis/:id · /products · /products/:id · /weather · /weather/missing ·
+/analytics · /grinding · /raceskis · /raceskis/:id · /race-fleet · /ski/:id ·
+/kick · /raceprep · /live-runsheets · /watch-queue · /suggestions ·
+/my-account (/profile redirecter hit) · /my-team · /admin · /inbox ·
+/overview (SA) · /test-protocol (SA) · /status · /pricing · /contact ·
+/get-started · /demo · /what-is-glidr · /legal · /dpa · /logo-preview ·
+404-fallback.
+
+## Vedlegg B — API-omfang
+
+Serveren eksponerer ~380 endepunkter under `/api/*` (GET/POST/PUT/PATCH/
+DELETE) gruppert etter områdene i §6. Fullstendig maskinuttrukket liste kan
+regenereres med:
+`grep -oE 'app\.(get|post|put|patch|delete)\("(/api/[^"]*)"' server/routes.ts server/auth.ts`
+— bruk kildekoden som fasit for eksakte stier og payloads ved gjenoppbygging.
+
+---
+
+*Generert fra kildekoden i `glidr5` (commit-historikken er fasit) og
+verifisert mot en systematisk gjennomgang av alle klientsider og alle
+delingsmekanismer. Ved gjenoppbygging: følg §3 (sikkerhet), §5 (regler) og
+§6b (deling) strengt — det er der djevelen bor. Dokumentet beskriver
+funksjonell atferd, ikke piksel-nøyaktig layout; koden + database-backup er
+den endelige fasiten.*

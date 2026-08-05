@@ -5707,6 +5707,10 @@ export async function registerRoutes(
         void tid;
       }
     }
+    // Same product redaction as the single-test endpoint.
+    if (req.user!.isBlindTester === 1 || (req.user as any).isAthleteAccess === 1) {
+      return res.json(out.map((e: any) => ({ ...e, productId: null, additionalProductIds: null, freeTextProduct: null, methodology: null })));
+    }
     res.json(out);
   });
 
@@ -5725,7 +5729,11 @@ export async function registerRoutes(
           const all = await storage.listEntries(testId);
           const visible = all.filter((e: any) => !excl.entries.has(e.id) && !(e.productId != null && excl.products.has(e.productId)));
           const changed = visible.length !== all.length;
-          return res.json(changed ? recomputeSharedEntries(visible) : visible);
+          let shared = changed ? recomputeSharedEntries(visible) : visible;
+          if (req.user!.isBlindTester === 1 || (req.user as any).isAthleteAccess === 1) {
+            shared = shared.map((e: any) => ({ ...e, productId: null, additionalProductIds: null, freeTextProduct: null, methodology: null }));
+          }
+          return res.json(shared);
         }
       }
       return res.status(403).json({ message: "Forbidden" });
@@ -10451,8 +10459,10 @@ export async function registerRoutes(
     const { athleteId, teamId } = link.rows[0];
     if (kind === "prep") {
       await (pool as any).query(
-        `UPDATE race_prep_entries SET athlete_rating=$1, athlete_comment=$2 WHERE id=$3 AND athlete_id=$4`,
-        [rating || null, comment || null, parseInt(id), athleteId]
+        `UPDATE race_prep_entries rpe SET athlete_rating=$1, athlete_comment=$2
+         FROM race_preps rp
+         WHERE rpe.id=$3 AND rpe.athlete_id=$4 AND rp.id = rpe.race_prep_id AND rp.team_id=$5`,
+        [rating || null, comment || null, parseInt(id), athleteId, teamId]
       );
     } else {
       await (pool as any).query(

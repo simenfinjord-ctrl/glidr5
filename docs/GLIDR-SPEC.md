@@ -40,8 +40,8 @@ rennbruk — logges én gang og gjenbrukes overalt: analyse, forslag, historikk.
 - **E-post:** transaksjonsmail (velkomst, invitasjon, passord-reset).
 - **AI:** OpenAI (gpt-4o-mini e.l.) for bildeskanning av testark; Groq som
   fallback med modell-kandidatliste (env-override → maverick → scout).
-- **Garmin-klokkeapp** (Monkey C, i `garmin-app/`): kobler til via 4-sifrede
-  koder/PIN (se §14).
+- **Garmin-klokkeapp** (Monkey C/Connect IQ, i `garmin-app/`): se egen
+  fullspesifikasjon i §6.12b.
 
 ---
 
@@ -436,6 +436,71 @@ Race-prep-bruk teller som løpsbruk på paret og vises i utøverens Race use.
   (120/5min/IP). **«Run on phone»**: mobil runsheet som kjører heatene uten
   klokke. Live Runsheets har vis/skjul produktnavn per par (blindtest-støtte)
   og kolonner for kilde/testtype/oppdatert.
+
+### 6.12b Garmin-klokkeappen «Glidr Runsheet» (fullspesifikasjon)
+
+**Formål:** smøreren står ved sporet og kjører glidtest-heats rett fra klokka —
+velger vinner av hvert heat og taster taperens cm bak; resultatene skrives live
+inn i testens bracket og resultatliste i webappen. Ingen telefon nødvendig.
+
+**Plattform:** Connect IQ watch-app (Monkey C, minSdk 3.0), ~2000 linjer i
+`garmin-app/source/`. Støttede enheter: Forerunner 945/945LTE/955/965/970,
+265/265s, 255-familien, 165-familien, Fenix 6/7/8-familiene (full produktliste
+i `manifest.xml`). Server-URL hardkodes i `ServerConfig.mc`
+(`BASE_URL = "https://glidr.onrender.com"`). Bygges med `monkeyc` +
+utviklernøkkel (`deploy.sh`); sideloades til `GARMIN/Apps` eller distribueres
+via Connect IQ Store.
+
+**Onboarding (førstegang):**
+1. **PIN-oppsett** (`PinSetupView`): tast lagets 4-sifrede watch-PIN
+   (UP/DOWN per siffer, SELECT neste/bekreft, BACK tilbake) →
+   `GET /api/watch/resolve/:pin` → lagnavn lagres i Storage.
+2. **Personlig kode** (`PersonalCodeView`): tast din personlige 4-sifrede
+   watch-kode (fra My Account / Watch Queue-siden) →
+   `POST /api/watch/auth` validerer PIN+kode sammen → brukernavn lagres og
+   vises i headeren; koden identifiserer operatøren på resultater.
+
+**Hovedmeny** (`MainMenuView`, viser GLIDR + lagnavn + brukernavn):
+- **From List** — «Tests queued from app»: `GET /api/watch/list/:pin` henter
+  lagets aktive Watch Queue (test-/serienavn, hvem som la dem til).
+  Velg en test → `POST /api/watch/list/:pin/start/:itemId` → serveren
+  auto-oppretter en watch-sesjon fra testens entries (ski-labels =
+  serienummer for raceski / pair_labels for serier) og returnerer
+  sesjonskoden; klokka går rett i heat-kjøring.
+- **From Code** — «Enter 4-digit session code» (`CodeEntryView`): tast koden
+  som webappen viser når man trykker «Watch» i Complete Runsheet →
+  `GET /api/runsheet/watch/:code` henter bracketen.
+- **Archive** — «Last 10 completed»: `GET /api/watch/archive/:pin`, fullførte
+  køelementer; kan gjenåpnes/startes på nytt.
+- **Settings** (`SettingsView`): Vibrate på/av, tastelyder på/av, vis min
+  kode, bytt PIN, logg ut (tømmer Storage).
+
+**Heat-kjøring** (`HeatView`, fase-basert):
+1. Viser rundenavn + «Par A vs Par B» (ekte ski-labels). **UP** = øverste par
+   vinner, **DOWN** = nederste.
+2. Avstandsskjerm: UP/DOWN justerer taperens avstand (±10 cm-steg),
+   SELECT bekrefter, BACK angrer vinnervalget.
+3. `POST /api/runsheet/watch/:code/result` sender {heat, vinner, diff};
+   serveren oppdaterer bracketen (`watch_sessions`), regner diffs/ranks over
+   alle heats og går til neste heat. Vibrasjon/lyd som kvittering (kan slås av).
+4. Når alle heats er ferdige: «Apply» → `POST /api/runsheet/sessions/:code/apply`
+   skriver endelige resultater inn i testens `test_entries`
+   (result/rank per par) og `tests.runsheet_bracket`; køelementet
+   auto-arkiveres (`POST /api/watch/list/:pin/complete/:itemId`).
+   Webappens bracket-visning oppdateres live underveis (polling).
+
+**Web-siden av protokollen:** watch-PIN per lag (regenererbar av TA),
+personlige koder per bruker (regenererbare), Watch Queue-siden med
+Aktiv/Arkiv, «Run on phone» som alternativ uten klokke. Sesjonskoder er
+4-sifrede med kollisjonssjekk; PIN-endepunktene er uautentiserte men
+rate-limitet (120/5min/IP); resultat-/apply-endepunktene autentiseres av
+selve sesjonskoden. `hasGarminWatchAccess` (feature `garmin_watch` +
+`users.garmin_watch=1`) styrer hvem som ser Watch Queue og kodene.
+
+**Viktig for gjenoppbygging:** klokkas UI forventer NØYAKTIG 4 siffer for
+PIN, personlig kode og sesjonskode (tegnebredde og tastelogikk er hardkodet
+for 4 bokser i `LayoutHelper.mc`) — endre aldri kodelengden på serversiden
+uten å endre klokkeappen samtidig.
 
 ### 6.13 All teams (multi-team)
 For brukere med tilgang til flere lag — tre faner: **Tests** (m/ kort/liste-

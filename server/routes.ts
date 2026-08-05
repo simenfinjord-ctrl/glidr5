@@ -9607,6 +9607,33 @@ export async function registerRoutes(
     } catch (e) { console.error("[fleet-athlete] backfill failed:", e); }
   })();
 
+  // Manual race-use logs for an athlete's Race use tab: uses of their own
+  // pairs plus fleet pairs they were picked as the user of. Not para-gated —
+  // race use logging exists on every team.
+  app.get("/api/athletes/:id/race-uses", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, teamId))) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT su.id, su.date, su.location, su.discipline, su.result, su.notes,
+              su.wax_notes AS "waxNotes", su.weather_id AS "weatherId", su.manual_weather AS "manualWeather",
+              su.used_by_athlete_id AS "usedByAthleteId", ua.name AS "usedByName",
+              rs.id AS "raceSkiId", rs.ski_id AS "skiLabel", rs.fleet_group AS "fleetGroup",
+              rs.brand, rs.grind, su.created_by_name AS "createdByName"
+       FROM ski_race_usages su
+       JOIN race_skis rs ON rs.id = su.ski_id
+       LEFT JOIN athletes ua ON ua.id = su.used_by_athlete_id
+       WHERE su.team_id = $2 AND (su.athlete_id = $1 OR su.used_by_athlete_id = $1)
+       ORDER BY su.date DESC, su.id DESC`,
+      [athleteId, teamId]
+    );
+    res.json(r.rows);
+  });
+
   // Everything a person has raced on: manual fleet-usage logs where they were
   // picked as the user, plus their race-prep entries resolved to team skis.
   app.get("/api/athletes/:id/ski-usages", requirePermission("raceskis", "view"), async (req, res) => {

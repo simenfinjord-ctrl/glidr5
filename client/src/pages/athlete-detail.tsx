@@ -1156,6 +1156,10 @@ export default function AthleteDetail() {
     enabled: !!athleteId,
   });
 
+  const { data: raceUses = [] } = useQuery<any[]>({
+    queryKey: [`/api/athletes/${athleteId}/race-uses`],
+    enabled: !!athleteId,
+  });
   const { data: raceHistory = [] } = useQuery<AthleteRaceHistory[]>({
     queryKey: [`/api/athletes/${athleteId}/race-history`],
     enabled: !!athleteId,
@@ -2728,7 +2732,7 @@ export default function AthleteDetail() {
             style={pageTab === "races" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
           >
             <Flag className="h-4 w-4" />
-            {language === "no" ? "Renn" : "Race Prep"}
+            {"Race use"}
             {raceHistory.length > 0 && (
               <span className="ml-1 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium"
                 style={{ backgroundColor: "hsl(var(--primary) / 0.12)", color: "hsl(var(--primary))" }}>
@@ -2764,11 +2768,14 @@ export default function AthleteDetail() {
         {pageTab === "athletes" && isFleetAthlete && sportClassEnabled && (
           <MyAthletesSection weatherList={weather} canEdit={!isAthletePortal && can("raceskis", "edit")} />
         )}
-        {pageTab === "races" && raceHistory.length === 0 && (
+        {pageTab === "races" && raceHistory.length === 0 && raceUses.length === 0 && (
           <div className="text-center py-10 text-muted-foreground text-sm">
             <Flag className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            <p>{language === "no" ? "Ingen rennhistorikk ennå." : "No race history yet."}</p>
+            <p>{language === "no" ? "Ingen løpsbruk ennå." : "No race use yet."}</p>
           </div>
+        )}
+        {pageTab === "races" && raceUses.length > 0 && (
+          <ManualRaceUseSection uses={raceUses} weatherList={weather} isFleetAthlete={isFleetAthlete} />
         )}
         {pageTab === "races" && raceHistory.length > 0 && (
           <div>
@@ -9236,5 +9243,89 @@ function MyAthleteCard({ athlete, expanded, onToggle, onEdit, weatherById }: {
         </div>
       )}
     </Card>
+  );
+}
+
+// ─── Manual race use on the Race use tab ─────────────────────────────────────
+// Every manually logged race use for this athlete (their own pairs, or fleet
+// pairs they were picked as the user of), with the pair, notes and every
+// recorded weather value. Race-prep entries keep their own section below.
+function ManualRaceUseSection({ uses, weatherList, isFleetAthlete }: {
+  uses: any[];
+  weatherList: WeatherItem[];
+  isFleetAthlete: boolean;
+}) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const weatherById = useMemo(() => new Map(weatherList.map((w) => [w.id, w])), [weatherList]);
+  return (
+    <div className="mb-5" data-testid="section-manual-race-use">
+      <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+        <Flag className="h-5 w-5 text-primary" />
+        {L("Logget løpsbruk", "Logged race use")}
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{uses.length}</span>
+      </h2>
+      <div className="space-y-2">
+        {uses.map((u) => {
+          let mw: any = null;
+          try { mw = u.manualWeather ? JSON.parse(u.manualWeather) : null; } catch {}
+          const w: any = (u.weatherId ? weatherById.get(u.weatherId) : null) || mw;
+          const chips: string[] = [];
+          if (w) {
+            if (w.airTemperatureC != null) chips.push(`${L("Luft", "Air")} ${fmtT(w.airTemperatureC)}`);
+            if (w.snowTemperatureC != null) chips.push(`${L("Snø", "Snow")} ${fmtT(w.snowTemperatureC)}`);
+            if (w.airHumidityPct != null) chips.push(`${L("Luftfukt", "Air hum")} ${w.airHumidityPct}%`);
+            if (w.snowHumidityPct != null) chips.push(`${L("Snøfukt", "Snow hum")} ${w.snowHumidityPct}%`);
+            if (w.snowType) chips.push(w.snowType);
+            if (w.grainSize) chips.push(`${L("Korn", "Grain")} ${w.grainSize}`);
+            if (w.snowHumidityType) chips.push(w.snowHumidityType);
+            if (w.trackHardness) chips.push(`${L("Spor", "Track")} ${w.trackHardness}`);
+            if (w.artificialSnow && w.naturalSnow) chips.push(L("Kunst + natur", "Artificial + natural"));
+            else if (w.artificialSnow) chips.push(L("Kunstsnø", "Artificial snow"));
+            else if (w.naturalSnow) chips.push(L("Natursnø", "Natural snow"));
+            if (w.precipitation) chips.push(w.precipitation);
+            if (w.wind) chips.push(`${L("Vind", "Wind")} ${w.wind}`);
+            if (w.clouds != null) chips.push(`${L("Skyer", "Clouds")} ${w.clouds}/8`);
+          }
+          return (
+            <Card key={u.id} className="fs-card rounded-2xl p-4" data-testid={`race-use-${u.id}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold">{u.location || "—"}</span>
+                {u.date && <span className="text-sm text-muted-foreground">{fmtDate(u.date)}</span>}
+                {u.discipline && (
+                  <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">{u.discipline}</span>
+                )}
+                <AppLink href={`/ski/${u.raceSkiId}`}>
+                  <span className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border bg-background/70 px-2 py-0.5 text-xs font-semibold hover:text-primary" data-testid={`race-use-ski-${u.id}`}>
+                    {u.skiLabel}
+                    {u.fleetGroup && <span className="rounded-full bg-sky-100 dark:bg-sky-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-sky-700 dark:text-sky-300">{u.fleetGroup}</span>}
+                  </span>
+                </AppLink>
+                {u.grind && <span className="text-xs text-muted-foreground">{u.grind}</span>}
+                {isFleetAthlete && u.usedByName && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800">
+                    <UserIcon className="h-2.5 w-2.5" />{u.usedByName}
+                  </span>
+                )}
+                {u.result && <span className="text-xs text-muted-foreground">{L("Resultat: ", "Result: ")}{u.result}</span>}
+              </div>
+              {chips.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {chips.map((c, i) => (
+                    <span key={i} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border">{c}</span>
+                  ))}
+                </div>
+              )}
+              {(u.waxNotes || u.notes) && (
+                <div className="mt-1.5 text-xs italic text-muted-foreground">
+                  {u.waxNotes && <div>{L("Smøring: ", "Wax: ")}{u.waxNotes}</div>}
+                  {u.notes && <div>{u.notes}</div>}
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 }

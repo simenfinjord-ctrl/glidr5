@@ -9819,6 +9819,24 @@ export async function registerRoutes(
     res.json([...manual.rows, ...prepRows]);
   });
 
+  // Repair drifted prep entries: single-discipline races with labels stuck in
+  // the classic/skating columns (made both old and new pair count as raced).
+  (async () => {
+    try {
+      const { pool: pgFix } = await import("./db");
+      const r = await (pgFix as any).query(
+        `UPDATE race_prep_entries rpe
+         SET ski_id = COALESCE(rpe.ski_id, rpe.ski_id_classic, rpe.ski_id_skating),
+             ski_id_classic = NULL, ski_id_skating = NULL,
+             borrowed_athlete_id = COALESCE(rpe.borrowed_athlete_id, rpe.borrowed_athlete_id_classic, rpe.borrowed_athlete_id_skating),
+             borrowed_athlete_id_classic = NULL, borrowed_athlete_id_skating = NULL
+         FROM race_preps rp
+         WHERE rp.id = rpe.race_prep_id AND rp.discipline != 'Skiathlon'
+           AND (rpe.ski_id_classic IS NOT NULL OR rpe.ski_id_skating IS NOT NULL)`);
+      if (r.rowCount > 0) console.log(`[prep-slots] collapsed ${r.rowCount} drifted entries`);
+    } catch (e) { console.error("[prep-slots] repair failed:", e); }
+  })();
+
   // Resolve (and lazily create) the active team's fleet athlete — the client's
   // /race-fleet route redirects to /raceskis/<id>.
   app.get("/api/race-fleet/athlete", requirePermission("raceskis", "view"), async (req, res) => {
@@ -10875,13 +10893,24 @@ export async function registerRoutes(
     const bId = await normBorrow(borrowedAthleteId);
     const bClassic = await normBorrow(borrowedAthleteIdClassic);
     const bSkating = await normBorrow(borrowedAthleteIdSkating);
+    // A pair replaced on an entry must lose ALL connection to the race: on
+    // single-discipline races (everything except Skiathlon) exactly ONE slot
+    // may hold a label — a stale value left in a sibling column made both the
+    // old and the new pair count as raced.
+    let vSingle = skiId != null ? String(skiId) : null;
+    let vClassic = skiIdClassic != null ? String(skiIdClassic) : null;
+    let vSkating = skiIdSkating != null ? String(skiIdSkating) : null;
+    let vbId = bId, vbClassic = bClassic, vbSkating = bSkating;
+    const prepRow = await (pool as any).query(`SELECT discipline FROM race_preps WHERE id=$1`, [prepId]);
+    if (prepRow.rows[0]?.discipline !== "Skiathlon") {
+      vSingle = vSingle ?? vClassic ?? vSkating;
+      vbId = vbId ?? vbClassic ?? vbSkating;
+      vClassic = null; vSkating = null; vbClassic = null; vbSkating = null;
+    }
     await (pool as any).query(
       `UPDATE race_prep_entries SET ski_id=$1, ski_id_classic=$2, ski_id_skating=$3, waxer_id=$4, waxer_name=$5, notes=$6,
               borrowed_athlete_id=$8, borrowed_athlete_id_classic=$9, borrowed_athlete_id_skating=$10 WHERE id=$7`,
-      [skiId != null ? String(skiId) : null,
-       skiIdClassic != null ? String(skiIdClassic) : null,
-       skiIdSkating != null ? String(skiIdSkating) : null,
-       u.id, u.name || "Ukjent", notes || null, eid, bId, bClassic, bSkating]
+      [vSingle, vClassic, vSkating, u.id, u.name || "Ukjent", notes || null, eid, vbId, vbClassic, vbSkating]
     );
     return res.json({ ok: true });
   });

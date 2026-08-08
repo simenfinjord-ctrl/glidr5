@@ -271,8 +271,22 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     };
 
     // apiRequest fires this after auto-queuing an offline write, so the pending
-    // badge updates immediately app-wide.
-    const handleQueued = () => { refreshCount(); };
+    // badge updates immediately app-wide. When the browser thinks it is ONLINE
+    // (server unreachable — e.g. a redeploy or timeout), the user must be told
+    // the change was queued, and we retry soon instead of waiting a minute.
+    const handleQueued = () => {
+      refreshCount();
+      if (navigator.onLine) {
+        toast({
+          title: tr("Serveren svarte ikke", "Server did not respond"),
+          description: tr(
+            "Endringen er lagret lokalt og sendes automatisk om noen sekunder.",
+            "Your change is saved locally and will be sent automatically in a few seconds.",
+          ),
+        });
+        setTimeout(() => { syncNow(); }, 8000);
+      }
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);

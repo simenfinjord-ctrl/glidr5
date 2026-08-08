@@ -674,7 +674,18 @@ function SkiIdCell({
         borrowedAthleteIdClassic: disciplineHint === "Classic" ? borrowedId : (entry.borrowedAthleteIdClassic ?? null),
         borrowedAthleteIdSkating: disciplineHint === "Skating" ? borrowedId : (entry.borrowedAthleteIdSkating ?? null),
       };
-      await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, body);
+      const resp = await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, body);
+      // Trust what the DATABASE persisted, not what we sent — any divergence
+      // shows immediately instead of surviving until a refresh.
+      try {
+        const saved = await resp.json();
+        if (saved?.entry) {
+          const persisted = disciplineHint === "Classic" ? (saved.entry.skiIdClassic ?? saved.entry.skiId)
+            : disciplineHint === "Skating" ? saved.entry.skiIdSkating
+            : saved.entry.skiId;
+          setOptimisticVal(persisted ?? null);
+        }
+      } catch { /* fall back to the optimistic value below */ }
       // Keep the athlete pages' Race use views in sync with this change.
       queryClient.invalidateQueries({ predicate: (q) => {
         const k = String(q.queryKey[0] ?? "");

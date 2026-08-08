@@ -33,12 +33,16 @@ const DialogContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
+    {/* Flex-centered wrapper instead of translate(-50%,-50%): the persistent
+        subpixel transform made dialog text render blurry. The wrapper ignores
+        pointer events so outside-clicks still reach the overlay. */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 pointer-events-none">
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
         // max-h + overflow + mobile width so every dialog stays within the viewport
         // and is fully scrollable/closable on phones (#21).
-        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-1.5rem)] max-w-lg max-h-[90vh] overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        "relative grid w-full max-w-lg max-h-[90vh] overflow-y-auto gap-4 border bg-background p-6 shadow-lg pointer-events-auto duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg",
         className
       )}
       {...props}
@@ -49,6 +53,7 @@ const DialogContent = React.forwardRef<
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
+    </div>
   </DialogPortal>
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName

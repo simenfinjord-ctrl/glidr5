@@ -380,7 +380,16 @@ function RacePrepSkiIdField({
         skiIdClassic: slot === "classic" ? (final || null) : (entry.skiIdClassic ?? null),
         skiIdSkating: slot === "skating" ? (final || null) : (entry.skiIdSkating ?? null),
       };
-      await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entryId}`, body);
+      const respP = await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entryId}`, body);
+      try {
+        const savedP = await respP.json();
+        if (savedP?.entry) {
+          const persisted = slot === "classic" ? (savedP.entry.skiIdClassic ?? savedP.entry.skiId)
+            : slot === "skating" ? savedP.entry.skiIdSkating
+            : (savedP.entry.skiId ?? savedP.entry.skiIdClassic ?? savedP.entry.skiIdSkating);
+          setOptimistic(persisted ?? null);
+        }
+      } catch { /* keep local optimistic value */ }
       // Race Prep and Race use must never drift apart — flush every cached
       // view that derives from prep entries.
       queryClient.invalidateQueries({ predicate: (q) => {
@@ -2660,12 +2669,14 @@ export default function AthleteDetail() {
               <div>
                 <h2 className="text-sm font-semibold">{L("Tilgang", "Access")}</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground" data-testid="text-shared-with">
-                  {t("raceskis.sharedWith")}: {access.length > 0
-                    ? access.map((a) => {
-                        const u = users.find((u) => u.id === a.userId);
-                        return u?.name || `User #${a.userId}`;
-                      }).join(", ")
-                    : "—"}
+                  {t("raceskis.sharedWith")}: {(() => {
+                    // Deleted accounts leave orphaned access rows behind —
+                    // only accounts that still exist are worth showing.
+                    const names = access
+                      .map((a) => users.find((u) => u.id === a.userId)?.name)
+                      .filter(Boolean);
+                    return names.length > 0 ? names.join(", ") : "—";
+                  })()}
                 </p>
               </div>
               <Button

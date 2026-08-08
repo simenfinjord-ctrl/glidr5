@@ -9819,6 +9819,17 @@ export async function registerRoutes(
     res.json([...manual.rows, ...prepRows]);
   });
 
+  // Orphaned athlete_access rows (user deleted before cleanup existed) made
+  // the Access card show "User #24"-style ghosts.
+  (async () => {
+    try {
+      const { pool: pgAA } = await import("./db");
+      const r = await (pgAA as any).query(
+        `DELETE FROM athlete_access aa WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = aa.user_id)`);
+      if (r.rowCount > 0) console.log(`[athlete-access] removed ${r.rowCount} orphaned rows`);
+    } catch (e) { console.error("[athlete-access] cleanup failed:", e); }
+  })();
+
   // Repair drifted prep entries: single-discipline races with labels stuck in
   // the classic/skating columns (made both old and new pair count as raced).
   (async () => {
@@ -10907,12 +10918,17 @@ export async function registerRoutes(
       vbId = vbId ?? vbClassic ?? vbSkating;
       vClassic = null; vSkating = null; vbClassic = null; vbSkating = null;
     }
-    await (pool as any).query(
+    const upd = await (pool as any).query(
       `UPDATE race_prep_entries SET ski_id=$1, ski_id_classic=$2, ski_id_skating=$3, waxer_id=$4, waxer_name=$5, notes=$6,
-              borrowed_athlete_id=$8, borrowed_athlete_id_classic=$9, borrowed_athlete_id_skating=$10 WHERE id=$7`,
+              borrowed_athlete_id=$8, borrowed_athlete_id_classic=$9, borrowed_athlete_id_skating=$10 WHERE id=$7
+       RETURNING ski_id AS "skiId", ski_id_classic AS "skiIdClassic", ski_id_skating AS "skiIdSkating"`,
       [vSingle, vClassic, vSkating, u.id, u.name || "Ukjent", notes || null, eid, vbId, vbClassic, vbSkating]
     );
-    return res.json({ ok: true });
+    if (!upd.rows.length) {
+      console.error(`[prep-entry] UPDATE matched no row (entry ${eid}, prep ${prepId})`);
+      return res.status(500).json({ message: "Save did not persist" });
+    }
+    return res.json({ ok: true, entry: upd.rows[0] });
   });
 
   app.delete("/api/race-preps/:id/entries/:eid", requirePermission("raceprep", "edit"), async (req, res) => {

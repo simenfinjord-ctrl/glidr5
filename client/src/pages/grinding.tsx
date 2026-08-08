@@ -2491,6 +2491,7 @@ export default function Grinding() {
         )}
 
         {/* Analytics tab */}
+        {tab === "analytics" && <RaceSkiGrindSection />}
         {tab === "analytics" && (
           <GrindingAnalytics
             grindTests={grindTests}
@@ -3566,6 +3567,69 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
           </div>
         )}
       </div>
+    </Card>
+  );
+}
+
+
+// ─── Race ski grinds ─────────────────────────────────────────────────────────
+// Which grinds sit on the team's race skis, how often they have raced
+// (manual race-use logs + Race Prep), and how they perform in race-ski tests
+// (avg-of-all-runs rank, wins). Grinds are matched via each pair's grind field.
+function RaceSkiGrindSection() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { data, isLoading } = useQuery<{ grinds: { grind: string; pairs: number; racedCount: number; testCount: number; entryCount: number; avgRank: number | null; wins: number }[] }>({
+    queryKey: ["/api/grinding/raceski-grind-stats"],
+  });
+  const grinds = data?.grinds ?? [];
+  return (
+    <Card className="fs-card mb-5 rounded-2xl p-4" data-testid="section-raceski-grinds">
+      <h2 className="mb-1 text-sm font-semibold">{L("Slip på konkurranseski", "Race ski grinds")}</h2>
+      <p className="mb-3 text-xs text-muted-foreground">
+        {L("Per slip: antall par som bærer den, rennbruk (løpslogg + Race Prep) og prestasjon i raceski-tester (snitt av alle runder).",
+           "Per grind: pairs carrying it, race use (race logs + Race Prep) and performance in race-ski tests (average of all runs).")}
+      </p>
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">{L("Laster…", "Loading…")}</p>
+      ) : grinds.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{L("Ingen konkurranseski med slip registrert ennå.", "No race skis with a grind registered yet.")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2">{L("Slip", "Grind")}</th>
+                <th className="px-3 py-2 text-right">{L("Par", "Pairs")}</th>
+                <th className="px-3 py-2 text-right">{L("Ganger i renn", "Times raced")}</th>
+                <th className="px-3 py-2 text-right">{L("Tester", "Tests")}</th>
+                <th className="px-3 py-2 text-right">{L("Snittrang", "Avg rank")}</th>
+                <th className="px-3 py-2 text-right">{L("Seire", "Wins")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grinds.map((g, idx) => (
+                <tr key={g.grind} className={idx % 2 === 0 ? "bg-background/30" : "bg-background/10"} data-testid={`grind-stat-${g.grind}`}>
+                  <td className="border-t border-border/30 px-3 py-2 font-semibold">{g.grind}</td>
+                  <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">{g.pairs}</td>
+                  <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">{g.racedCount}</td>
+                  <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">{g.testCount}</td>
+                  <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">
+                    {g.avgRank != null ? (
+                      <span className={
+                        g.avgRank <= 1.5 ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                        : g.avgRank <= 3 ? "font-semibold text-amber-600 dark:text-amber-400"
+                        : ""
+                      }>{g.avgRank.toFixed(2)}</span>
+                    ) : "—"}
+                  </td>
+                  <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">{g.wins > 0 ? `🥇 ${g.wins}` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Card>
   );
 }

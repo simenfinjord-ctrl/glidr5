@@ -10111,6 +10111,106 @@ export async function registerRoutes(
   });
 
   // ── Ski race usages (waxer-logged: "this ski pair was raced", no admin prep needed) ──
+  // Grind performance on RACE SKIS: per grind pattern — how many pairs carry
+  // it, how often it has raced (manual logs + Race Prep), and how it performs
+  // in race-ski tests (avg-of-all-runs dense rank, wins). Powers the
+  // "Race ski grinds" section on the Grinding Analytics tab.
+  app.get("/api/grinding/raceski-grind-stats", requirePermission("grinding", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    try {
+      const skisR = await (pool as any).query(
+        `SELECT rs.id, rs.ski_id AS "skiLabel", rs.grind
+         FROM race_skis rs JOIN athletes a ON a.id = rs.athlete_id
+         WHERE a.team_id = $1 AND rs.grind IS NOT NULL AND rs.grind != '' AND rs.archived_at IS NULL`,
+        [teamId]);
+      const grindBySkiId = new Map<number, string>();
+      const grindByLabel = new Map<string, string>();
+      const pairsByGrind = new Map<string, number>();
+      for (const r of skisR.rows) {
+        const g = String(r.grind).trim();
+        grindBySkiId.set(r.id, g);
+        grindByLabel.set(String(r.skiLabel).trim().toLowerCase(), g);
+        pairsByGrind.set(g, (pairsByGrind.get(g) || 0) + 1);
+      }
+      // Race use: manual logs (by ski id) + prep entries (by label).
+      const racedByGrind = new Map<string, number>();
+      const usagesR = await (pool as any).query(
+        `SELECT ski_id, COUNT(*)::int AS c FROM ski_race_usages WHERE team_id = $1 GROUP BY ski_id`, [teamId]);
+      for (const r of usagesR.rows) {
+        const g = grindBySkiId.get(r.ski_id);
+        if (g) racedByGrind.set(g, (racedByGrind.get(g) || 0) + r.c);
+      }
+      const prepR = await (pool as any).query(
+        `SELECT rpe.ski_id, rpe.ski_id_classic, rpe.ski_id_skating
+         FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
+         WHERE rp.team_id = $1`, [teamId]);
+      for (const r of prepR.rows) {
+        for (const label of [r.ski_id, r.ski_id_classic, r.ski_id_skating]) {
+          if (!label) continue;
+          const g = grindByLabel.get(String(label).trim().toLowerCase());
+          if (g) racedByGrind.set(g, (racedByGrind.get(g) || 0) + 1);
+        }
+      }
+      // Test performance: dense rank per test on the average of ALL runs.
+      const entR = await (pool as any).query(
+        `SELECT te.id, te.test_id AS "testId", te.race_ski_id AS "raceSkiId",
+                te.results, te.result_0km_cm_behind AS "r0"
+         FROM test_entries te JOIN tests t ON t.id = te.test_id
+         WHERE t.team_id = $1 AND t.test_ski_source = 'raceskis' AND te.race_ski_id IS NOT NULL`,
+        [teamId]);
+      const byTest = new Map<number, any[]>();
+      for (const r of entR.rows) {
+        if (!byTest.has(r.testId)) byTest.set(r.testId, []);
+        byTest.get(r.testId)!.push(r);
+      }
+      const avgOf = (r: any): number | null => {
+        try {
+          if (r.results) {
+            const arr = JSON.parse(r.results);
+            if (Array.isArray(arr)) {
+              const vals = arr.map((x: any) => (x && x.result != null ? Number(x.result) : NaN)).filter((v: number) => !isNaN(v));
+              if (vals.length > 0) return vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
+            }
+          }
+        } catch {}
+        return r.r0 != null ? Number(r.r0) : null;
+      };
+      const perf = new Map<string, { ranks: number[]; wins: number; tests: Set<number> }>();
+      for (const [testId, rows] of byTest) {
+        const scored = rows.map((r) => ({ r, v: avgOf(r) })).filter((x) => x.v != null).sort((a, b) => (a.v as number) - (b.v as number));
+        let prev: number | null = null; let rank = 0;
+        scored.forEach((sc, i) => {
+          if (prev === null || sc.v !== prev) rank = i + 1;
+          prev = sc.v as number;
+          const g = grindBySkiId.get(sc.r.raceSkiId);
+          if (!g) return;
+          if (!perf.has(g)) perf.set(g, { ranks: [], wins: 0, tests: new Set() });
+          const pf = perf.get(g)!;
+          pf.ranks.push(rank);
+          if (rank === 1) pf.wins++;
+          pf.tests.add(testId);
+        });
+      }
+      const grinds = Array.from(new Set([...pairsByGrind.keys(), ...perf.keys()])).map((g) => {
+        const pf = perf.get(g);
+        return {
+          grind: g,
+          pairs: pairsByGrind.get(g) || 0,
+          racedCount: racedByGrind.get(g) || 0,
+          testCount: pf ? pf.tests.size : 0,
+          entryCount: pf ? pf.ranks.length : 0,
+          avgRank: pf && pf.ranks.length > 0 ? pf.ranks.reduce((a, b) => a + b, 0) / pf.ranks.length : null,
+          wins: pf ? pf.wins : 0,
+        };
+      }).sort((a, b) => (a.avgRank ?? 999) - (b.avgRank ?? 999));
+      res.json({ grinds });
+    } catch (e) {
+      console.error("[raceski-grind-stats]", e);
+      res.json({ grinds: [] });
+    }
+  });
+
   // Everything about one pair for its detail page: the ski itself, every test
   // it took part in (with full result lists so its row can be highlighted),
   // and how many times it has raced.

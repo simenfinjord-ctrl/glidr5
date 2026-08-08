@@ -775,12 +775,17 @@ function SkiIdCell({
             onChange={(e) => { setVal(e.target.value); setShowSuggestions(true); }}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => {
-              // Small delay so a mousedown on a suggestion can fire first
-              setTimeout(() => setShowSuggestions(false), 150);
+              // Small delay so a mousedown on a suggestion can fire first —
+              // then SAVE what was typed. Leaving the field (or closing the
+              // dialog) must never silently drop the edit.
+              setTimeout(() => {
+                setShowSuggestions(false);
+                save();
+              }, 150);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") { save(); setShowSuggestions(false); }
-              if (e.key === "Escape") { setEditing(false); setVal(displaySkiId ?? ""); setShowSuggestions(false); }
+              if (e.key === "Escape") { setVal(displaySkiId ?? ""); setEditing(false); setShowSuggestions(false); }
             }}
             autoFocus
           />

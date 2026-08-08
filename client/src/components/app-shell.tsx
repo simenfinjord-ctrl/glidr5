@@ -1335,10 +1335,10 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
         style={{ transform: ptrPull > 0 ? `translateY(${Math.min(ptrPull, 40)}px)` : undefined, transition: ptrPull > 0 ? "none" : "transform .2s" }}
       >
         <PullIndicator pull={ptrPull} busy={ptrBusy} />
-        <div className="flex-1 mx-auto w-full min-w-0 max-w-[1400px] px-4 sm:px-6 py-6">
+        <div className="flex-1 mx-auto w-full min-w-0 max-w-[1400px] min-[1920px]:max-w-[1640px] min-[2600px]:max-w-[1880px] px-4 sm:px-6 py-6">
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>
-        <footer className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 pb-8 mt-auto">
+        <footer className="mx-auto w-full max-w-[1400px] min-[1920px]:max-w-[1640px] min-[2600px]:max-w-[1880px] px-4 sm:px-6 pb-8 mt-auto">
           <div className="mb-3 h-px bg-border" />
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <GlidrLogo variant="dark" size={18} className="dark:hidden opacity-60" />
@@ -1378,7 +1378,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           <div className="h-1 w-full shrink-0" style={{ background: ribbonGradient(nationTheme) }} data-testid="nation-ribbon" />
         )}
         <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-lg overflow-x-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-          <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-6">
+          <div className="mx-auto w-full max-w-[1600px] min-[2600px]:max-w-[1880px] px-3 sm:px-6">
             <div className="flex items-center gap-2 sm:gap-3 py-2.5 min-w-0">
               {/* Logo + team */}
               <div className="flex items-center gap-2 shrink-0">

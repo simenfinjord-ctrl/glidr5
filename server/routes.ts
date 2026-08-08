@@ -10914,8 +10914,10 @@ export async function registerRoutes(
     let vbId = bId, vbClassic = bClassic, vbSkating = bSkating;
     const prepRow = await (pool as any).query(`SELECT discipline FROM race_preps WHERE id=$1`, [prepId]);
     if (prepRow.rows[0]?.discipline !== "Skiathlon") {
-      vSingle = vSingle ?? vClassic ?? vSkating;
-      vbId = vbId ?? vbClassic ?? vbSkating;
+      // Slot values are the EDIT, the single value may be a stale echo from
+      // older clients — the edit must win.
+      vSingle = vClassic ?? vSkating ?? vSingle;
+      vbId = vbClassic ?? vbSkating ?? vbId;
       vClassic = null; vSkating = null; vbClassic = null; vbSkating = null;
     }
     const upd = await (pool as any).query(

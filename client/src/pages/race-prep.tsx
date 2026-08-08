@@ -594,7 +594,7 @@ function SkiIdCell({
   prepId,
   onSaved,
   lang,
-  disciplineHint,
+  disciplineHint, slot,
 }: {
   entry: RacePrepEntry;
   canEdit: boolean;
@@ -602,13 +602,17 @@ function SkiIdCell({
   onSaved: () => void;
   lang: string;
   disciplineHint?: "Classic" | "Skating";
+  // Which Skiathlon column this cell edits. Absent = the single ski_id slot
+  // (all non-Skiathlon races) — disciplineHint then only filters suggestions.
+  slot?: "classic" | "skating";
 }) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
+  const cancelledRef = useRef(false);
   const [val, setVal] = useState(
-    disciplineHint === "Classic" ? (entry.skiIdClassic ?? entry.skiId ?? "")
-    : disciplineHint === "Skating" ? (entry.skiIdSkating ?? "")
-    : (entry.skiId ?? "")
+    slot === "classic" ? (entry.skiIdClassic ?? entry.skiId ?? "")
+    : slot === "skating" ? (entry.skiIdSkating ?? "")
+    : (entry.skiId ?? entry.skiIdClassic ?? entry.skiIdSkating ?? "")
   );
   const [saving, setSaving] = useState(false);
   // Optimistic local value so cell shows the saved ID immediately while refetch is in-flight
@@ -663,15 +667,15 @@ function SkiIdCell({
   const L = (no: string, en: string) => (lang === "en" ? en : no);
 
   // Current ski ID value for display (use optimistic value while refetch is in-flight)
-  const currentSkiId = disciplineHint === "Classic" ? (entry.skiIdClassic ?? entry.skiId)
-    : disciplineHint === "Skating" ? entry.skiIdSkating
-    : entry.skiId;
+  const currentSkiId = slot === "classic" ? (entry.skiIdClassic ?? entry.skiId)
+    : slot === "skating" ? entry.skiIdSkating
+    : (entry.skiId ?? entry.skiIdClassic ?? entry.skiIdSkating);
   const displaySkiId = optimisticVal !== undefined ? optimisticVal : currentSkiId;
 
   // Owning athlete for the ski in this field — own athlete unless it's borrowed.
-  const currentBorrowedId = disciplineHint === "Classic" ? (entry.borrowedAthleteIdClassic ?? entry.borrowedAthleteId)
-    : disciplineHint === "Skating" ? entry.borrowedAthleteIdSkating
-    : entry.borrowedAthleteId;
+  const currentBorrowedId = slot === "classic" ? (entry.borrowedAthleteIdClassic ?? entry.borrowedAthleteId)
+    : slot === "skating" ? entry.borrowedAthleteIdSkating
+    : (entry.borrowedAthleteId ?? entry.borrowedAthleteIdClassic ?? entry.borrowedAthleteIdSkating);
   const [optimisticBorrowedId, setOptimisticBorrowedId] = useState<number | null | undefined>(undefined);
   const displayBorrowedId = optimisticBorrowedId !== undefined ? optimisticBorrowedId : currentBorrowedId;
   const effectiveOwnerId = displayBorrowedId ?? entry.athleteId;
@@ -692,32 +696,34 @@ function SkiIdCell({
       // Always send all three ski ID + borrowed-owner fields to avoid nulling siblings (e.g. Skiathlon)
       const body: any = {
         notes: entry.notes,
-        skiId: disciplineHint == null ? (finalVal.trim() || null) : (entry.skiId ?? null),
-        skiIdClassic: disciplineHint === "Classic" ? (finalVal.trim() || null) : (entry.skiIdClassic ?? null),
-        skiIdSkating: disciplineHint === "Skating" ? (finalVal.trim() || null) : (entry.skiIdSkating ?? null),
-        borrowedAthleteId: disciplineHint == null ? borrowedId : (entry.borrowedAthleteId ?? null),
-        borrowedAthleteIdClassic: disciplineHint === "Classic" ? borrowedId : (entry.borrowedAthleteIdClassic ?? null),
-        borrowedAthleteIdSkating: disciplineHint === "Skating" ? borrowedId : (entry.borrowedAthleteIdSkating ?? null),
+        skiId: slot == null ? (finalVal.trim() || null) : null,
+        skiIdClassic: slot === "classic" ? (finalVal.trim() || null) : slot === "skating" ? (entry.skiIdClassic ?? null) : null,
+        skiIdSkating: slot === "skating" ? (finalVal.trim() || null) : slot === "classic" ? (entry.skiIdSkating ?? null) : null,
+        borrowedAthleteId: slot == null ? borrowedId : null,
+        borrowedAthleteIdClassic: slot === "classic" ? borrowedId : slot === "skating" ? (entry.borrowedAthleteIdClassic ?? null) : null,
+        borrowedAthleteIdSkating: slot === "skating" ? borrowedId : slot === "classic" ? (entry.borrowedAthleteIdSkating ?? null) : null,
       };
       const resp = await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, body);
       // Trust what the DATABASE persisted, not what we sent — any divergence
       // shows immediately instead of surviving until a refresh.
+      let echoed = false;
       try {
         const saved = await resp.json();
         if (saved?.entry) {
-          const persisted = disciplineHint === "Classic" ? (saved.entry.skiIdClassic ?? saved.entry.skiId)
-            : disciplineHint === "Skating" ? saved.entry.skiIdSkating
-            : saved.entry.skiId;
+          const persisted = slot === "classic" ? (saved.entry.skiIdClassic ?? saved.entry.skiId)
+            : slot === "skating" ? saved.entry.skiIdSkating
+            : (saved.entry.skiId ?? saved.entry.skiIdClassic ?? saved.entry.skiIdSkating);
           setOptimisticVal(persisted ?? null);
+          echoed = true;
         }
-      } catch { /* fall back to the optimistic value below */ }
+      } catch { /* queued/fake response — fall back to the typed value */ }
       // Keep the athlete pages' Race use views in sync with this change.
       queryClient.invalidateQueries({ predicate: (q) => {
         const k = String(q.queryKey[0] ?? "");
         return k.includes("/race-history") || k.includes("/race-uses") || k.includes("/ski-usages") || k.includes("/skis");
       } });
       // Show value immediately while refetch is in-flight (prevents flash to "—")
-      setOptimisticVal(finalVal.trim() || null);
+      if (!echoed) setOptimisticVal(finalVal.trim() || null);
       setOptimisticBorrowedId(finalVal.trim() ? borrowedId : null);
       onSaved();
       setEditing(false);
@@ -801,16 +807,17 @@ function SkiIdCell({
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => {
               // Small delay so a mousedown on a suggestion can fire first —
-              // then SAVE what was typed. Leaving the field (or closing the
-              // dialog) must never silently drop the edit.
+              // then SAVE what was typed, unless the user explicitly
+              // cancelled (Escape / X).
               setTimeout(() => {
                 setShowSuggestions(false);
-                save();
+                if (!cancelledRef.current) save();
+                cancelledRef.current = false;
               }, 150);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") { save(); setShowSuggestions(false); }
-              if (e.key === "Escape") { setVal(displaySkiId ?? ""); setEditing(false); setShowSuggestions(false); }
+              if (e.key === "Escape") { cancelledRef.current = true; setVal(displaySkiId ?? ""); setEditing(false); setShowSuggestions(false); }
             }}
             autoFocus
           />
@@ -868,7 +875,7 @@ function SkiIdCell({
         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => save()} disabled={saving}>
           <Check className="h-3.5 w-3.5 text-emerald-600" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(false); setVal(displaySkiId ?? ""); setShowSuggestions(false); }}>
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onMouseDown={() => { cancelledRef.current = true; }} onClick={() => { setEditing(false); setVal(displaySkiId ?? ""); setShowSuggestions(false); }}>
           <X className="h-3.5 w-3.5" />
         </Button>
         <Button size="sm" variant="ghost" className="h-7 px-1.5 text-[10px] gap-1" onClick={() => setBorrowOpen(true)} title={L("Lån ski fra en annen løper", "Borrow ski from another athlete")}>
@@ -1333,10 +1340,10 @@ function PrepDetailDialog({
                           {prep.discipline === "Skiathlon" ? (
                             <>
                               <td className="px-3 py-2.5">
-                                <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Classic" />
+                                <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Classic" slot="classic" />
                               </td>
                               <td className="px-3 py-2.5">
-                                <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Skating" />
+                                <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Skating" slot="skating" />
                               </td>
                             </>
                           ) : (

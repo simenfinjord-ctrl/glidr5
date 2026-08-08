@@ -381,6 +381,12 @@ function RacePrepSkiIdField({
         skiIdSkating: slot === "skating" ? (final || null) : (entry.skiIdSkating ?? null),
       };
       await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entryId}`, body);
+      // Race Prep and Race use must never drift apart — flush every cached
+      // view that derives from prep entries.
+      queryClient.invalidateQueries({ predicate: (q) => {
+        const k = String(q.queryKey[0] ?? "");
+        return k.includes("/race-history") || k.includes("/race-uses") || k.includes("/ski-usages") || k.startsWith("/api/race-preps") || k.includes("/skis");
+      } });
       setOptimistic(final || null);
       setEditing(false);
       setShowSug(false);
@@ -3164,11 +3170,11 @@ export default function AthleteDetail() {
                           </div>
                         </div>
                       ) : (
-                        <div className="inline-flex flex-col rounded-xl bg-violet-50 dark:bg-violet-900/25 ring-1 ring-violet-200 dark:ring-violet-800 px-5 py-2.5 mb-3 min-w-[160px]">
+                        <div className="inline-flex w-fit flex-col rounded-lg bg-violet-50 dark:bg-violet-900/25 ring-1 ring-violet-200 dark:ring-violet-800 px-3 py-1.5 mb-3">
                           <div className="text-[9px] font-bold uppercase tracking-widest text-violet-400 mb-0.5">
                             {DISCIPLINE_LABEL_DETAIL[entry.discipline]?.en ?? entry.discipline}
                           </div>
-                          <div className="text-2xl font-bold text-violet-700 dark:text-violet-200 leading-tight">
+                          <div className="text-lg font-bold text-violet-700 dark:text-violet-200 leading-tight">
                             <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="single" discipline={entry.discipline} entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
                           </div>
                         </div>

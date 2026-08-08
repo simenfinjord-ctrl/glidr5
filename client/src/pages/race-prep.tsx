@@ -675,6 +675,11 @@ function SkiIdCell({
         borrowedAthleteIdSkating: disciplineHint === "Skating" ? borrowedId : (entry.borrowedAthleteIdSkating ?? null),
       };
       await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, body);
+      // Keep the athlete pages' Race use views in sync with this change.
+      queryClient.invalidateQueries({ predicate: (q) => {
+        const k = String(q.queryKey[0] ?? "");
+        return k.includes("/race-history") || k.includes("/race-uses") || k.includes("/ski-usages") || k.includes("/skis");
+      } });
       // Show value immediately while refetch is in-flight (prevents flash to "—")
       setOptimisticVal(finalVal.trim() || null);
       setOptimisticBorrowedId(finalVal.trim() ? borrowedId : null);

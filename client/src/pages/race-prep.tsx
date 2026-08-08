@@ -621,6 +621,21 @@ function SkiIdCell({
     queryKey: [`/api/athletes/${entry.athleteId}/skis`],
     enabled: editing,
   });
+  // Team-wide pairs (other athletes + the fleet) so a pair outside this
+  // athlete's garage can be picked directly — selecting one borrows it.
+  const { data: teamSkis = [] } = useQuery<(RaceSkiRecord & { athleteId: number })[]>({
+    queryKey: ["/api/race-skis/all"],
+    enabled: editing,
+  });
+  const { data: teamAthletes = [] } = useQuery<{ id: number; name: string; isFleet?: number }[]>({
+    queryKey: ["/api/athletes?includeArchived=1&includeFleet=1&includeProfiles=1"],
+    enabled: editing,
+  });
+  const ownerName = (aid: number) => {
+    const a = teamAthletes.find((x) => x.id === aid);
+    if (!a) return "";
+    return (a as any).isFleet === 1 ? (lang === "en" ? "Race fleets" : "Race fleets") : a.name;
+  };
 
   const suggestions = useMemo(() => {
     const base = disciplineHint
@@ -632,6 +647,16 @@ function SkiIdCell({
       (s.serialNumber ?? "").toLowerCase().includes(val.toLowerCase())
     ).slice(0, 8);
   }, [athleteSkis, val, disciplineHint]);
+  // Borrowable matches: only while typing, never the athlete's own pairs.
+  const borrowSuggestions = useMemo(() => {
+    if (!val.trim()) return [];
+    const q = val.toLowerCase();
+    return teamSkis
+      .filter((sk) => sk.athleteId !== entry.athleteId)
+      .filter((sk) => !disciplineHint || sk.discipline === disciplineHint)
+      .filter((sk) => sk.skiId.toLowerCase().includes(q) || (sk.serialNumber ?? "").toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [teamSkis, val, disciplineHint, entry.athleteId]);
 
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [borrowOpen, setBorrowOpen] = useState(false);
@@ -789,7 +814,7 @@ function SkiIdCell({
             }}
             autoFocus
           />
-          {showSuggestions && suggestions.length > 0 && (
+          {showSuggestions && (suggestions.length > 0 || borrowSuggestions.length > 0) && (
             // Rendered inside the dialog DOM — no portal, no Radix "outside click" problems.
             // position:absolute relative to the enclosing `relative` div keeps it below the input.
             <div className="absolute top-full left-0 z-50 mt-0.5 min-w-[12rem] w-full rounded-lg border border-border bg-card shadow-lg max-h-40 overflow-y-auto">
@@ -812,6 +837,31 @@ function SkiIdCell({
                   {s.discipline && <span className="ml-1 text-muted-foreground text-[10px]">({s.discipline})</span>}
                 </button>
               ))}
+              {borrowSuggestions.length > 0 && (
+                <>
+                  <div className="border-t border-border px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {L("Lån fra andre", "Borrow from others")}
+                  </div>
+                  {borrowSuggestions.map((sk) => (
+                    <button
+                      key={`b-${sk.id}`}
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-amber-500/10 transition-colors"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setVal(sk.skiId);
+                        setShowSuggestions(false);
+                        // Selecting a foreign pair borrows it — owner recorded.
+                        save(sk.skiId, sk.athleteId);
+                      }}
+                    >
+                      <span className="font-medium">{sk.skiId}</span>
+                      {(sk as any).fleetGroup && <span className="ml-1 rounded-full bg-sky-100 dark:bg-sky-900/30 px-1 text-[9px] font-semibold text-sky-700 dark:text-sky-300">{(sk as any).fleetGroup}</span>}
+                      <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400">{L("Lånt", "Borrowed")} · {ownerName(sk.athleteId)}</span>
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>

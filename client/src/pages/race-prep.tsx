@@ -1482,6 +1482,7 @@ function PrepFormDialog({
               value={form.location}
               onChange={(v) => f("location", v)}
               placeholder={L("f.eks. Davos", "e.g. Davos")}
+              sources="raceprep,tests"
               data-testid="input-raceprep-location"
             />
           </div>
@@ -1744,6 +1745,7 @@ export default function RacePrep() {
               onChange={setSearch}
               placeholder={L("Søk etter sted, renntype...", "Search by location, race type...")}
               searchMode
+              sources="raceprep"
               data-testid="input-raceprep-search"
             />
           </div>

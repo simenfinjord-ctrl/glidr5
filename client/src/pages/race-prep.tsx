@@ -139,6 +139,24 @@ function isFreeText(s: string | null): boolean {
   return s.split(",").some(part => isNaN(Number(part.trim())));
 }
 
+// Several preps are usually entered back to back for the same race day —
+// remember the last saved date/start time and prefill the next one, so a
+// correct value never has to be typed again. Ignored once the date is past.
+function lastPrepDefaults(): { date: string; startTime: string } {
+  try {
+    const raw = localStorage.getItem("glidr-last-prep-datetime");
+    if (raw) {
+      const v = JSON.parse(raw);
+      const today = new Date().toISOString().slice(0, 10);
+      if (v?.date && v.date >= today) return { date: v.date, startTime: v.startTime || "" };
+    }
+  } catch {}
+  return { date: "", startTime: "" };
+}
+function rememberPrepDefaults(date: string, startTime: string) {
+  try { localStorage.setItem("glidr-last-prep-datetime", JSON.stringify({ date, startTime })); } catch {}
+}
+
 const EMPTY_FORM = {
   date: "",
   startTime: "",
@@ -1000,7 +1018,7 @@ function PrepDetailDialog({
   const kickDisplay = prep.kickProductIds
     ? (isFreeText(prep.kickProductIds) ? prep.kickProductIds : productNames(prep.kickProductIds, products))
     : null;
-  const showKick = prep.discipline === "Classic" || prep.discipline === "Skiathlon";
+  const showKick = prep.discipline === "Classic" || prep.discipline === "Skiathlon" || prep.discipline === "Mix";
 
   // Linked weather record
   const linkedWeather = prep.weatherId ? weatherList.find(w => w.id === prep.weatherId) ?? null : null;
@@ -1404,7 +1422,7 @@ function PrepFormDialog({
           notes: editPrep.notes ?? "",
           weatherId: editPrep.weatherId ?? null,
         }
-      : { ...EMPTY_FORM }
+      : { ...EMPTY_FORM, ...lastPrepDefaults() }
   );
 
   const L = (no: string, en: string) => lang === "en" ? en : no;
@@ -1413,7 +1431,11 @@ function PrepFormDialog({
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  const showKick = form.discipline === "Classic" || form.discipline === "Skiathlon";
+  // Mix is a para-fleet concept; other teams keep the classic three.
+  const paraOn = can("para_team");
+  const disciplineOptions = DISCIPLINES.filter((d) => d !== "Mix" || paraOn);
+  // Mix races can include classic legs, so the kick fields stay available.
+  const showKick = form.discipline === "Classic" || form.discipline === "Skiathlon" || form.discipline === "Mix";
 
   // Sort weather list newest first, labeled with date+location
   const weatherOptions = useMemo(() =>
@@ -1452,6 +1474,7 @@ function PrepFormDialog({
       } else {
         await apiRequest("POST", "/api/race-preps", payload);
       }
+      rememberPrepDefaults(form.date, form.startTime);
       queryClient.invalidateQueries({ queryKey: ["/api/race-preps"] });
       onClose(true);
     } catch {
@@ -1495,7 +1518,7 @@ function PrepFormDialog({
             <Select value={form.discipline} onValueChange={(v) => f("discipline", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {DISCIPLINES.map((d) => <SelectItem key={d} value={d}>{DISCIPLINE_LABEL[d]?.[lang] ?? d}</SelectItem>)}
+                {disciplineOptions.map((d) => <SelectItem key={d} value={d}>{DISCIPLINE_LABEL[d]?.[lang] ?? d}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -1574,7 +1597,26 @@ function PrepFormDialog({
         </div>
         <div className="flex justify-end gap-2 border-t border-border pt-3">
           <Button variant="outline" onClick={() => onClose(false)}>{L("Avbryt", "Cancel")}</Button>
-          <Button onClick={submit} disabled={saving || !form.date || !form.startTime || !form.location || !form.raceType}>{L("Lagre", "Save")}</Button>
+          <Button
+            onClick={() => {
+              const missing: string[] = [];
+              if (!form.date) missing.push(L("dato", "date"));
+              if (!form.startTime) missing.push(L("starttid", "start time"));
+              if (!form.location.trim()) missing.push(L("sted", "location"));
+              if (!form.raceType.trim()) missing.push(L("renntype", "race type"));
+              if (missing.length > 0) {
+                toast({
+                  title: L("Mangler felter", "Missing fields"),
+                  description: L(`Fyll inn: ${missing.join(", ")}`, `Please fill in: ${missing.join(", ")}`),
+                  variant: "destructive",
+                });
+                return;
+              }
+              submit();
+            }}
+            disabled={saving}
+            data-testid="button-save-prep"
+          >{saving ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}</Button>
         </div>
       </DialogContent>
     </Dialog>

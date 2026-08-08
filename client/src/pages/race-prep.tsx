@@ -1,6 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { DateField, TimeField } from "@/components/date-time-field";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { useQuery } from "@tanstack/react-query";
@@ -1442,6 +1442,19 @@ function PrepFormDialog({
   );
 
   const L = (no: string, en: string) => lang === "en" ? en : no;
+  // Unsaved-changes guard: closing the dialog (X / outside click / Escape)
+  // must never silently discard edits.
+  const initialFormRef = useRef<string>("");
+  useEffect(() => { initialFormRef.current = JSON.stringify(form); /* once per mount */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const isDirty = () => JSON.stringify(form) !== initialFormRef.current;
+  function requestClose(saved: boolean) {
+    if (!saved && isDirty() && !window.confirm(L(
+      "Du har ulagrede endringer. Vil du forkaste dem?",
+      "You have unsaved changes. Discard them?"
+    ))) return;
+    onClose(saved);
+  }
 
   function f<K extends keyof typeof form>(key: K, val: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -1501,7 +1514,7 @@ function PrepFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(false); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) requestClose(false); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editPrep ? L("Rediger raceprep", "Edit race prep") : L("Ny raceprep", "New race prep")}</DialogTitle>
@@ -1611,8 +1624,9 @@ function PrepFormDialog({
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 border-t border-border pt-3">
-          <Button variant="outline" onClick={() => onClose(false)}>{L("Avbryt", "Cancel")}</Button>
+        {/* Sticky so Save is always visible, even when the form scrolls. */}
+        <div className="sticky bottom-0 -mx-6 -mb-6 flex justify-end gap-2 border-t border-border bg-background px-6 py-3 sm:rounded-b-lg">
+          <Button variant="outline" onClick={() => requestClose(false)}>{L("Avbryt", "Cancel")}</Button>
           <Button
             onClick={() => {
               const missing: string[] = [];

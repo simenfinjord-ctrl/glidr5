@@ -3586,12 +3586,18 @@ function RaceSkiGrindSection() {
     queryKey: ["/api/grinding/raceski-grind-stats"],
   });
   // Merge groups: combine grinds that are really the same (naming variants)
-  // or that should be analysed as one family. Persisted locally.
-  const [merges, setMerges] = useState<string[][]>(() => {
-    try { return JSON.parse(localStorage.getItem("glidr-grind-merges") || "[]"); } catch { return []; }
+  // or that should be analysed as one family. Named, persisted locally.
+  type GrindGroup = { name: string; members: string[] };
+  const [merges, setMerges] = useState<GrindGroup[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("glidr-grind-merges") || "[]");
+      // Migrate the old unnamed string[][] format.
+      return (raw as any[]).map((g) => Array.isArray(g) ? { name: g.join(" + "), members: g } : g);
+    } catch { return []; }
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  function saveMerges(next: string[][]) {
+  const [groupName, setGroupName] = useState("");
+  function saveMerges(next: GrindGroup[]) {
     setMerges(next);
     try { localStorage.setItem("glidr-grind-merges", JSON.stringify(next)); } catch {}
   }
@@ -3599,36 +3605,42 @@ function RaceSkiGrindSection() {
     if (selected.size < 2) return;
     // Selected grinds absorb any group a member already belongs to.
     const members = new Set<string>(selected);
-    const rest: string[][] = [];
+    const rest: GrindGroup[] = [];
+    let inheritedName = "";
     for (const grp of merges) {
-      if (grp.some((g) => members.has(g))) grp.forEach((g) => members.add(g));
-      else rest.push(grp);
+      if (grp.members.some((g) => members.has(g))) {
+        grp.members.forEach((g) => members.add(g));
+        inheritedName = inheritedName || grp.name;
+      } else rest.push(grp);
     }
-    saveMerges([...rest, Array.from(members).sort()]);
+    const sortedMembers = Array.from(members).sort();
+    const name = groupName.trim() || inheritedName || sortedMembers.join(" + ");
+    saveMerges([...rest, { name, members: sortedMembers }]);
     setSelected(new Set());
+    setGroupName("");
   }
   function dissolve(group: string[]) {
-    saveMerges(merges.filter((g) => g.join("|") !== group.join("|")));
+    saveMerges(merges.filter((g) => g.members.join("|") !== group.join("|")));
   }
 
   const raw = data?.grinds ?? [];
   const grinds = useMemo<(GrindStat & { members?: string[] })[]>(() => {
-    const inGroup = new Map<string, string[]>();
-    for (const grp of merges) for (const g of grp) inGroup.set(g, grp);
+    const inGroup = new Map<string, GrindGroup>();
+    for (const grp of merges) for (const g of grp.members) inGroup.set(g, grp);
     const doneGroups = new Set<string>();
     const out: (GrindStat & { members?: string[] })[] = [];
     for (const g of raw) {
       const grp = inGroup.get(g.grind);
       if (!grp) { out.push(g); continue; }
-      const key = grp.join("|");
+      const key = grp.members.join("|");
       if (doneGroups.has(key)) continue;
       doneGroups.add(key);
-      const parts = raw.filter((x) => grp.includes(x.grind));
+      const parts = raw.filter((x) => grp.members.includes(x.grind));
       if (parts.length === 0) continue;
       const entrySum = parts.reduce((a, x) => a + x.entryCount, 0);
       out.push({
-        grind: grp.join(" + "),
-        members: grp,
+        grind: grp.name,
+        members: grp.members,
         pairs: parts.reduce((a, x) => a + x.pairs, 0),
         racedCount: parts.reduce((a, x) => a + x.racedCount, 0),
         testCount: parts.reduce((a, x) => a + x.testCount, 0),
@@ -3650,7 +3662,14 @@ function RaceSkiGrindSection() {
            "Per grind: pairs carrying it, race use (race logs + Race Prep) and performance in race-ski tests (average of all runs).")}
       </p>
       {selected.size >= 2 && (
-        <div className="mb-2">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <Input
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            placeholder={L("Gruppenavn, f.eks. SL-familien", "Group name, e.g. SL family")}
+            className="h-7 w-56 text-xs"
+            data-testid="input-grind-group-name"
+          />
           <Button size="sm" className="h-7 text-xs" onClick={mergeSelected} data-testid="button-merge-grinds">
             {L(`Slå sammen ${selected.size} sliper`, `Merge ${selected.size} grinds`)}
           </Button>
@@ -3693,15 +3712,23 @@ function RaceSkiGrindSection() {
                   <td className="border-t border-border/30 px-3 py-2 font-semibold">
                     {g.grind}
                     {g.members && (
-                      <button
-                        type="button"
-                        onClick={() => dissolve(g.members!)}
-                        className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-red-500"
-                        title={L("Løs opp sammenslåingen", "Dissolve merge")}
-                        data-testid={`button-dissolve-${g.grind}`}
-                      >
-                        {L("løs opp ×", "dissolve ×")}
-                      </button>
+                      <>
+                        <span
+                          className="ml-2 rounded-full bg-violet-100 dark:bg-violet-900/30 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800"
+                          title={`${L("Inneholder", "Contains")}: ${g.members.join(", ")}`}
+                        >
+                          {L(`gruppe (${g.members.length})`, `group (${g.members.length})`)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => dissolve(g.members!)}
+                          className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-red-500"
+                          title={L("Løs opp gruppen", "Dissolve group")}
+                          data-testid={`button-dissolve-${g.grind}`}
+                        >
+                          ×
+                        </button>
+                      </>
                     )}
                   </td>
                   <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">{g.pairs}</td>

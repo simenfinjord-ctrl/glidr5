@@ -1,7 +1,7 @@
 export type WidgetId =
   | "attention"
   | "stats" | "today-tests" | "watch-queue" | "quick-actions"
-  | "recent-results" | "recent-weather" | "products-overview"
+  | "recent-results" | "recent-weather" | "products-overview" | "race-countdown"
   | "top-products" | "athlete-recent-tests" | "recent-activity";
 
 export interface WidgetDef {
@@ -27,6 +27,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   { id: "today-tests",          label: "Today's Tests",        description: "Tests scheduled or run today",                      icon: "Zap",        defaultEnabled: true },
   { id: "watch-queue",          label: "Watch Queue",          description: "Active Garmin watch queue items",                   icon: "Watch",      defaultEnabled: true, featureFlag: "garmin_watch" },
   { id: "quick-actions",        label: "Quick Actions",        description: "Shortcuts to common tasks",                         icon: "Rocket",     defaultEnabled: true },
+  { id: "race-countdown",       label: "Race Countdown",       description: "Today's races from Race Prep with live countdown to each start", icon: "Timer", defaultEnabled: true },
   { id: "recent-results",       label: "Recent Results",       description: "Latest test results with winners, live updated",    icon: "Trophy",     defaultEnabled: true },
   { id: "recent-weather",       label: "Recent Weather",       description: "Latest weather entries",                            icon: "CloudSun",   defaultEnabled: true },
   { id: "products-overview",    label: "Products",             description: "Products in your catalogue",                        icon: "Package",    defaultEnabled: true },

@@ -737,6 +737,7 @@ export default function TestDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}/entries`] });
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/products-tested"] });
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}`] });
       toast({ title: t("newTest.runsheetApplied") });
       setShowRunsheet(false);
@@ -756,6 +757,7 @@ export default function TestDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/products-tested"] });
       toast({ title: t("testDetail.deleteTest") });
       setLocation(
         test?.testType === "Grind" ? "/grinding"

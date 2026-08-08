@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { productLabel } from "@/lib/product-label";
 import { fmtT } from "@/lib/temperature";
 import { timeGreeting, dailyQuote } from "@/lib/greeting";
-import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X, User, Disc3, Flag, BarChart2, Layers, ChevronDown, AlertTriangle } from "lucide-react";
+import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X, User, Disc3, Flag, BarChart2, Layers, ChevronDown, AlertTriangle, Timer } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/app-shell";
@@ -22,7 +22,7 @@ import { loadWidgetPrefs, saveWidgetPrefs, WIDGET_REGISTRY, type WidgetId, type 
 // ── Dashboard shortcuts ───────────────────────────────────────────────────────
 
 const SHORTCUT_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  ListChecks, Snowflake, PackagePlus, CalendarPlus, Trophy, BarChart2, Disc3, Flag, Layers, MapPin, Watch, Award, Settings2, User, Activity,
+  ListChecks, Snowflake, PackagePlus, CalendarPlus, Trophy, BarChart2, Disc3, Flag, Layers, MapPin, Watch, Award, Settings2, User, Activity, Timer,
 };
 
 // A saved shortcut — stores everything needed to render the pinned card
@@ -391,6 +391,27 @@ export default function Dashboard() {
   const attnVisible = (attention?.items ?? []).filter((it) => !(it.key in attnDismissed) || it.count > attnDismissed[it.key]);
   const attnHiddenCount = (attention?.items.length ?? 0) - attnVisible.length;
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+  // Distinct products actually USED in the team's tests — not the catalogue
+  // size. Derived from live tests, so deleting a test updates it.
+  const { data: productsTested } = useQuery<{ count: number; brands: number }>({
+    queryKey: ["/api/dashboard/products-tested"],
+  });
+  // Today's race preps for the countdown widget, ticking every second.
+  const { data: racePreps = [] } = useQuery<{ id: number; date: string; startTime: string | null; location: string; discipline: string | null; raceType: string | null }[]>({
+    queryKey: ["/api/race-preps"],
+    enabled: can("raceprep", "view"),
+  });
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  const todayRaces = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return racePreps
+      .filter((r) => r.date === todayStr)
+      .sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
+  }, [racePreps]);
   // The season runs 1 May – 30 April; the "Tests this season" card must count
   // exactly that, not everything ever logged.
   const seasonTests = useMemo(() => {
@@ -969,12 +990,12 @@ export default function Dashboard() {
             />
             <StatCard
               label={t("dashboard.statsProducts")}
-              value={products.length}
+              value={productsTested?.count ?? 0}
               icon={Package}
               iconColor="text-blue-600"
-              delta={products.length > 0 ? `${[...new Set(products.map((p) => p.brand))].length} brands` : undefined}
+              delta={(productsTested?.brands ?? 0) > 0 ? `${productsTested!.brands} brands` : undefined}
               barColor="bg-blue-500"
-              barPct={Math.min(100, (products.length / Math.max(products.length, 40)) * 100)}
+              barPct={Math.min(100, ((productsTested?.count ?? 0) / Math.max(productsTested?.count ?? 0, 40)) * 100)}
             />
             <StatCard
               label={t("dashboard.statsWatchQueue")}
@@ -1037,6 +1058,70 @@ export default function Dashboard() {
           );
         })()}
 
+        {isWidgetEnabled("race-countdown") && can("raceprep", "view") && (
+          <div className="rounded-2xl border bg-card p-4" data-testid="widget-race-countdown">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Flag className="h-4 w-4 text-rose-500" />
+                {language === "no" ? "Dagens renn" : "Today's races"}
+              </h2>
+              <AppLink href="/raceprep">
+                <span className="cursor-pointer text-xs text-primary hover:underline" data-testid="link-add-race">
+                  {language === "no" ? "+ Legg til renn" : "+ Add race"}
+                </span>
+              </AppLink>
+            </div>
+            {todayRaces.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {language === "no" ? "Ingen renn i dag. Legg inn dagens renn med starttid i Race Prep." : "No races today. Add today's races with start times in Race Prep."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {todayRaces.map((r) => {
+                  let countdown: string | null = null;
+                  let started = false;
+                  if (r.startTime) {
+                    const [hh, mm] = r.startTime.split(":").map(Number);
+                    const start = new Date();
+                    start.setHours(hh || 0, mm || 0, 0, 0);
+                    const diff = start.getTime() - nowTick;
+                    if (diff <= 0) started = true;
+                    else {
+                      const h = Math.floor(diff / 3600000);
+                      const m = Math.floor((diff % 3600000) / 60000);
+                      const sec = Math.floor((diff % 60000) / 1000);
+                      countdown = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+                    }
+                  }
+                  return (
+                    <AppLink key={r.id} href="/raceprep">
+                      <div className="cursor-pointer rounded-xl border bg-background/50 px-3 py-2.5 transition-colors hover:border-primary/40" data-testid={`race-countdown-${r.id}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-semibold">{r.location}</span>
+                          {r.discipline && (
+                            <span className="shrink-0 rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">{r.discipline}</span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex items-baseline justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">{r.raceType || ""}{r.startTime ? ` · ${language === "no" ? "start" : "start"} ${r.startTime}` : ""}</span>
+                          {r.startTime ? (
+                            started ? (
+                              <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">{language === "no" ? "I gang" : "Started"}</span>
+                            ) : (
+                              <span className="font-mono text-lg font-bold tabular-nums text-rose-600 dark:text-rose-400">{countdown}</span>
+                            )
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">{language === "no" ? "ingen starttid" : "no start time"}</span>
+                          )}
+                        </div>
+                      </div>
+                    </AppLink>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
         {isWidgetEnabled("today-tests") && todayTests.length > 0 && (
           <Card className="fs-card rounded-2xl border-emerald-200 p-4" data-testid="card-today-tests">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">

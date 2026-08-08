@@ -2657,6 +2657,42 @@ export async function registerRoutes(
 
   // Everything waiting for someone, in one query. These facts already exist,
   // but scattered across five pages — so nobody sees them until they go looking.
+  // Distinct products actually used in the team's tests (main + additional),
+  // derived live so deleted tests fall out of the number immediately.
+  app.get("/api/dashboard/products-tested", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    if (!teamId) return res.json({ count: 0, brands: 0 });
+    try {
+      const { pool: pgPT } = await import("./db");
+      const r = await (pgPT as any).query(
+        `SELECT te.product_id, te.additional_product_ids
+         FROM test_entries te JOIN tests t ON t.id = te.test_id
+         WHERE t.team_id = $1 AND (te.product_id IS NOT NULL OR te.additional_product_ids IS NOT NULL)`,
+        [teamId]);
+      const ids = new Set<number>();
+      for (const row of r.rows) {
+        if (row.product_id != null) ids.add(row.product_id);
+        if (row.additional_product_ids) {
+          for (const part of String(row.additional_product_ids).split(",")) {
+            const n = parseInt(part);
+            if (!isNaN(n) && n > 0) ids.add(n);
+          }
+        }
+      }
+      let brands = 0;
+      if (ids.size > 0) {
+        const br = await (pgPT as any).query(
+          `SELECT COUNT(DISTINCT brand)::int AS c FROM products WHERE id = ANY($1::int[]) AND brand IS NOT NULL`,
+          [Array.from(ids)]);
+        brands = br.rows[0]?.c || 0;
+      }
+      res.json({ count: ids.size, brands });
+    } catch (e) {
+      console.error("[products-tested]", e);
+      res.json({ count: 0, brands: 0 });
+    }
+  });
+
   app.get("/api/dashboard/attention", requireAuth, async (req, res) => {
     const teamId = getActiveTeamId(req);
     if (!teamId) return res.json({ items: [] });

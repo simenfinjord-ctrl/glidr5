@@ -10,6 +10,7 @@ import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -3576,13 +3577,71 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
 // Which grinds sit on the team's race skis, how often they have raced
 // (manual race-use logs + Race Prep), and how they perform in race-ski tests
 // (avg-of-all-runs rank, wins). Grinds are matched via each pair's grind field.
+type GrindStat = { grind: string; pairs: number; racedCount: number; testCount: number; entryCount: number; avgRank: number | null; wins: number };
+
 function RaceSkiGrindSection() {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
-  const { data, isLoading } = useQuery<{ grinds: { grind: string; pairs: number; racedCount: number; testCount: number; entryCount: number; avgRank: number | null; wins: number }[] }>({
+  const { data, isLoading } = useQuery<{ grinds: GrindStat[] }>({
     queryKey: ["/api/grinding/raceski-grind-stats"],
   });
-  const grinds = data?.grinds ?? [];
+  // Merge groups: combine grinds that are really the same (naming variants)
+  // or that should be analysed as one family. Persisted locally.
+  const [merges, setMerges] = useState<string[][]>(() => {
+    try { return JSON.parse(localStorage.getItem("glidr-grind-merges") || "[]"); } catch { return []; }
+  });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  function saveMerges(next: string[][]) {
+    setMerges(next);
+    try { localStorage.setItem("glidr-grind-merges", JSON.stringify(next)); } catch {}
+  }
+  function mergeSelected() {
+    if (selected.size < 2) return;
+    // Selected grinds absorb any group a member already belongs to.
+    const members = new Set<string>(selected);
+    const rest: string[][] = [];
+    for (const grp of merges) {
+      if (grp.some((g) => members.has(g))) grp.forEach((g) => members.add(g));
+      else rest.push(grp);
+    }
+    saveMerges([...rest, Array.from(members).sort()]);
+    setSelected(new Set());
+  }
+  function dissolve(group: string[]) {
+    saveMerges(merges.filter((g) => g.join("|") !== group.join("|")));
+  }
+
+  const raw = data?.grinds ?? [];
+  const grinds = useMemo<(GrindStat & { members?: string[] })[]>(() => {
+    const inGroup = new Map<string, string[]>();
+    for (const grp of merges) for (const g of grp) inGroup.set(g, grp);
+    const doneGroups = new Set<string>();
+    const out: (GrindStat & { members?: string[] })[] = [];
+    for (const g of raw) {
+      const grp = inGroup.get(g.grind);
+      if (!grp) { out.push(g); continue; }
+      const key = grp.join("|");
+      if (doneGroups.has(key)) continue;
+      doneGroups.add(key);
+      const parts = raw.filter((x) => grp.includes(x.grind));
+      if (parts.length === 0) continue;
+      const entrySum = parts.reduce((a, x) => a + x.entryCount, 0);
+      out.push({
+        grind: grp.join(" + "),
+        members: grp,
+        pairs: parts.reduce((a, x) => a + x.pairs, 0),
+        racedCount: parts.reduce((a, x) => a + x.racedCount, 0),
+        testCount: parts.reduce((a, x) => a + x.testCount, 0),
+        entryCount: entrySum,
+        // Weighted by entries so a grind with many results dominates fairly.
+        avgRank: entrySum > 0
+          ? parts.reduce((a, x) => a + (x.avgRank ?? 0) * x.entryCount, 0) / entrySum
+          : null,
+        wins: parts.reduce((a, x) => a + x.wins, 0),
+      });
+    }
+    return out.sort((a, b) => (a.avgRank ?? 999) - (b.avgRank ?? 999));
+  }, [raw, merges]);
   return (
     <Card className="fs-card mb-5 rounded-2xl p-4" data-testid="section-raceski-grinds">
       <h2 className="mb-1 text-sm font-semibold">{L("Slip på konkurranseski", "Race ski grinds")}</h2>
@@ -3590,6 +3649,13 @@ function RaceSkiGrindSection() {
         {L("Per slip: antall par som bærer den, rennbruk (løpslogg + Race Prep) og prestasjon i raceski-tester (snitt av alle runder).",
            "Per grind: pairs carrying it, race use (race logs + Race Prep) and performance in race-ski tests (average of all runs).")}
       </p>
+      {selected.size >= 2 && (
+        <div className="mb-2">
+          <Button size="sm" className="h-7 text-xs" onClick={mergeSelected} data-testid="button-merge-grinds">
+            {L(`Slå sammen ${selected.size} sliper`, `Merge ${selected.size} grinds`)}
+          </Button>
+        </div>
+      )}
       {isLoading ? (
         <p className="text-sm text-muted-foreground">{L("Laster…", "Loading…")}</p>
       ) : grinds.length === 0 ? (
@@ -3599,6 +3665,7 @@ function RaceSkiGrindSection() {
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                <th className="w-8 px-2 py-2"></th>
                 <th className="px-3 py-2">{L("Slip", "Grind")}</th>
                 <th className="px-3 py-2 text-right">{L("Par", "Pairs")}</th>
                 <th className="px-3 py-2 text-right">{L("Ganger i renn", "Times raced")}</th>
@@ -3610,7 +3677,33 @@ function RaceSkiGrindSection() {
             <tbody>
               {grinds.map((g, idx) => (
                 <tr key={g.grind} className={idx % 2 === 0 ? "bg-background/30" : "bg-background/10"} data-testid={`grind-stat-${g.grind}`}>
-                  <td className="border-t border-border/30 px-3 py-2 font-semibold">{g.grind}</td>
+                  <td className="border-t border-border/30 px-2 py-2">
+                    {!g.members && (
+                      <Checkbox
+                        checked={selected.has(g.grind)}
+                        onCheckedChange={(c) => setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (c) next.add(g.grind); else next.delete(g.grind);
+                          return next;
+                        })}
+                        data-testid={`check-grind-${g.grind}`}
+                      />
+                    )}
+                  </td>
+                  <td className="border-t border-border/30 px-3 py-2 font-semibold">
+                    {g.grind}
+                    {g.members && (
+                      <button
+                        type="button"
+                        onClick={() => dissolve(g.members!)}
+                        className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-red-500"
+                        title={L("Løs opp sammenslåingen", "Dissolve merge")}
+                        data-testid={`button-dissolve-${g.grind}`}
+                      >
+                        {L("løs opp ×", "dissolve ×")}
+                      </button>
+                    )}
+                  </td>
                   <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">{g.pairs}</td>
                   <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">{g.racedCount}</td>
                   <td className="border-t border-border/30 px-3 py-2 text-right tabular-nums">{g.testCount}</td>

@@ -1101,6 +1101,54 @@ function PrepDetailDialog({
   // Linked weather record
   const linkedWeather = prep.weatherId ? weatherList.find(w => w.id === prep.weatherId) ?? null : null;
 
+  // ── Report export options: pick ski parameters, filter by brand, and
+  // choose whether products appear. Weather is ALWAYS included.
+  const EXPORT_PARAMS: { key: string; no: string; en: string }[] = [
+    { key: "serialNumber", no: "Serienr.", en: "Serial no." },
+    { key: "brand", no: "Merke", en: "Brand" },
+    { key: "grind", no: "Slip", en: "Grind" },
+    { key: "ra_value", no: "RA-verdi", en: "RA-value" },
+    { key: "construction", no: "Konstruksjon", en: "Construction" },
+    { key: "mold", no: "Mold", en: "Mold" },
+    { key: "base", no: "Sål", en: "Base" },
+    { key: "heights", no: "Høyder", en: "Heights" },
+    { key: "year", no: "År", en: "Year" },
+    { key: "length", no: "Lengde", en: "Length" },
+  ];
+  const [exportOptsOpen, setExportOptsOpen] = useState(false);
+  const [exportParamKeys, setExportParamKeys] = useState<Set<string>>(new Set(["serialNumber", "brand", "grind"]));
+  const [exportBrand, setExportBrand] = useState<string>("all");
+  const [exportProducts, setExportProducts] = useState(true);
+  const { data: allTeamSkis = [] } = useQuery<(RaceSkiRecord & { athleteId: number; customParams?: string | null })[]>({
+    queryKey: ["/api/race-skis/all"],
+    enabled: exportOptsOpen,
+  });
+  // Resolve the ski record behind an entry's displayed label (owner-aware).
+  function resolveEntrySki(e: RacePrepEntry, label: string | null) {
+    if (!label) return null;
+    const ownerId = e.borrowedAthleteId ?? e.borrowedAthleteIdClassic ?? e.borrowedAthleteIdSkating ?? e.athleteId;
+    const lc = label.toLowerCase();
+    return allTeamSkis.find((sk) => sk.athleteId === ownerId && (sk.skiId.toLowerCase() === lc || (sk.serialNumber ?? "").toLowerCase() === lc))
+      ?? allTeamSkis.find((sk) => sk.skiId.toLowerCase() === lc) ?? null;
+  }
+  function skiParamValue(rec: any, key: string): string {
+    if (!rec) return "—";
+    if (key === "ra_value") {
+      try { const cp = rec.customParams ? JSON.parse(rec.customParams) : {}; return cp.ra_value != null ? String(cp.ra_value) : "—"; } catch { return "—"; }
+    }
+    return rec[key] != null && rec[key] !== "" ? String(rec[key]) : "—";
+  }
+  const exportBrandOptions = useMemo(() => {
+    const brands = new Set<string>();
+    for (const e of entries) {
+      const label = e.skiId ?? e.skiIdClassic ?? e.skiIdSkating;
+      const rec = resolveEntrySki(e, label ?? null);
+      if (rec?.brand) brands.add(rec.brand);
+    }
+    return Array.from(brands).sort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, allTeamSkis]);
+
   function exportPDF() {
     const win = window.open("", "_blank");
     const disciplineLabel = DISCIPLINE_LABEL[prep.discipline]?.[lang] ?? prep.discipline;
@@ -1112,11 +1160,11 @@ function PrepDetailDialog({
       [L("Renntype", "Race type"), prep.raceType],
       [L("Stilart", "Discipline"), disciplineLabel],
     ];
-    if (glideDisplay) infoRows.push([L("Glid", "Glide"), glideDisplay]);
-    if (structureDisplay) infoRows.push([L("Struktur", "Structure"), structureDisplay]);
-    if (showKick && kickDisplay) infoRows.push(["Kick", kickDisplay]);
-    if (showKick && prep.tette) infoRows.push([lang === "en" ? "Binder" : "Grunning", prep.tette]);
-    if (prep.method) infoRows.push([L("Metode", "Method"), prep.method]);
+    if (exportProducts && glideDisplay) infoRows.push([L("Glid", "Glide"), glideDisplay]);
+    if (exportProducts && structureDisplay) infoRows.push([L("Struktur", "Structure"), structureDisplay]);
+    if (exportProducts && showKick && kickDisplay) infoRows.push(["Kick", kickDisplay]);
+    if (exportProducts && showKick && prep.tette) infoRows.push([lang === "en" ? "Binder" : "Grunning", prep.tette]);
+    if (exportProducts && prep.method) infoRows.push([L("Metode", "Method"), prep.method]);
     if (prep.notes) infoRows.push([L("Notater", "Notes"), prep.notes]);
 
     const infoTable = `<table class="pdf-table" style="margin-bottom:16px">
@@ -1140,27 +1188,30 @@ function PrepDetailDialog({
       time: linkedWeather.date,
     }) : "";
 
+    const chosenParams = EXPORT_PARAMS.filter((pp) => exportParamKeys.has(pp.key));
     const athleteHeaders = [
       L("Løper", "Athlete"),
       L("Stilart-ski", "Ski"),
-      L("Glid", "Glide"),
-      L("Struktur", "Structure"),
-      ...(showKick ? ["Kick"] : []),
+      ...chosenParams.map((pp) => (lang === "en" ? pp.en : pp.no)),
+      ...(exportProducts ? [L("Glid", "Glide"), L("Struktur", "Structure"), ...(showKick ? ["Kick"] : [])] : []),
       L("Vokser", "Waxer"),
       L("Notater", "Notes"),
     ];
-    const athleteRows = entries.map((e) => {
-      const skiVal = prep.discipline === "Skating" ? e.skiIdSkating : e.skiIdClassic ?? e.skiId ?? "—";
-      return [
+    const athleteRows = entries
+      .map((e) => {
+        const skiVal = e.skiId ?? e.skiIdClassic ?? e.skiIdSkating ?? null;
+        const rec = resolveEntrySki(e, skiVal);
+        return { e, skiVal, rec };
+      })
+      .filter(({ rec }) => exportBrand === "all" || (rec?.brand ?? "") === exportBrand)
+      .map(({ e, skiVal, rec }) => [
         e.athleteName,
         skiVal ?? "—",
-        glideDisplay || "—",
-        structureDisplay || "—",
-        ...(showKick ? [kickDisplay || "—"] : []),
+        ...chosenParams.map((pp) => skiParamValue(rec, pp.key)),
+        ...(exportProducts ? [glideDisplay || "—", structureDisplay || "—", ...(showKick ? [kickDisplay || "—"] : [])] : []),
         e.waxerName ?? "—",
         e.notes ?? "",
-      ];
-    });
+      ]);
 
     const body =
       pdfSection(title) +
@@ -1174,7 +1225,7 @@ function PrepDetailDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent
-        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="max-w-2xl lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-2 pr-6">
@@ -1186,13 +1237,66 @@ function PrepDetailDialog({
               variant="outline"
               size="sm"
               className="h-7 text-xs shrink-0"
-              onClick={exportPDF}
+              onClick={() => setExportOptsOpen(true)}
+              data-testid="button-open-report-options"
             >
               <FileDown className="h-3.5 w-3.5 mr-1" />
               {L("Last ned rapport", "Download report")}
             </Button>
           </DialogTitle>
         </DialogHeader>
+
+        {/* Report options: ski parameters, brand filter, products on/off.
+            Weather is always included — no toggle. */}
+        <Dialog open={exportOptsOpen} onOpenChange={setExportOptsOpen}>
+          <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{L("Rapportinnstillinger", "Report options")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Skiparametre", "Ski parameters")}</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {EXPORT_PARAMS.map((pp) => (
+                    <label key={pp.key} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-muted/50" data-testid={`export-param-${pp.key}`}>
+                      <Checkbox
+                        checked={exportParamKeys.has(pp.key)}
+                        onCheckedChange={(c) => setExportParamKeys((prev) => {
+                          const next = new Set(prev);
+                          if (c) next.add(pp.key); else next.delete(pp.key);
+                          return next;
+                        })}
+                      />
+                      {lang === "en" ? pp.en : pp.no}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Merkefilter", "Brand filter")}</div>
+                <Select value={exportBrand} onValueChange={setExportBrand}>
+                  <SelectTrigger data-testid="select-export-brand"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{L("Alle merker", "All brands")}</SelectItem>
+                    {exportBrandOptions.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[11px] text-muted-foreground">{L("Vis bare skipar av ett merke — f.eks. for leverandørmøter.", "Show only pairs of one brand — e.g. for supplier meetings.")}</p>
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm" data-testid="toggle-export-products">
+                <Checkbox checked={exportProducts} onCheckedChange={(c) => setExportProducts(!!c)} />
+                {L("Inkluder produkter (glid/struktur/kick)", "Include products (glide/structure/kick)")}
+              </label>
+              <p className="text-[11px] text-muted-foreground">{L("Værdata inkluderes alltid i rapporten.", "Weather data is always included in the report.")}</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setExportOptsOpen(false)}>{L("Avbryt", "Cancel")}</Button>
+                <Button size="sm" onClick={() => { setExportOptsOpen(false); exportPDF(); }} data-testid="button-generate-report">
+                  <FileDown className="mr-1.5 h-3.5 w-3.5" />{L("Last ned", "Download")}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Race info */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
